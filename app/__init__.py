@@ -32,7 +32,7 @@ load_dotenv()
 
 def create_app() -> Flask:
     app = Flask(__name__)
-    app.config.from_object(Config)
+    app.config.from_object("app.config.Production")
 
     register_extensions(app)
     register_blueprints(app)   # <--- this runs the block above

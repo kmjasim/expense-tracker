@@ -1,3 +1,4 @@
+# app/config.py
 import os
 
 class Config:
@@ -15,3 +16,8 @@ class Config:
     MAIL_USERNAME = os.getenv("MAIL_USERNAME")
     MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")
     MAIL_DEFAULT_SENDER = os.getenv("MAIL_DEFAULT_SENDER")
+
+class Production(Config):
+    # Optional: fail fast if DATABASE_URL isn’t set (prevents silent SQLite fallback)
+    if not os.getenv("DATABASE_URL"):
+        raise RuntimeError("DATABASE_URL is required in Production")
