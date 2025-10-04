@@ -1,0 +1,201 @@
+{# --- Recipient Sidebar (DB-driven) --- #}
+
+<!-- Search -->
+<div class="input-group input-group-sm mb-3">
+  <span class="input-group-text bg-white border-end-0"><i class="bi bi-search"></i></span>
+  <input type="text" class="form-control border-start-0" id="recipientSearch" placeholder="Search recipient">
+</div>
+
+<!-- List -->
+<div class="recipient-list" id="recipientList">
+  {% if recipients and recipients|length %}
+    {% for r in recipients %}
+      <button
+        type="button"
+        class="recipient-item {% if loop.first %}active{% endif %}"
+        data-recipient-id="{{ r.id }}"
+        data-recipient-name="{{ r.name }}"
+        data-recipient-acct="{{ r.default_account_no_masked or '' }}"
+        data-recipient-type="{{ r.type.value if r.type else '' }}"
+        data-recipient-country="{{ r.country or '' }}"
+        data-recipient-method="{{ r.default_method.value if r.default_method else '' }}"
+        data-recipient-service="{{ r.default_service_name or '' }}"
+        data-recipient-notes="{{ r.notes or '' }}"
+        data-recipient-fav="{{ 1 if r.is_favorite else 0 }}"
+      >
+        <div class="w-100 text-start">
+          <div class="fw-semibold small">{{ r.name }}</div>
+          {% if r.default_account_no_masked %}
+            <div class="text-muted tiny">{{ r.default_account_no_masked }}</div>
+          {% endif %}
+        </div>
+      </button>
+    {% endfor %}
+  {% else %}
+    <div class="text-muted small p-2">No recipients yet.</div>
+  {% endif %}
+</div>
+
+<!-- Actions -->
+<div class="d-grid mt-3 gap-2">
+  <button class="btn btn-success btn-sm rounded-3" id="addRecipientBtn"
+          type="button" data-bs-toggle="modal" data-bs-target="#recipientModal">
+    Add New Recipient
+  </button>
+  <div class="d-flex gap-2">
+    <button class="btn btn-outline-primary btn-sm w-100" id="editRecipientBtn" type="button"
+            data-bs-toggle="modal" data-bs-target="#recipientEditModal">
+      Edit
+    </button>
+    <button class="btn btn-outline-danger btn-sm w-100" id="deleteRecipientBtn" type="button">
+      Delete
+    </button>
+  </div>
+</div>
+
+<!-- Add Recipient Modal (unchanged action) -->
+<div class="modal fade" id="recipientModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <form class="modal-content" id="recipientForm" method="post" action="{{ url_for('main.recipients_create') }}">
+      <div class="modal-header">
+        <h5 class="modal-title">Add Recipient</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-2">
+          <label class="form-label">Name</label>
+          <input name="name" class="form-control" required>
+        </div>
+
+        <div class="row g-2">
+          <div class="col-6">
+            <label class="form-label">Type</label>
+            <select name="type" class="form-select">
+              <option value="person">Person</option>
+              <option value="business">Business</option>
+              <option value="self">Self</option>
+            </select>
+          </div>
+          <div class="col-6">
+            <label class="form-label">Country</label>
+            <input name="country" class="form-control" placeholder="KR / BD">
+          </div>
+        </div>
+
+        <div class="row g-2 mt-1">
+          <div class="col-6">
+            <label class="form-label">Default Method</label>
+            <select name="default_method" class="form-select">
+              <option value="">—</option>
+              <option value="bank">Bank</option>
+              <option value="mobile_wallet">Mobile Wallet</option>
+              <option value="cash">Cash</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="col-6">
+            <label class="form-label">Service</label>
+            <input name="default_service_name" class="form-control" placeholder="Wise / bKash / Nagad">
+          </div>
+        </div>
+
+        <div class="mt-1">
+          <label class="form-label">Account (masked)</label>
+          <input name="default_account_no_masked" class="form-control" placeholder="****1234">
+        </div>
+
+        <div class="form-check mt-2">
+          <input class="form-check-input" type="checkbox" name="is_favorite" id="recipientFav">
+          <label class="form-check-label" for="recipientFav">Favorite</label>
+        </div>
+
+        <div class="mt-2">
+          <label class="form-label">Notes</label>
+          <input name="notes" class="form-control" placeholder="Optional">
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" type="submit">Add</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit Recipient Modal -->
+<div class="modal fade" id="recipientEditModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <form class="modal-content" id="recipientEditForm" method="post">
+      <div class="modal-header">
+        <h5 class="modal-title">Edit Recipient</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" name="id" id="recEditId">
+        <div class="mb-2">
+          <label class="form-label">Name</label>
+          <input name="name" id="recEditName" class="form-control" required>
+        </div>
+
+        <div class="row g-2">
+          <div class="col-6">
+            <label class="form-label">Type</label>
+            <select name="type" id="recEditType" class="form-select">
+              <option value="person">Person</option>
+              <option value="business">Business</option>
+              <option value="self">Self</option>
+            </select>
+          </div>
+          <div class="col-6">
+            <label class="form-label">Country</label>
+            <input name="country" id="recEditCountry" class="form-control" placeholder="KR / BD">
+          </div>
+        </div>
+
+        <div class="row g-2 mt-1">
+          <div class="col-6">
+            <label class="form-label">Default Method</label>
+            <select name="default_method" id="recEditMethod" class="form-select">
+              <option value="">—</option>
+              <option value="bank">Bank</option>
+              <option value="mobile_wallet">Mobile Wallet</option>
+              <option value="cash">Cash</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="col-6">
+            <label class="form-label">Service</label>
+            <input name="default_service_name" id="recEditService" class="form-control" placeholder="Wise / bKash / Nagad">
+          </div>
+        </div>
+
+        <div class="mt-1">
+          <label class="form-label">Account (masked)</label>
+          <input name="default_account_no_masked" id="recEditAcct" class="form-control" placeholder="****1234">
+        </div>
+
+        <div class="form-check mt-2">
+          <input class="form-check-input" type="checkbox" name="is_favorite" id="recEditFav">
+          <label class="form-check-label" for="recEditFav">Favorite</label>
+        </div>
+
+        <div class="mt-2">
+          <label class="form-label">Notes</label>
+          <input name="notes" id="recEditNotes" class="form-control" placeholder="Optional">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" type="submit">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+<script id="recipients-config" type="application/json">
+{
+  "createUrl": "{{ url_for('main.recipients_create') }}",
+  "updateUrlZero": "{{ url_for('main.recipients_update', rid=0) }}",
+  "deleteUrlZero": "{{ url_for('main.recipients_delete', rid=0) }}"
+}
+</script>

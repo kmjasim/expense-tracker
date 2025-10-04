@@ -1,0 +1,22 @@
+/* Header polish */
+.app-header {
+  backdrop-filter: saturate(120%) blur(4px);
+}
+
+/* Avatar subtle ring */
+.avatar-ring {
+  box-shadow: 0 0 0 2px var(--bs-body-bg), 0 0 0 3px var(--bs-border-color);
+}
+
+/* Button tweak for compact height in header */
+.app-header .btn {
+  --bs-btn-padding-y: .375rem; /* a bit tighter than default */
+}
+  /* Header is fixed and starts after the sidebar */
+  #app-header{
+    position: fixed;
+    top: 0;
+    left: var(--sidebar-w);
+    width: calc(100% - var(--sidebar-w));
+    z-index: 1030;
+  }

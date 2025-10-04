@@ -1,0 +1,90 @@
+/* === Layout variables === */
+:root{
+  --sidebar-w: 260px;   /* desktop sidebar width */
+  --header-h: 56px;     /* will be synced by JS */
+}
+
+/* Fixed, full-height sidebar on desktop */
+@media (min-width: 992px){
+  .app-sidebar{
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: var(--sidebar-w);
+    height: 100vh;                 /* full height */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;              /* contain internal scroll area */
+    z-index: 1028;                 /* below header (we’ll use 1030) */
+    border-right: 1px solid var(--bs-border-color);
+    background: var(--bs-body-bg);
+  }
+  .app-sidebar .overflow-auto{
+    overflow: auto;                /* only the middle area scrolls */
+  }
+
+  /* Header is fixed and starts after the sidebar */
+  #app-header{
+    position: fixed;
+    top: 0;
+    left: var(--sidebar-w);
+    width: calc(100% - var(--sidebar-w));
+    z-index: 1030;
+  }
+
+  /* Shift main area to the right of the sidebar, and below the header */
+  #main{
+    margin-left: var(--sidebar-w);
+  }
+  /* Push page content below the fixed header */
+  #content{
+    padding-top: calc(var(--header-h) + 0.75rem);
+  }
+}
+
+/* Mobile & tablet (<lg): sidebar is offcanvas, header is full width */
+@media (max-width: 991.98px){
+  .app-sidebar{ display: none !important; }
+  #app-header{
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1030;
+  }
+  #main{ margin-left: 0; }
+  #content{ padding-top: calc(var(--header-h) + 0.75rem); }
+}
+
+/* Optional polish */
+.app-header{ backdrop-filter: saturate(120%) blur(4px); }
+
+/* ============ App Shell & Sidebar ============ */
+.app-sidebar {
+  width: var(--sidebar-w);
+  background-color: var(--bs-body-bg);
+}
+
+.app-offcanvas {
+  width: min(88vw, 320px);
+}
+
+/* Header */
+.app-header {
+  backdrop-filter: saturate(120%) blur(4px);
+}
+
+/* Containers */
+.container-narrow { max-width: 1100px; }
+
+/* Utilities */
+.card-soft { border-radius: var(--radius-lg); box-shadow: var(--shadow-md); }
+.shadow-hover:hover { box-shadow: var(--shadow-md); transition: box-shadow .2s ease; }
+
+/* Scrollbars (subtle) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--bs-border-color) transparent;
+}
+*::-webkit-scrollbar { height: 8px; width: 8px; }
+*::-webkit-scrollbar-thumb { background: var(--bs-border-color); border-radius: 10px; }

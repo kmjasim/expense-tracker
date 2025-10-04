@@ -1,0 +1,461 @@
+/* ==========================================================================
+   0) THEME & TOKENS — Modern Light
+   ========================================================================== */
+:root {
+  /* Layout */
+  --sidebar-w: 190px;
+  --header-h: 61px;
+
+  /* Neutral Base */
+  --color-bg: #f9fafb;              /* app background */
+  --color-surface: #ffffff;         /* cards, header, sidebar panels */
+  --color-surface-2: #f3f4f6;       /* subtle surfaces (footer, headers) */
+  --color-border: #e5e7eb;
+
+  /* Text */
+  --color-text: #1f2937;            /* primary */
+  --color-text-muted: #6b7280;      /* secondary */
+  --color-text-label: #9ca3af;      /* labels */
+
+  /* Accent (Cyan/Teal) */
+  --color-accent: #06b6d4;          /* main accent */
+  --color-accent-strong: #0e7490;   /* darker hover/active text */
+  --color-accent-bg: #ecfeff;       /* hover bg */
+  --color-accent-bg-strong: #cffafe;/* active bg */
+
+  /* Semantic (for status/badges/limits) */
+  --color-success: #16a34a;         /* green-600 */
+  --color-success-bg: #dcfce7;      /* green-100 */
+  --color-warning: #f59e0b;         /* amber-500 */
+  --color-warning-bg: #fef3c7;      /* amber-100 */
+  --color-danger: #ef4444;          /* red-500 */
+  --color-danger-bg: #fee2e2;       /* red-100 */
+
+  /* Footer */
+  --color-footer-bg: var(--color-surface-2);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.03);
+  --shadow-md: 0 4px 12px rgba(0,0,0,.08);
+
+  /* Rounding */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+}
+
+/* ==========================================================================
+   1) GLOBAL
+   ========================================================================== */
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Links (brand) */
+.brand {
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+/* Dropdown hover fixes (Bootstrap overrides kept minimal) */
+.dropdown:hover,
+.dropdown-item:hover,
+.dropdown:focus {
+  background-color: var(--color-accent-bg);
+  color: var(--color-accent-strong);
+  border-radius: var(--radius-sm);
+}
+
+/* Cards (global look) */
+.card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow .2s ease, transform .1s ease;
+}
+.card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+.card-header{
+  background: var(--color-surface-2);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text);
+  font-weight: 600;
+  padding: .75rem 1rem;
+  border-top-left-radius: var(--radius-lg);
+  border-top-right-radius: var(--radius-lg);
+}
+.card-body{ color: var(--color-text); }
+
+/* Accent utilities */
+.btn-accent{
+  background: var(--color-accent);
+  border: none; color: #fff;
+  border-radius: var(--radius-md);
+  padding: .45rem .9rem; font-weight: 500;
+  transition: background .15s;
+}
+.btn-accent:hover{ background: var(--color-accent-strong); }
+.badge-accent{
+  background: var(--color-accent-bg-strong);
+  color: var(--color-accent-strong);
+  border-radius: 999px;
+  font-size: .75rem; padding: .2rem .6rem; font-weight: 500;
+}
+.main-dashboard {
+  height: calc(100vh - var(--header-h));
+}
+/* ==========================================================================
+   2) SHELL LAYOUT: SIDEBAR / HEADER / MAIN
+   ========================================================================== */
+
+/* SIDEBAR — Modern Light Palette */
+#sidebar{
+  position: fixed; inset: 0 auto 0 0; width: var(--sidebar-w);
+  background: var(--color-surface);
+  color: var(--color-text);
+  z-index: 1030; display: flex; flex-direction: column;
+  border-right: 1px solid var(--color-border);
+  font-size: 14.5px;
+}
+
+/* Sidebar header row */
+#sidebar .px-3.py-3{
+  position: sticky; top: 0; z-index: 1;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border) !important;
+}
+
+/* Brand in sidebar */
+#sidebar .brand-badge{
+  display: inline-grid; place-items: center;
+  width: 28px; height: 28px; border-radius: 8px;
+  background: var(--color-accent); color: #ffffff; font-weight: 700;
+}
+#sidebar .brand{ color: var(--color-text); text-decoration: none; font-weight: 600; }
+
+/* Sidebar scroll area */
+#sidebar .flex-fill{
+  min-height: 0; overflow: auto; padding: .5rem;
+  scrollbar-width: thin; scrollbar-color: var(--color-border) transparent;
+}
+#sidebar .flex-fill::-webkit-scrollbar{ width: 8px; }
+#sidebar .flex-fill::-webkit-scrollbar-thumb{ background: var(--color-border); border-radius: 8px; }
+
+/* Sidebar footer */
+.sidebar-footer{
+  margin-top: auto;
+  background: var(--color-footer-bg);
+  color: var(--color-text-muted) !important;
+  border-top: 1px solid var(--color-border) !important;
+  padding: .65rem .9rem !important;
+  font-size: .85rem;
+}
+
+/* Sidebar labels & lists */
+.sidebar-label{
+  font-size: .72rem; text-transform: uppercase; letter-spacing: .55px;
+  color: var(--color-text-label);
+  padding: .6rem .75rem .35rem .75rem; margin-top: .25rem;
+}
+.sidebar-nav .list-unstyled, .sidebar-nav ul{
+  margin: 0; padding: .25rem 0; list-style: none;
+}
+
+/* Sidebar links */
+.sidebar-link{
+  --pad-x: .8rem; --pad-y: .58rem;
+  display: flex; align-items: center; gap: .6rem;
+  padding: var(--pad-y) var(--pad-x); margin: 2px 6px;
+  color: var(--color-text); text-decoration: none;
+  border-radius: 4px;
+  transition: background .15s ease, color .15s ease, transform .04s ease;
+  outline: none;
+}
+.sidebar-link i{ font-size: 1rem; opacity: .9; }
+.sidebar-link:hover,
+.sidebar-link:focus-visible{
+  background: var(--color-accent-bg);
+  color: var(--color-accent-strong);
+}
+.sidebar-link:active{ transform: translateY(1px); }
+.sidebar-link.active,
+.sidebar-link[aria-current="page"]{
+  background: var(--color-accent-bg-strong);
+  color: var(--color-accent-strong);
+  font-weight: 600;
+}
+
+/* Sidebar chips */
+.sidebar-link .menu-chip{
+  margin-left: auto; font-size: .72rem; padding: .1rem .45rem;
+  border-radius: 2px;
+  background: #e0f2fe; color: #0369a1; /* keeps subtle distinction */
+}
+
+/* Submenus */
+.sidebar-nav .collapse{
+  margin-left: .5rem; border-left: 2px solid var(--color-border); padding-left: .5rem;
+}
+
+/* Desktop offsets for header/main */
+@media (min-width: 992px){
+  #header{ margin-left: var(--sidebar-w); }
+  #main{ margin-left: var(--sidebar-w); }
+}
+
+/* HEADER */
+#header {
+  position: fixed; top: 0; left: 0; right: 0;
+  height: var(--header-h);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  padding: 0 1rem; z-index: 1040; border-radius: 0;
+  display: flex; align-items: center; justify-content: space-between;
+}
+#header h1{
+  font-size: 1rem; font-weight: 600; margin: 0; color: var(--color-text);
+}
+#header .btn{
+  border-radius: var(--radius-sm);
+  padding: .4rem .6rem;
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  transition: background .15s, color .15s;
+}
+#header .btn:hover{
+  background: var(--color-accent-bg);
+  color: var(--color-accent-strong);
+}
+
+/* MAIN */
+#main {
+  margin-top: var(--header-h);
+  background: var(--color-bg);
+  min-height: calc(100vh - var(--header-h));
+  border-radius: 0;
+}
+
+/* ==========================================================================
+   3) DASHBOARD-SPECIFIC STYLES
+   ========================================================================== */
+/* Smooth bar animation */
+#financeScoreBar { transition: width .4s ease, background-color .25s ease; }
+
+/* Buckets */
+#financeScoreBar.excellent { background: var(--bs-success, #198754); }
+#financeScoreBar.good      { background: var(--bs-teal,    #20c997); }
+#financeScoreBar.fair      { background: var(--bs-warning, #ffc107); }
+#financeScoreBar.poor      { background: var(--bs-danger,  #dc3545); }
+
+/* (Optional) softer variants if you prefer subtle fills) */
+/*
+#financeScoreBar.excellent { background: var(--bs-success-bg-subtle,#d1e7dd); }
+#financeScoreBar.good      { background: #cfeeed; }
+#financeScoreBar.fair      { background: var(--bs-warning-bg-subtle,#fff3cd); }
+#financeScoreBar.poor      { background: var(--bs-danger-bg-subtle, #f8d7da); }
+*/
+
+/* Mastercard list */
+/* Top card */
+.bdt-widget { border: 1px solid rgba(0,0,0,.06); }
+.tiny { font-size: .8rem; }
+
+/* Stacked account cards */
+.account-tile { border: 1px solid rgba(0,0,0,.05); }
+.bank-name { font-weight: 600; }
+.balance { font-weight: 700; line-height: 1.1; }
+
+/* Circular initial (replace with .bank-logo img if available) */
+.bank-badge {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 700;
+  background: #f3f6f9;
+  border: 1px solid rgba(0,0,0,.06);
+  flex: 0 0 36px;
+}
+
+/* Safety for small slots */
+#bdt-accounts, #bdt-accounts * { min-width: 0; }
+
+
+
+/* KPI-ish badges */
+.badge.kpi-up   { background: var(--color-success-bg); color: var(--color-success); }
+.badge.kpi-down { background: var(--color-danger-bg);  color: var(--color-danger); }
+
+/* ==========================================================================
+   4) PAYMENTS PAGE & CATEGORY UI
+   ========================================================================== */
+.recipient-list { max-height: calc(100vh - 260px); overflow: auto; padding-right: .25rem; }
+.recipient-item {
+  width: 100%; display: flex; align-items: center; gap: .25rem;
+  padding: .6rem .7rem; border-radius: 14px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: .6rem;
+  transition: box-shadow .15s, transform .04s;
+}
+.recipient-item:hover { box-shadow: 0 3px 10px rgba(0,0,0,.07); }
+.recipient-item:active { transform: translateY(1px); }
+.recipient-item.active { outline: 2px solid var(--color-accent-bg-strong); }
+.recipient-item .avatar {
+  width: 40px; height: 40px; border-radius: 50%;
+  object-fit: cover; border: 3px solid var(--color-accent-bg-strong);
+}
+.tiny { font-size: .72rem; }
+
+.accordion-header.d-flex { display: flex; align-items: center; gap: .4rem; }
+.accordion-header .accordion-button {
+  flex: 1 1 auto; min-height: 42px;
+  padding-top: .4rem; padding-bottom: .4rem;
+}
+
+.btn-icon {
+  width: 34px; height: 34px; display: grid; place-items: center;
+  padding: 0; border-radius: .6rem;
+  background-color: var(--color-danger); color: #fff;
+}
+
+/* Category rows */
+.cat-row { display: flex; align-items: center; gap: .4rem; }
+.cat-row .category-item { flex: 1 1 auto; padding: .45rem .6rem; border-radius: 5px; border: 1px solid var(--color-border); background: var(--color-surface); cursor: pointer; transition: background .15s, border-color .15s; }
+.category-item.active {
+  background: var(--color-accent-bg-strong);
+  border: 1px solid var(--color-accent);
+}
+.category-item:hover { background: var(--color-accent-bg); border-color: var(--color-accent); }
+.vertical-rail { border-left: 2px solid var(--color-border); margin-left: .4rem; padding-left: .6rem; }
+
+/* Left pane layout */
+.left-pane { height: 75svh; display: flex; flex-direction: column; }
+.left-scroll { overflow: auto; min-height: 0; }
+
+/* ==========================================================================
+   5) ACCOUNT SLIDER (HORIZONTAL DRAG/SORT)
+   ========================================================================== */
+.account-slider .slider-track {
+  display: grid; grid-auto-flow: column; grid-auto-columns: var(--card-w, 260px);
+  gap: .5rem; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 1rem;
+  scrollbar-width: none; -ms-overflow-style: none;
+}
+.account-slider .slider-track::-webkit-scrollbar { display: none; }
+
+.account-slider .slider-viewport {
+  overflow: hidden; flex: 1 1 auto; min-width: 0; max-width: 900px;
+}
+
+.acct-card {
+  display: block; border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  scroll-snap-align: start; user-select: none;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.acct-card:hover { box-shadow: var(--shadow-md); }
+.acct-card .acct-body { padding: .9rem; }
+.acct-card.active {
+  outline: 2px solid var(--color-accent-bg-strong);
+  background: var(--color-accent-bg);
+}
+/* progressive enhancement */
+.acct-card:has(.acct-radio:checked) {
+  outline: 2px solid var(--color-accent-bg-strong);
+  background: var(--color-accent-bg);
+}
+
+.slider-nav { width: 34px; height: 34px; display: grid; place-items: center; border-radius: .6rem; }
+.sort-handle { cursor: grab; }
+.acct-card.dragging { opacity: .6; }
+.slider-track.drag-target { outline: 2px dashed var(--color-border); }
+.slider-viewport { position: relative; }
+
+.slider-controls {
+  position: absolute; display: flex; gap: .25rem; z-index: 2;
+}
+.slider-controls.top-right { bottom: 1px; top: auto; }
+.slider-controls .btn {
+  width: 28px; height: 28px; padding: 0; display: grid; place-items: center;
+  border-radius: 999px; border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  box-shadow: 0 2px 8px rgba(0,0,0,.06);
+  line-height: 1;
+}
+.slider-controls .btn:hover { background: var(--color-accent-bg); }
+.slider-controls .btn:active { transform: translateY(1px); }
+
+.slider-nav[disabled], .slider-nav[aria-disabled="true"]{
+  opacity: .4; pointer-events: none;
+}
+
+/* Inactive state */
+.acct-card.is-inactive { opacity: 0.5; filter: grayscale(20%); }
+.acct-card.is-inactive .display-9 { text-decoration: line-through; }
+
+/* Visual states via bar color */
+.acct-card.ok    { --bar-color: var(--color-success); }
+.acct-card.warn  { --bar-color: var(--color-warning); }
+.acct-card.danger{ --bar-color: var(--color-danger); }
+
+/* Progress bar */
+.limit-bar {
+  height: 10px; background: var(--color-border);
+  border-radius: 999px; overflow: hidden;
+}
+.limit-bar-fill {
+  height: 100%; width: 0%;
+  background: var(--bar-color, var(--color-accent));
+  transition: width .4s ease;
+}
+
+/* Outline-style badges that inherit color */
+.bg-outline {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+}
+
+/* Semantic tint for spend vs income chips */
+.spend-chip  { border-color: color-mix(in oklab, var(--color-danger) 35%, #0000); color: var(--color-danger); }
+.income-chip { border-color: color-mix(in oklab, var(--color-success) 35%, #0000); color: var(--color-success); }
+
+/* Balance status tints */
+.acct-card.low-balance      { box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--color-warning) 25%, #0000); }
+.acct-card.negative-balance { box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--color-danger) 25%, #0000); }
+
+/* ==========================================================================
+   6) GRID TWEAKS
+   ========================================================================== */
+@media (min-width: 1200px) {
+  .col-xl-3-6 { flex: 0 0 auto; width: 25%; }
+  .col-xl-8-4 { flex: 0 0 auto; width: 75%; }
+}
+.modal-body {
+  max-height: 70vh;   /* don’t let modal body exceed 70% of screen height */
+  overflow-y: auto;   /* enable scrolling inside body */
+}
+.chart-wrap {
+  position: relative;
+  height: 320px;  /* fixed height */
+  width: 100%;
+}
+.chart-wrap canvas {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+}

@@ -1,0 +1,43 @@
+{% macro render_menu(items, mobile=False) %}
+<nav class="sidebar-nav">
+  <ul class="list-unstyled {{ 'm-0' if mobile else 'py-2' }}">
+    {% for item in (items or []) %}
+      {% if item.section %}
+        <li class="mt-2"><span class="sidebar-label">{{ item.label }}</span></li>
+      {% else %}
+        {% set has_children = item.children and (item.children|length > 0) %}
+        {% set link_classes = 'sidebar-link d-flex align-items-center' %}
+        {% set li_classes = 'mt-1' %}
+        {% set collapse_id = 'm' ~ loop.index ~ '-' ~ (item.label|replace(' ', '-')|lower) %}
+        <li class="{{ li_classes }}">
+          {% if has_children %}
+            <a class="{{ link_classes }} w-100 text-start {{ 'active' if item._open }}"
+               data-bs-toggle="collapse"
+               href="#{{ collapse_id }}"
+               aria-expanded="{{ 'true' if item._open else 'false' }}"
+               aria-controls="{{ collapse_id }}">
+              {% if item.icon %}<i class="{{ item.icon }} me-2"></i>{% endif %}
+              <span class="flex-grow-1">{{ item.label }}</span>
+              <i class="bi bi-chevron-down small ms-1 rotate"></i>
+            </a>
+            <div id="{{ collapse_id }}" class="collapse {{ 'show' if item._open }}">
+              <ul class="list-unstyled ps-4 py-1">
+                {% for c in item.children %}
+                  <li class="my-1">
+                    <a class="sidebar-link {{ 'active' if c._active }}" href="{{ c._href }}">{{ c.label }}</a>
+                  </li>
+                {% endfor %}
+              </ul>
+            </div>
+          {% else %}
+            <a class="{{ link_classes }} {{ 'active' if item._active }}" href="{{ item._href }}">
+              {% if item.icon %}<i class="{{ item.icon }} me-2"></i>{% endif %}
+              <span>{{ item.label }}</span>
+            </a>
+          {% endif %}
+        </li>
+      {% endif %}
+    {% endfor %}
+  </ul>
+</nav>
+{% endmacro %}

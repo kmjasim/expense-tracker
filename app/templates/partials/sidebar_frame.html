@@ -1,0 +1,28 @@
+<aside id="sidebar" class="d-none d-lg-flex flex-column">
+  <div class="px-3 py-3 border-bottom d-flex align-items-center">
+    <span class="brand-badge me-2">ET</span>
+    <a class="brand" href="{{ url_for('main.index') }}"><strong>Expense Tracker</strong></a>
+  </div>
+  <div class="flex-fill overflow-auto">
+    {{ nav.render_menu(menu, mobile=False) }}
+  </div>
+  <footer class="sidebar-footer border-top py-2 px-3 small text-muted">
+    © <span data-year></span> Expense Tracker
+  </footer>
+</aside>
+
+<div class="offcanvas offcanvas-start" tabindex="-1" id="mobileSidebar" aria-labelledby="mobileSidebarLabel">
+  <div class="offcanvas-header">
+    <span class="brand-badge me-2">ET</span>
+    <a class="brand" href="{{ url_for('main.index') }}"><strong>Expense Tracker</strong></a>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body p-0">
+    {{ nav.render_menu(menu, mobile=True) }}
+    <footer class="sidebar-footer border-top py-2 px-3 small text-muted">
+      © <span data-year></span> Expense Tracker
+    </footer>
+
+  </div>
+</div>
+{# Note: 'nav' is the imported sidebar.html macro #}

@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-4" style="max-width:480px">
+  <div class="alert alert-info">If an account exists for <b>{{ email }}</b>, a reset link has been sent.</div>
+  <a class="btn btn-outline-secondary w-100" href="{{ url_for('auth.login') }}">Back to login</a>
+</div>
+{% endblock %}

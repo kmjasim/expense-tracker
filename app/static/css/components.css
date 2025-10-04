@@ -1,0 +1,22 @@
+/* Badges */
+.badge-soft {
+  background: var(--bs-secondary-bg);
+  color: var(--bs-secondary-color);
+  border: 1px solid var(--bs-border-color);
+}
+
+/* Empty state */
+.empty {
+  border: 2px dashed var(--bs-border-color);
+  border-radius: var(--radius-md);
+  padding: 2rem;
+  text-align: center;
+  color: var(--bs-secondary-color);
+}
+
+/* Forms */
+.form-control, .form-select { border-radius: var(--radius-sm); }
+.input-group .btn { border-radius: var(--radius-sm); }
+
+/* Buttons */
+.btn-rounded { border-radius: 999px; }

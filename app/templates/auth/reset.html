@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container py-4" style="max-width:480px">
+  {% if request.args.get('warning') %}
+    <div class="alert alert-warning py-2">{{ request.args.get('warning') }}</div>
+  {% endif %}
+  <h4 class="mb-3">Set a new password</h4>
+  <form method="post">
+    <div class="mb-3">
+      <label class="form-label">New password</label>
+      <input name="password" type="password" class="form-control" required minlength="6">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Confirm password</label>
+      <input name="password2" type="password" class="form-control" required minlength="6">
+    </div>
+    <button class="btn btn-success w-100">Update password</button>
+  </form>
+</div>
+{% endblock %}

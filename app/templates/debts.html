@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+{% set cur_user_id = current_user.id %}
+
+{% block content %}
+<div class="container py-3">
+
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0">Debt Tracker</h3>
+    <form class="d-flex gap-2" method="get" action="{{ url_for('main.debts_page') }}">
+      <select name="type" class="form-select form-select-sm" style="width:140px">
+        <option value="">All Types</option>
+        <option value="owe"  {{ 'selected' if t_filter=='owe'  else '' }}>I Owe</option>
+        <option value="lend" {{ 'selected' if t_filter=='lend' else '' }}>Owed To Me</option>
+      </select>
+      <select name="action" class="form-select form-select-sm" style="width:140px">
+        <option value="">All Actions</option>
+        <option value="add" {{ 'selected' if a_filter=='add' else '' }}>Add</option>
+        <option value="repayment" {{ 'selected' if a_filter=='repayment' else '' }}>Repayment</option>
+      </select>
+      <input class="form-control form-control-sm" name="q" placeholder="Search recipient" value="{{ q }}">
+      <button class="btn btn-sm btn-primary">Filter</button>
+    </form>
+  </div>
+
+  <!-- Top cards -->
+  <div class="row g-3 mb-3">
+    {% set owe = cards.owe %}
+    {% set lend = cards.lend %}
+    <div class="col-md-6">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <div class="d-flex justify-content-between mb-1">
+            <div class="fw-semibold">I Owe</div>
+            <div class="text-muted small">Paid {{ '%.2f'|format(owe.pct) }}%</div>
+          </div>
+          <div class="h4 mb-1">Remaining: {{ owe.outstanding }}</div>
+          <div class="text-muted small mb-2">Paid: {{ owe.paid }} • Original: {{ owe.original }}</div>
+          <div class="progress" role="progressbar" aria-valuenow="{{ owe.pct|int }}" aria-valuemin="0" aria-valuemax="100">
+            <div class="progress-bar {% if owe.pct>=70 %}bg-success{% elif owe.pct>=40 %}bg-warning{% else %}bg-danger{% endif %}" style="width: {{ owe.pct }}%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <div class="d-flex justify-content-between mb-1">
+            <div class="fw-semibold">Owed To Me</div>
+            <div class="text-muted small">Collected {{ '%.2f'|format(lend.pct) }}%</div>
+          </div>
+          <div class="h4 mb-1">Remaining: {{ lend.outstanding }}</div>
+          <div class="text-muted small mb-2">Collected: {{ lend.paid }} • Original: {{ lend.original }}</div>
+          <div class="progress" role="progressbar" aria-valuenow="{{ lend.pct|int }}" aria-valuemin="0" aria-valuemax="100">
+            <div class="progress-bar {% if lend.pct>=70 %}bg-success{% elif lend.pct>=40 %}bg-warning{% else %}bg-danger{% endif %}" style="width: {{ lend.pct }}%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Form tabs -->
+  <div class="card shadow-sm mb-3">
+    <div class="card-body">
+      <ul class="nav nav-pills mb-3" id="debtTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" id="add-tab" data-bs-toggle="pill" data-bs-target="#add-pane" type="button">Add (Debt / Lend)</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="repay-tab" data-bs-toggle="pill" data-bs-target="#repay-pane" type="button">Repayment</button>
+        </li>
+      </ul>
+
+      <div class="tab-content">
+        <!-- Add -->
+        <div class="tab-pane fade show active" id="add-pane">
+          <form class="row g-2" method="post" action="{{ url_for('main.debts_add') }}">
+            <div class="col-md-2">
+              <label class="form-label small">Type</label>
+              <select name="direction" class="form-select form-select-sm" required>
+                <option value="owe">I Owe</option>
+                <option value="lend">Owed To Me</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small">Recipient</label>
+              <select name="recipient_id" class="form-select form-select-sm" required>
+                {% for r in recipients %}
+                  <option value="{{ r.id }}">{{ r.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small">Currency</label>
+              <select name="currency" class="form-select form-select-sm" required>
+                <option value="KRW">KRW</option>
+                <option value="BDT">BDT</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small">Amount</label>
+              <input type="number" step="0.01" class="form-control form-control-sm" name="amount" required>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small">Start Date</label>
+              <input type="date" class="form-control form-control-sm" name="start_date" value="{{ now().date() if now is defined else '' }}">
+            </div>
+            <div class="col-md-12">
+              <input type="text" class="form-control form-control-sm" name="note" placeholder="Note (optional)">
+            </div>
+            <div class="col-md-12 d-flex justify-content-end">
+              <button class="btn btn-sm btn-primary">Add</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Repayment -->
+<!-- Repayment -->
+<div class="tab-pane fade" id="repay-pane">
+  <form class="row g-2" method="post" action="{{ url_for('main.debts_repay') }}">
+    <div class="col-md-5">
+      <label class="form-label small">Select Item (by Recipient)</label>
+      <select name="item_id" class="form-select form-select-sm" required>
+        {% for itm in open_items %}
+          <option value="{{ itm.id }}">
+            {{ itm.recipient.name }}  {# 👈 recipient name only #}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label small">Date</label>
+      <input type="date" class="form-control form-control-sm" name="date">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label small">Amount</label>
+      <input type="number" step="0.01" class="form-control form-control-sm" name="amount" required>
+    </div>
+
+    <div class="col-md-12">
+      <input type="text" class="form-control form-control-sm" name="note" placeholder="Note (optional)">
+    </div>
+    <div class="col-md-12 d-flex justify-content-end">
+      <button class="btn btn-sm btn-success">Record Payment</button>
+    </div>
+  </form>
+</div>
+
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Transactions table -->
+  <div class="card shadow-sm mb-3">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="fw-semibold">Transactions</div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-sm align-middle table-bordered">
+          <thead class="table-dark">
+            <tr>
+              <th style="width: 110px;">Date</th>
+              <th style="width: 110px;">Type</th>
+              <th style="width: 110px;">Action</th>
+              <th>Recipient</th>
+              <th class="text-end" style="width: 160px;">Amount</th>
+              <th>Note</th>
+              <th style="width: 100px;">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for txn, item, rcp in txns %}
+              {# Row color rules #}
+              {% set row_class = '' %}
+              {% if item.direction.value == 'owe' and txn.action == 'add' %}{% set row_class = 'table-warning' %}
+              {% elif item.direction.value == 'owe' and txn.action == 'repayment' %}{% set row_class = 'table-success' %}
+              {% elif item.direction.value == 'lend' and txn.action == 'add' %}{% set row_class = 'table-info' %}
+              {% elif item.direction.value == 'lend' and txn.action == 'repayment' %}{% set row_class = 'table-primary' %}
+              {% endif %}
+
+              <tr class="{{ row_class }}">
+                <td>{{ txn.date }}</td>
+                <td><span class="badge text-bg-secondary">{{ item.direction.value.upper() }}</span></td>
+                <td><span class="badge text-bg-dark">{{ txn.action }}</span></td>
+                <td>{{ rcp.name }}</td>
+                <td class="text-end">{{ item.currency.value }} {{ txn.amount }}</td>
+                <td>{{ txn.note or '—' }}</td>
+                <td>
+                  <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-danger" data-id="{{ txn.id }}" onclick="delTxn(this)">Delete</button>
+                  </div>
+                </td>
+              </tr>
+            {% else %}
+              <tr><td colspan="8" class="text-center text-muted">No transactions yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Grouped by person -->
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="fw-semibold">Totals by Person</div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-sm align-middle table-bordered">
+          <thead class="table-dark">
+            <tr>
+              <th>Type</th>
+              <th>Recipient</th>
+              <th class="text-end">Count</th>
+              <th class="text-end">Original Total</th>
+              <th class="text-end">Paid/Collected</th>
+              <th class="text-end">Outstanding</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for direction, name, cnt, orig, paid, out, is_paid in per_person %}
+            {% set row_class = 'table-warning' if direction.value=='owe' else 'table-info' %}
+            <tr class="{{ row_class }}">
+                <td><span class="badge text-bg-secondary">{{ direction.value.upper() }}</span></td>
+                <td>
+                {{ name }}
+                {% if is_paid %}
+                    <span class="badge bg-success ms-1">Paid</span>
+                {% endif %}
+                </td>
+                <td class="text-end">{{ cnt }}</td>
+                <td class="text-end">{{ orig }}</td>
+                <td class="text-end">
+                {{ paid }}
+                {% if is_paid %}
+                    <i class="bi bi-check-circle text-success ms-1"></i>
+                {% endif %}
+                </td>
+                <td class="text-end">{{ out }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="text-center text-muted">No debts/lends found.</td></tr>
+            {% endfor %}
+
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+async function delTxn(btn){
+  const id = btn.dataset.id;
+  const res = await fetch(`{{ url_for('main.debts_tx_delete', txid=0) }}`.replace('/0','/'+id), {method:'POST'});
+  if(res.ok){ location.reload(); }
+}
+async function editNote(btn){
+  const id = btn.dataset.id;
+  const note = prompt('Update note:');
+  if(note===null) return;
+  const form = new FormData();
+  form.append('note', note);
+  const res = await fetch(`{{ url_for('main.debts_tx_edit', txid=0) }}`.replace('/0','/'+id), {method:'POST', body: form});
+  if(res.ok){ location.reload(); }
+}
+</script>
+{% endblock %}

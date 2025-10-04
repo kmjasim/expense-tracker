@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row g-4">
+  <!-- Profile info -->
+  <div class="col-12 col-lg-6">
+    <div class="card shadow-sm">
+      <div class="card-body p-4">
+        <h5 class="card-title mb-3">Profile</h5>
+        {% if success and success.get('profile') %}
+          <div class="alert alert-success py-2">{{ success.get('profile') }}</div>
+        {% endif %}
+        <form method="post" novalidate>
+          <input type="hidden" name="form" value="profile" />
+          <div class="mb-3">
+            <label class="form-label">Name</label>
+            <input
+              name="name"
+              type="text"
+              class="form-control {% if errors and errors.profile.get('name') %}is-invalid{% endif %}"
+              value="{{ current_user.name | e }}"
+              required
+            />
+            {% if errors and errors.profile.get('name') %}
+              <div class="invalid-feedback">{{ errors.profile.get('name') }}</div>
+            {% endif %}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Email (read-only)</label>
+            <input type="email" class="form-control" value="{{ current_user.email }}" disabled />
+            <div class="form-text">Email changes will be supported later.</div>
+          </div>
+          <div class="d-grid d-sm-flex gap-2">
+            <button class="btn btn-success" type="submit">Save changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Change password -->
+  <div class="col-12 col-lg-6">
+    <div class="card shadow-sm">
+      <div class="card-body p-4">
+        <h5 class="card-title mb-3">Change password</h5>
+        {% if success and success.get('password') %}
+          <div class="alert alert-success py-2">{{ success.get('password') }}</div>
+        {% endif %}
+        <form method="post" novalidate>
+          <input type="hidden" name="form" value="password" />
+          <div class="mb-3">
+            <label class="form-label">Current password</label>
+            <input
+              name="current_password"
+              type="password"
+              class="form-control {% if errors and errors.password.get('current_password') %}is-invalid{% endif %}"
+              required
+            />
+            {% if errors and errors.password.get('current_password') %}
+              <div class="invalid-feedback">{{ errors.password.get('current_password') }}</div>
+            {% endif %}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">New password</label>
+            <input
+              id="new_password"
+              name="new_password"
+              type="password"
+              class="form-control {% if errors and errors.password.get('new_password') %}is-invalid{% endif %}"
+              minlength="6"
+              required
+            />
+            {% if errors and errors.password.get('new_password') %}
+              <div class="invalid-feedback">{{ errors.password.get('new_password') }}</div>
+            {% else %}
+              <div class="form-text">Use at least 6 characters.</div>
+            {% endif %}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Confirm new password</label>
+            <input
+              id="new_password_confirm"
+              name="new_password_confirm"
+              type="password"
+              class="form-control {% if errors and errors.password.get('new_password_confirm') %}is-invalid{% endif %}"
+              required
+            />
+            {% if errors and errors.password.get('new_password_confirm') %}
+              <div class="invalid-feedback">{{ errors.password.get('new_password_confirm') }}</div>
+            {% endif %}
+            <div class="form-text" id="pwMatchHint"></div>
+          </div>
+          <div class="d-grid d-sm-flex gap-2">
+            <button class="btn btn-success" type="submit">Update password</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Danger zone -->
+  <div class="col-12">
+    <div class="card shadow-sm border-danger">
+      <div class="card-body p-4">
+        <h5 class="card-title text-danger mb-3">Danger zone</h5>
+        <p class="text-muted">
+          Deleting your account is permanent. All your data will be removed.
+        </p>
+
+        {% if errors and errors.delete.get('confirm_text') %}
+          <div class="alert alert-danger py-2">{{ errors.delete.get('confirm_text') }}</div>
+        {% endif %}
+
+        <form method="post" novalidate class="row g-3 align-items-center">
+          <input type="hidden" name="form" value="delete" />
+          <div class="col-12 col-md-6">
+            <label class="form-label">Type your email to confirm</label>
+            <input
+              name="confirm_text"
+              type="text"
+              class="form-control mb-2"
+              placeholder="{{ current_user.email }}"
+              required
+            />
+            <button type="submit" class="btn btn-outline-danger">Delete my account</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const pw = document.getElementById("new_password");
+  const pc = document.getElementById("new_password_confirm");
+  const hint = document.getElementById("pwMatchHint");
+  function check() {
+    if (!pw || !pc || !hint) return;
+    if (!pw.value || !pc.value) { hint.textContent = ""; return; }
+    hint.textContent = (pw.value === pc.value) ? "Passwords match." : "Passwords do not match.";
+  }
+  if (pw && pc) {
+    pw.addEventListener("input", check);
+    pc.addEventListener("input", check);
+  }
+});
+</script>
+{% endblock %}

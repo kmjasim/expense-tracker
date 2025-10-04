@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block extra_css %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/transfers.css') }}">
+{% endblock %}
+
+{% block extra_js %}
+  {{ super() }}
+  <script defer src="{{ url_for('static', filename='js/transfers.js') }}"></script>
+{% endblock %}
+{% block title %}{% block page_title %}Payments{% endblock %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid ">
+  <div class="row g-3">
+    <!-- LEFT ≈30% -->
+    <div class="col-12 col-lg-4 col-xl-3-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          {% block left_panel %}{% endblock %}
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT ≈70% -->
+    <div class="col-12 col-lg-8 col-xl-8-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body payment-body">
+          {% block panel_content %}{% endblock %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,39 @@
+/* =========================
+   Design Tokens & Resets
+   ========================= */
+:root {
+  --radius-sm: .5rem;
+  --radius-md: .75rem;
+  --radius-lg: 1rem;
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.06);
+  --shadow-md: 0 6px 24px rgba(0,0,0,.06);
+
+  --sidebar-w: 260px;
+}
+
+/* Respect user preference and Bootstrap data-bs-theme */
+@media (prefers-color-scheme: dark) {
+  :root { color-scheme: dark; }
+}
+
+html, body { height: 100%; }
+.bg-subtle { background-color: var(--bs-body-bg); }
+
+/* Focus & accessibility */
+.skip-link {
+  position: absolute; left: -9999px; top: auto; width: 1px; height: 1px; overflow: hidden;
+}
+.skip-link:focus {
+  position: static; width: auto; height: auto; padding: .5rem 1rem; background: var(--bs-warning-bg-subtle);
+}
+
+/* Cards look a bit softer globally */
+.card {
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Tables: responsive & neat */
+.table th, .table td { vertical-align: middle; }
+.table-responsive .table { white-space: nowrap; }

@@ -1,0 +1,70 @@
+{% macro render(nodes, active_id=None, level=0, parent_uid="root") -%}
+  {% if level == 0 and (not nodes) %}
+    <div class="text-muted tiny">No categories yet.</div>
+  {% endif %}
+
+  <div class="{{ 'accordion' if level == 0 else '' }}">
+    {% for node in nodes|sort(attribute='name') %}
+      {% set uid = (parent_uid ~ '-' ~ node.id) %}
+      {% set is_open = (level == 0) and loop.first %}
+
+      <div class="{{ 'accordion-item border-0 mb-2 rounded-1 shadow-xs' if level == 0 else '' }}">
+
+        {% if level == 0 %}
+          <h2 class="accordion-header">
+            <div class="d-flex align-items-center gap-2 w-100">
+              {# Category "pill" + merged delete #}
+              <button class="accordion-button py-2 rounded-1 {{ '' if is_open else 'collapsed' }} flex-grow-1"
+                      type="button" data-bs-toggle="collapse" data-bs-target="#{{ uid }}">
+                <span class="fw-semibold">{{ node.name }}</span>
+              </button>
+
+              {# Delete merged visually; click shouldn't toggle accordion #}
+              <form class="ms-0" method="post"
+                    action="{{ url_for('main.delete_category', category_id=node.id) }}"
+                    data-name="{{ node.name|e }}">
+                <button type="submit" class="btn btn-icon btn-del" title="Delete">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </form>
+            </div>
+          </h2>
+
+          <div id="{{ uid }}" class="accordion-collapse collapse {{ 'show' if is_open }}">
+            <div class="accordion-body py-2">
+              {% if node.children and node.children|length %}
+                <ul class="list-unstyled ps-2 mb-0 vertical-rail">
+                  {% for child in node.children|sort(attribute='name') %}
+                    <li class="mb-1">
+                      <div class="cat-row d-flex align-items-center gap-2">
+                        {# Use button instead of <a> to avoid reload #}
+                        <button type="button"
+                                class="category-item category-item-btn text-start {{ 'active' if active_id == child.id }}"
+                                data-id="{{ child.id }}" data-name="{{ child.name }}">
+                          <span>{{ child.name }}</span>
+                        </button>
+
+                        <form method="post"
+                              action="{{ url_for('main.delete_category', category_id=child.id) }}"
+                              data-name="{{ child.name|e }}">
+                          <button type="submit" class="btn btn-icon btn-del" title="Delete">
+                            <i class="bi bi-trash"></i>
+                          </button>
+                        </form>
+                      </div>
+                    </li>
+                  {% endfor %}
+                </ul>
+              {% else %}
+                <div class="text-muted tiny">No subcategories yet.</div>
+              {% endif %}
+            </div>
+          </div>
+
+        {% else %}
+          {# (not used; we stop at one level) #}
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+{%- endmacro %}

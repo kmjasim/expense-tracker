@@ -1,0 +1,736 @@
+{% extends "base.html" %}
+{% set page_title = "Transactions" %}
+{% set page_slug  = "transactions" %}
+
+{% block content %}
+<div class="container-fluid py-1">
+
+  {# ====================== KRW SECTION ====================== #}
+  <div class="card shadow-sm mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <div class="fw-semibold">KRW Transactions</div>
+      {% if kpi_krw %}
+      <div class="small text-muted">
+        In: <span class="text-success fw-semibold">{{ kpi_krw.inflow_fmt }}</span> ·
+        Out: <span class="text-danger fw-semibold">{{ kpi_krw.outflow_fmt }}</span> ·
+        Net: <span class="fw-semibold">{{ kpi_krw.net_fmt }}</span>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- KRW Filters -->
+    <form class="p-2 p-md-3 border-bottom" method="get" action="{{ url_for('main.transactions_page') }}">
+      <div class="d-flex flex-wrap gap-2 align-items-center">
+        <div class="search-wrap flex-grow-1">
+          <input type="search" class="form-control" name="krw_q" style="max-width: 180px;"
+                 placeholder="Search transaction (KRW)"
+                 value="{{ krw_q or '' }}">
+        </div>
+
+        <select class="form-select" name="krw_category_id" style="max-width:150px;">
+          <option value="">All Category</option>
+          {% for c in categories %}
+            <option value="{{ c.id }}" {{ 'selected' if c.id == krw_category_id else '' }}>{{ c.name }}</option>
+            {% for ch in c.children %}
+              <option value="{{ ch.id }}" {{ 'selected' if ch.id == krw_category_id else '' }}>└ {{ ch.name }}</option>
+            {% endfor %}
+          {% endfor %}
+        </select>
+
+        <select class="form-select" name="krw_account_id" style="max-width:150px;">
+          <option value="">All Account (KRW)</option>
+          {% for a in accounts_krw %}
+            <option value="{{ a.id }}" {{ 'selected' if a.id == krw_account_id else '' }}>
+              {{ a.name }}
+            </option>
+          {% endfor %}
+        </select>
+
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-calendar3 ms-1"></i>
+          <input type="date" class="form-control" name="krw_from" value="{{ krw_from_str }}">
+          <span class="mx-1">to</span>
+          <input type="date" class="form-control" name="krw_to" value="{{ krw_to_str }}">
+        </div>
+
+        <button class="btn btn-dark" type="submit">Apply</button>
+<div class="dropdown ms-auto">
+  <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+    Download
+  </button>
+<!-- KRW download dropdown -->
+<ul class="dropdown-menu dropdown-menu-end">
+  <li><a class="dropdown-item" href="{{ krw_csv_url }}">CSV</a></li>
+  <li><a class="dropdown-item" href="{{ krw_pdf_url }}">PDF</a></li>
+</ul>
+</div>
+
+
+        {# keep BDT params when submitting KRW form, so BDT panel stays as-is #}
+        <input type="hidden" name="bdt_q" value="{{ bdt_q or '' }}">
+        <input type="hidden" name="bdt_category_id" value="{{ bdt_category_id or '' }}">
+        <input type="hidden" name="bdt_account_id" value="{{ bdt_account_id or '' }}">
+        <input type="hidden" name="bdt_ym" value="{{ bdt_ym or '' }}">
+      </div>
+    </form>
+
+    <!-- KRW Table -->
+    <div class="table-responsive">
+      <table class="table table-hover align-middle tx-table table-striped table-bordered">
+        <thead class="table-dark small">
+          <tr>
+            <th>Transaction</th>
+            <th>Account</th>
+            <th>Date &amp; Time</th>
+            <th class="text-end">Amount</th>
+            <th>Note</th>
+            <th class="text-end">Actions</th>
+            <th class="text-end">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in krw_rows %}
+          <tr>
+            <td>
+          <div class="fw-semibold">
+            {% if t.note and 'credit card settlement' in t.note|lower %}
+              Settlement
+            {% elif t.type.value in ['transfer_international', 'transfer_domestic'] %}
+              Transfer to {{ t.recipient_name if t.recipient_name else 'self' }}
+            {% else %}
+              {{ t.category_name or 'Uncategorized' }}
+            {% endif %}
+          </div>
+
+            <div class="text-muted tiny">
+                {{ t.type.value|capitalize }}
+            </div>
+            </td>
+
+            <td>
+              {% if t.account and t.account.type.value == 'credit' %}
+                <span class="badge rounded-pill bg-dark-subtle text-dark px-2">VISA</span>
+              {% endif %}
+              <div class="tiny text-muted">{{ t.account.name if t.account else '—' }}</div>
+            </td>
+            <td>
+              {{ t.date.strftime('%Y-%m-%d') }}
+              <div class="tiny text-muted">{{ t.created_at.strftime('%I:%M %p') if t.created_at else '' }}</div>
+            </td>
+            <td class="text-end fw-semibold">
+              {% if t.note and 'credit card settlement' in t.note|lower %}
+                <span class="text-primary">
+                  {{ '{:,.0f}'.format(t.amount) }} 원
+                </span>
+              {% else %}
+                <span class="{{ 'text-danger' if t.amount < 0 else 'text-success' }}">
+                  {{ '+{:,.0f}'.format(t.amount) if t.amount > 0 else '{:,.0f}'.format(t.amount) }} 원
+                </span>
+              {% endif %}
+            </td>
+            <td class="text-muted ellipsis">{{ t.note or '—' }}</td>
+            {# In the row loop, last cell: #}
+<td class="text-end">
+  {% set cur = 'KRW' if t.__table__.name == 'transactions_krw' else 'BDT' %}
+  {% if not t.is_deleted %}
+    <button type="button"
+            class="btn btn-sm btn-outline-primary"
+            data-bs-toggle="modal"
+            data-bs-target="#editTxModal"
+            data-tx='{{ {
+              "id": t.id,
+              "cur": cur,
+              "date": t.date.isoformat(),
+              "account_id": t.account_id,
+              "category_id": t.category_id,
+              "type": t.type.value,
+              "amount": (t.amount|string),
+              "note": t.note or "",
+              "is_pending": (1 if t.is_pending else 0)
+            } | tojson }}'>
+      Edit
+    </button>
+
+    <form method="post"
+          action="/transactions/{{ cur }}/{{ t.id }}/delete"
+          class="d-inline ms-1"
+          onsubmit="return confirm('Delete this transaction?');">
+      <button class="btn btn-sm btn-outline-danger">Delete</button>
+    </form>
+  {% else %}
+    <form method="post"
+          action="/transactions/{{ cur }}/{{ t.id }}/restore"
+          class="d-inline">
+      <button class="btn btn-sm btn-outline-success">Restore</button>
+    </form>
+  {% endif %}
+</td>
+
+
+            <td class="text-end">
+              {% if t.is_deleted %}
+                <span class="badge bg-danger-subtle text-danger">Deleted</span>
+              {% elif t.is_pending %}
+                <span class="badge bg-warning-subtle text-warning">Pending</span>
+              {% elif t.note and 'credit card settlement' in t.note|lower %}
+                <span class="badge bg-primary-subtle text-primary">Settlement</span>
+              {% else %}
+                <span class="badge bg-success-subtle text-success">Completed</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="text-center text-muted py-4">No KRW transactions</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% set krw_pages = (krw_total // krw_per_page) + (1 if krw_total % krw_per_page else 0) %}
+      <nav aria-label="KRW pagination">
+        <ul class="pagination pagination-sm justify-content-center">
+          {% for p in range(1, krw_pages + 1) %}
+            <li class="page-item {% if p == krw_page %}active{% endif %}">
+              <a class="page-link"
+                href="{{ url_for('main.transactions_page',
+                                  krw_page=p,
+                                  krw_q=krw_q,
+                                  krw_category_id=krw_category_id,
+                                  krw_account_id=krw_account_id,
+                                  krw_from=krw_from_str,
+                                  krw_to=krw_to_str) }}#krw-table">
+                {{ p }}
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+      </nav>
+
+    </div>
+  </div>
+
+  {# ====================== BDT SECTION ====================== #}
+  <div class="card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <div class="fw-semibold">BDT Transactions</div>
+      {% if kpi_bdt %}
+      <div class="small text-muted">
+        In: <span class="text-success fw-semibold">{{ kpi_bdt.inflow_fmt }}</span> ·
+        Out: <span class="text-danger fw-semibold">{{ kpi_bdt.outflow_fmt }}</span> ·
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- BDT Filters -->
+    <form class="p-2 p-md-3 border-bottom" method="get" action="{{ url_for('main.transactions_page') }}">
+      <div class="d-flex flex-wrap gap-2 align-items-center">
+        <div class="search-wrap flex-grow-1">
+          <input type="search" class="form-control" name="bdt_q" style="max-width: 180px;"
+                 placeholder="Search transaction (BDT)"
+                 value="{{ bdt_q or '' }}">
+        </div>
+
+        <select class="form-select" name="bdt_category_id" style="max-width:150px;">
+          <option value="">All Category</option>
+          {% for c in categories %}
+            <option value="{{ c.id }}" {{ 'selected' if c.id == bdt_category_id else '' }}>{{ c.name }}</option>
+            {% for ch in c.children %}
+              <option value="{{ ch.id }}" {{ 'selected' if ch.id == bdt_category_id else '' }}>└ {{ ch.name }}</option>
+            {% endfor %}
+          {% endfor %}
+        </select>
+
+        <select class="form-select" name="bdt_account_id" style="max-width:150px;">
+          <option value="">All Account (BDT)</option>
+          {% for a in accounts_bdt %}
+            <option value="{{ a.id }}" {{ 'selected' if a.id == bdt_account_id else '' }}>
+              {{ a.name }}
+            </option>
+          {% endfor %}
+        </select>
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-calendar3 ms-1"></i>
+          <input type="date" class="form-control" name="bdt_from" value="{{ bdt_from_str }}">
+          <span class="mx-1">to</span>
+          <input type="date" class="form-control" name="bdt_to" value="{{ bdt_to_str }}">
+        </div>
+
+        <button class="btn btn-dark" type="submit">Apply</button>
+<div class="dropdown ms-auto">
+  <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+    Download
+  </button>
+<!-- BDT download dropdown -->
+<ul class="dropdown-menu dropdown-menu-end">
+  <li><a class="dropdown-item" href="{{ bdt_csv_url }}">CSV</a></li>
+  <li><a class="dropdown-item" href="{{ bdt_pdf_url }}">PDF</a></li>
+</ul>
+</div>
+
+        {# keep KRW params when submitting BDT form #}
+        <input type="hidden" name="krw_q" value="{{ krw_q or '' }}">
+        <input type="hidden" name="krw_category_id" value="{{ krw_category_id or '' }}">
+        <input type="hidden" name="krw_account_id" value="{{ krw_account_id or '' }}">
+        <input type="hidden" name="krw_ym" value="{{ krw_ym or '' }}">
+      </div>
+    </form>
+
+    <!-- BDT Table -->
+    <div class="table-responsive">
+      <table class="table table-hover align-middle tx-table table-striped table-bordered">
+        <thead class="table-dark small">
+          <tr>
+            <th>Transaction</th>
+            <th>Account</th>
+            <th>Date &amp; Time</th>
+            <th class="text-end">Amount</th>
+            <th>Note</th>
+            <th class="text-end">Actions</th>
+            <th class="text-end">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in bdt_rows %}
+          <tr>
+              <td>
+                <div class="fw-semibold">
+                  {% if t.type.value in ['transfer_international', 'transfer_domestic'] %}
+                    Transfer to {{ t.recipient_name or 'Self' }}
+                  {% else %}
+                    {{ t.category_name or 'Uncategorized' }}
+                  {% endif %}
+
+                </div>
+                <div class="text-muted tiny">{{ t.type.value|capitalize }}</div>
+              </td>
+        
+
+            <td>
+              {% if t.account and t.account.type.value == 'credit' %}
+                <span class="badge rounded-pill bg-dark-subtle text-dark px-2">VISA</span>
+              {% endif %}
+              <div class="tiny text-muted">{{ t.account.name if t.account else '—' }}</div>
+            </td>
+            <td>
+              {{ t.date.strftime('%Y-%m-%d') }}
+              <div class="tiny text-muted">{{ t.created_at.strftime('%I:%M %p') if t.created_at else '' }}</div>
+            </td>
+            <td class="text-end fw-semibold">
+              {% set is_external_bdt = (t.type.value == 'transfer_international' and (t.recipient_name or "Self") != "Self") %}
+              <span class="{% if is_external_bdt %}text-primary{% else %}{{ 'text-danger' if t.amount < 0 else 'text-success' }}{% endif %}">
+                ৳{{ '+{:,.0f}'.format(t.amount) if t.amount > 0 else '{:,.0f}'.format(t.amount) }}
+              </span>
+            </td>
+
+            <td class="text-muted ellipsis">{{ t.note or '—' }}</td>
+            {# In the row loop, last cell: #}
+           <td class="text-end">
+  {% set cur = 'KRW' if t.__table__.name == 'transactions_krw' else 'BDT' %}
+  {% if not t.is_deleted %}
+    <button type="button"
+            class="btn btn-sm btn-outline-primary"
+            data-bs-toggle="modal"
+            data-bs-target="#editTxModal"
+            data-tx='{{ {
+              "id": t.id,
+              "cur": cur,
+              "date": t.date.isoformat(),
+              "account_id": t.account_id,
+              "category_id": t.category_id,
+              "type": t.type.value,
+              "amount": (t.amount|string),
+              "note": t.note or "",
+              "is_pending": (1 if t.is_pending else 0)
+            } | tojson }}'>
+      Edit
+    </button>
+
+    <form method="post"
+          action="/transactions/{{ cur }}/{{ t.id }}/delete"
+          class="d-inline ms-1"
+          onsubmit="return confirm('Delete this transaction?');">
+      <button class="btn btn-sm btn-outline-danger">Delete</button>
+    </form>
+  {% else %}
+    <form method="post"
+          action="/transactions/{{ cur }}/{{ t.id }}/restore"
+          class="d-inline">
+      <button class="btn btn-sm btn-outline-success">Restore</button>
+    </form>
+  {% endif %}
+</td>
+
+
+            <td class="text-end">
+              {% if t.is_deleted %}
+                <span class="badge bg-danger-subtle text-danger">Deleted</span>
+              {% elif t.is_pending %}
+                <span class="badge bg-warning-subtle text-warning">Pending</span>
+              {% else %}
+                <span class="badge bg-success-subtle text-success">Completed</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="text-center text-muted py-4">No BDT transactions</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% set bdt_pages = (bdt_total // bdt_per_page) + (1 if bdt_total % bdt_per_page else 0) %}
+      <nav aria-label="BDT pagination">
+        <ul class="pagination pagination-sm justify-content-center">
+          {% for p in range(1, bdt_pages + 1) %}
+            <li class="page-item {% if p == bdt_page %}active{% endif %}">
+              <a class="page-link"
+                href="{{ url_for('main.transactions_page',
+                                  bdt_page=p,
+                                  bdt_q=bdt_q,
+                                  bdt_category_id=bdt_category_id,
+                                  bdt_account_id=bdt_account_id,
+                                  bdt_from=bdt_from_str,
+                                  bdt_to=bdt_to_str) }}#bdt-table">
+                {{ p }}
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+      </nav>
+
+    </div>
+  </div>
+  <!-- ================== Remittance Overview ================== -->
+<section id="send-overview" class="container py-3">
+  <!-- Filters -->
+  <div class="row g-3 align-items-end mb-3">
+    <div class="col-12 col-md-6">
+      <label for="filterYear" class="form-label small text-muted mb-1">Select Year</label>
+      <select id="filterYear" class="form-select">
+        <!-- Fill options dynamically -->
+        <option selected>2025</option>
+      </select>
+    </div>
+    <div class="col-12 col-md-6">
+      <label for="filterMonth" class="form-label small text-muted mb-1">Select Month</label>
+      <select id="filterMonth" class="form-select">
+        <!-- Fill options dynamically -->
+        <option selected>February</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Big KPI Card -->
+  <div class="card border-0 shadow-sm mb-4 overflow-hidden">
+    <div class="card-body p-4 position-relative">
+      <!-- Gradient background -->
+      <div class="position-absolute top-0 start-0 w-100 h-100" style="
+          background: linear-gradient(90deg, #3AA0FF 0%, #6DC1FF 50%, #95D4FF 100%);
+          opacity: .9;"></div>
+
+      <div class="position-relative text-center text-white">
+        <div class="fw-semibold small opacity-75">Total Sent Amount</div>
+        <div class="display-5 fw-bold lh-1 my-2">
+          ৳<span id="kpiTotalSent">98,300</span>
+        </div>
+        <div class="small opacity-75">
+          For <span id="kpiPeriod">February, 2025</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts Row -->
+  <div class="row g-4">
+    <!-- Left: Line chart -->
+    <div class="col-12 col-xl-6">
+      <div class="card shadow-sm h-100">
+        <div class="h6 mb-3 text-center mt-3">Total Sent Over the Year</div>
+        <div class="chart-wrap">
+          <canvas id="totalSentYearChart" height="260" aria-label="Total Sent Over the Year"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Bar chart -->
+    <div class="col-12 col-xl-6">
+      <div class="card shadow-sm h-100">
+        <div class="h6 mb-3 text-center mt-3">Total Sent Per Recipient</div>
+        <div class="chart-wrap">
+          <canvas id="totalSentByRecipientChart" height="260" aria-label="Total Sent Per Recipient"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</div>
+<div class="modal fade" id="editTxModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-content">
+      <form method="post" id="editTxForm">
+
+        <div class="modal-header">
+          <h5 class="modal-title">Edit transaction</h5>
+          <button class="btn-close" data-bs-dismiss="modal" type="button"></button>
+        </div>
+
+        <div class="modal-body">
+          <input type="hidden" name="cur" id="tx-cur">
+          <div class="mb-2">
+            <label class="form-label">Date</label>
+            <input type="date" class="form-control" name="date" id="tx-date" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Account</label>
+            <select class="form-select" name="account_id" id="tx-account" required>
+              {% for a in accounts_krw %}<option data-cur="KRW" value="{{ a.id }}">{{ a.name }}</option>{% endfor %}
+              {% for a in accounts_bdt %}<option data-cur="BDT" value="{{ a.id }}">{{ a.name }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Category</label>
+            <select class="form-select" name="category_id" id="tx-category">
+              <option value="">—</option>
+              {% for c in categories %}
+                <option value="{{ c.id }}">{{ c.name }}</option>
+                {% for ch in c.children %}
+                  <option value="{{ ch.id }}">└ {{ ch.name }}</option>
+                {% endfor %}
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Type</label>
+            <select class="form-select" name="type" id="tx-type" required>
+              {% for tt in ['income','expense','transfer_domestic','transfer_international','refund','fee','adjustment'] %}
+                <option value="{{ tt }}">{{ tt|capitalize }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Amount</label>
+            <input type="number" step="0.01" class="form-control" name="amount" id="tx-amount" required>
+            <div class="form-text">Use negative for outflow.</div>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Note</label>
+            <input type="text" class="form-control" name="note" id="tx-note">
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="is_pending" id="tx-pending">
+            <label class="form-check-label" for="tx-pending">Pending</label>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <!-- Cancel button just closes modal -->
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <!-- Save button submits the form -->
+          <button type="submit" class="btn btn-primary">Save changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.getElementById('editTxModal').addEventListener('show.bs.modal', function (e) {
+  const raw = e.relatedTarget?.getAttribute('data-tx');
+  if (!raw) return;
+  const tx = JSON.parse(raw);
+
+  // Fill fields
+  document.getElementById('tx-date').value    = tx.date;
+  document.getElementById('tx-account').value = tx.account_id;
+  document.getElementById('tx-category').value= tx.category_id || "";
+  document.getElementById('tx-type').value    = tx.type;
+  document.getElementById('tx-amount').value  = tx.amount;
+  document.getElementById('tx-note').value    = tx.note || "";
+  document.getElementById('tx-pending').checked = !!tx.is_pending;
+
+  // ✅ Set form action directly (no url_for needed)
+  const form = document.getElementById('editTxForm');
+  form.action = `/transactions/${tx.cur}/${tx.id}/edit`;
+});
+/* static/js/send_overview.js */
+(function () {
+  if (window.__sendOverviewInit) return; // avoid double init
+  window.__sendOverviewInit = true;
+
+  // ---------- DOM ----------
+  const yearSel   = document.getElementById('filterYear');
+  const monthSel  = document.getElementById('filterMonth');
+  const kpiAmount = document.getElementById('kpiTotalSent');
+  const kpiPeriod = document.getElementById('kpiPeriod');
+
+  const lineCanvas = document.getElementById('totalSentYearChart');
+  const barCanvas  = document.getElementById('totalSentByRecipientChart');
+
+  if (!yearSel || !monthSel || !lineCanvas || !barCanvas) {
+    console.warn('[send-overview] Missing DOM elements');
+    return;
+  }
+
+  const lineCtx = lineCanvas.getContext('2d');
+  const barCtx  = barCanvas.getContext('2d');
+
+  // ---------- Helpers ----------
+  const MONTHS = [
+    'January','February','March','April','May','June',
+    'July','August','September','October','November','December'
+  ];
+
+  const now  = new Date();
+  const curY = now.getFullYear();
+  const curM = now.getMonth() + 1;
+
+  function fmt(n) { return n.toLocaleString(); }
+  function monthName(m) { return MONTHS[m - 1]; }
+
+  // Populate year selector
+  function populateYears() {
+    const start = curY - 5;
+    yearSel.innerHTML = '';
+    for (let y = curY; y >= start; y--) {
+      const opt = document.createElement('option');
+      opt.value = y;
+      opt.textContent = y;
+      yearSel.appendChild(opt);
+    }
+    yearSel.value = curY;
+  }
+
+  // Populate months (+ All)
+  function populateMonths() {
+    monthSel.innerHTML = '';
+
+    const all = document.createElement('option');
+    all.value = '';
+    all.textContent = 'All Months';
+    monthSel.appendChild(all);
+
+    MONTHS.forEach((name, i) => {
+      const opt = document.createElement('option');
+      opt.value = i + 1;
+      opt.textContent = name;
+      monthSel.appendChild(opt);
+    });
+
+    monthSel.value = String(curM); // default current
+  }
+
+  // ---------- Charts ----------
+  let lineChart = null;
+  let barChart  = null;
+
+  function buildLineChart(dataByMonth) {
+    if (lineChart) lineChart.destroy();
+
+    const labels = MONTHS;
+    const data   = [];
+    for (let m = 1; m <= 12; m++) data.push(Number(dataByMonth[m] || 0));
+
+    lineChart = new Chart(lineCtx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Total Sent',
+          data,
+          tension: 0.35,
+          borderColor: '#007bff',
+          backgroundColor: 'rgba(0,123,255,0.1)',
+          pointRadius: 3
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: { ticks: { callback: v => fmt(v) } }
+        },
+        plugins: {
+          tooltip: {
+            callbacks: { label: ctx => `৳${fmt(ctx.parsed.y)}` }
+          },
+          legend: { display: true }
+        }
+      }
+    });
+  }
+
+  function buildBarChart(items) {
+    if (barChart) barChart.destroy();
+
+    const labels = items.map(i => i.name || '—');
+    const data   = items.map(i => Number(i.total || 0));
+
+    barChart = new Chart(barCtx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Total Sent',
+          data,
+          backgroundColor: '#ff9800'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: { ticks: { callback: v => fmt(v) } }
+        },
+        plugins: {
+          tooltip: {
+            callbacks: { label: ctx => `৳${fmt(ctx.parsed.y)}` }
+          },
+          legend: { display: true }
+        }
+      }
+    });
+  }
+
+  // ---------- Fetch + Render ----------
+  async function load() {
+    const year  = Number(yearSel.value);
+    const month = monthSel.value ? Number(monthSel.value) : null;
+
+    const params = new URLSearchParams({ year: String(year) });
+    if (month) params.set('month', String(month));
+
+    try {
+      const res = await fetch(`/api/send_overview?${params.toString()}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+
+      // KPI
+      const total = Number(data.total_sent || 0);
+      kpiAmount.textContent = fmt(total);
+      if (data.month) {
+        kpiPeriod.textContent = `${monthName(data.month)}, ${data.year}`;
+      } else {
+        kpiPeriod.textContent = `${data.year}`;
+      }
+
+      // Charts
+      buildLineChart(data.monthly || {});
+      buildBarChart(data.recipients || []);
+    } catch (err) {
+      console.error('[send-overview] Failed:', err);
+    }
+  }
+
+  // ---------- Events ----------
+  yearSel.addEventListener('change', load);
+  monthSel.addEventListener('change', load);
+
+  // ---------- Init ----------
+  populateYears();
+  populateMonths();
+  load();
+})();
+
+</script>
+{% endblock %}
+
+{% endblock %}

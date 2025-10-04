@@ -1,0 +1,47 @@
+# --- Python / Flask ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+dist/
+build/
+
+# Virtual environments
+venv/
+.env/
+.venv/
+env/
+ENV/
+
+# IDE / Editor
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Flask instance folder (if you use it for local secrets/uploads)
+instance/
+
+# Byte-compiled/mypy/pytest
+.mypy_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs
+*.log
+
+# Node (if you have any front-end tooling)
+node_modules/
+
+# Environment files (keep an example instead)
+*.env
+.env.*
+
+# Cache
+.cache/
+
+# __ If you have compiled assets folders, add them here __
+# static/build/

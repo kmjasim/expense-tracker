@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-5 col-lg-4">
+    <div class="card shadow-sm">
+      <div class="card-body p-4">
+        <h5 class="card-title mb-3">Create your account</h5>
+        <p class="text-muted mb-4">Please fill in the details below.</p>
+{% if request.args.get('warning') %}
+  <div class="alert alert-danger py-2">{{ request.args.get('warning') }}</div>
+{% endif %}
+{% if request.args.get('success') %}
+  <div class="alert alert-success py-2">{{ request.args.get('success') }}</div>
+{% endif %}
+
+        <form method="post" novalidate id="registerForm">
+          <!-- Name -->
+          <div class="mb-3">
+            <label class="form-label">Name</label>
+            <input
+              name="name"
+              type="text"
+              class="form-control {% if errors and errors.get('name') %}is-invalid{% endif %}"
+              placeholder="Your name"
+              value="{{ (form.name if form else '') | e }}"
+              required
+            />
+            {% if errors and errors.get('name') %}
+              <div class="invalid-feedback">{{ errors.get('name') }}</div>
+            {% endif %}
+          </div>
+
+          <!-- Email -->
+          <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input
+              name="email"
+              type="email"
+              class="form-control {% if errors and errors.get('email') %}is-invalid{% endif %}"
+              placeholder="you@example.com"
+              value="{{ (form.email if form else '') | e }}"
+              required
+            />
+            {% if errors and errors.get('email') %}
+              <div class="invalid-feedback">{{ errors.get('email') }}</div>
+            {% endif %}
+          </div>
+
+          <!-- Password -->
+          <div class="mb-3">
+            <label class="form-label">Password</label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              class="form-control {% if errors and errors.get('password') %}is-invalid{% endif %}"
+              placeholder="Choose a strong password"
+              minlength="6"
+              required
+            />
+            {% if errors and errors.get('password') %}
+              <div class="invalid-feedback">{{ errors.get('password') }}</div>
+            {% else %}
+              <div class="form-text">Use at least 6 characters.</div>
+            {% endif %}
+          </div>
+
+          <!-- Confirm Password -->
+          <div class="mb-3">
+            <label class="form-label">Confirm password</label>
+            <input
+              id="password_confirm"
+              name="password2"
+              type="password"
+              class="form-control {% if errors and errors.get('password2') %}is-invalid{% endif %}"
+              placeholder="Re-type your password"
+              required
+            />
+            {% if errors and errors.get('password2') %}
+              <div class="invalid-feedback">{{ errors.get('password2') }}</div>
+            {% else %}
+              <div class="form-text" id="matchHint"></div>
+            {% endif %}
+          </div>
+
+
+          <div class="d-grid">
+            <button type="submit" class="btn btn-success">Sign up</button>
+          </div>
+        </form>
+
+        <div class="text-center mt-3">
+          <small class="text-muted">Already have an account?</small>
+          <a href="{{ url_for('auth.login') }}">Log in</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Small client-side hint for matching -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const pw = document.getElementById("password");
+  const pc = document.getElementById("password_confirm");
+  const hint = document.getElementById("matchHint");
+  function check() {
+    if (!pw.value || !pc.value) {
+      hint.textContent = "";
+      return;
+    }
+    hint.textContent = (pw.value === pc.value) ? "Passwords match." : "Passwords do not match.";
+  }
+  pw.addEventListener("input", check);
+  pc.addEventListener("input", check);
+});
+</script>
+{% endblock %}

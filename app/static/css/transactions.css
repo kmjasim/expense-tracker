@@ -1,0 +1,37 @@
+/* compact helpers */
+.tiny { font-size: .75rem; }
+.ellipsis {
+  max-width: 280px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* search field with icon */
+.search-wrap { position: relative; min-width: 260px; }
+.search-wrap .bi-search { position: absolute; left: .5rem; top: 50%; transform: translateY(-50%); opacity:.6; }
+.search-wrap input { padding-left: 2rem; }
+
+/* table look like the screenshot: soft borders, big rows */
+.tx-table { --bs-table-bg: #fff; --row-radius: 12px; }
+.tx-table thead th { border-bottom: 0; color: #6c757d; font-weight: 600; }
+.tx-table tbody tr { border-top: 1px solid rgba(0,0,0,.04); }
+.tx-table tbody tr:first-child { border-top: 0; }
+.tx-table tbody tr.is-deleted { opacity: .55; }
+
+.tx-icon { width: 28px; height: 28px; border-radius: 50%; display:inline-block; background: #eaf7ec; }
+.tx-icon.expense { background:#fdeeee; }
+.tx-icon.income { background:#eaf7ec; }
+.tx-icon.transfer_domestic,
+.tx-icon.transfer_international { background:#eef4ff; }
+
+.status-badge { border: 1px solid currentColor; background: transparent; }
+.bg-outline-success { color: #198754; }
+.bg-outline-warning { color: #b68900; }
+.bg-outline-danger  { color: #dc3545; }
+
+/* Card polish */
+.card { border: 1px solid #eff1f3; border-radius: 16px; }
+.card-header { background: #fff; border-bottom: 1px solid #f1f2f4; }
+
+/* Responsive adjustments */
+@media (max-width: 992px) {
+  .ellipsis { max-width: 160px; }
+}

@@ -1,0 +1,154 @@
+/* ===== THEME HOOKS (use global tokens) ===== */
+:root{
+  --panel-bg: var(--color-surface-2);     /* was #eaf4ea */
+  --panel-border: var(--color-border);    /* was #dfeadf */
+  --dark: var(--color-accent-strong);     /* was #0b3d2e */
+  --mid: var(--color-accent);             /* was #2c6b57 */
+  --text: var(--color-text);              /* was #122 */
+  --muted: var(--color-text-muted);       /* was #6b7c74 */
+  --card-bg: var(--color-surface);        /* was #ffffff */
+  --card-ring: var(--color-accent);       /* selection ring color */
+  --radius: var(--radius-lg);             /* was 16px */
+  --ring-w: 3px;
+}
+
+/* ===== CARD WRAP ===== */
+.transfer-card{
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+/* ===== TABS ===== */
+.tabbar{
+  display:flex; gap:8px; padding:6px;
+  background: var(--color-accent-bg-strong);      /* was #dfeee1 */
+  border-radius:12px; margin-bottom:12px;
+  flex-wrap: wrap;
+}
+.tab-btn{
+  flex:1; min-width: 140px;
+  border:0; padding:10px 12px; border-radius:10px;
+  background:transparent; color: var(--mid); font-weight:600;
+}
+.tab-btn.active{
+  background: var(--dark);
+  color:#fff;
+}
+
+.tab-panel{ display:none; }
+.tab-panel.show{ display:block; }
+
+.section-title{
+  font-weight:700; color: var(--dark); margin:8px 2px;
+}
+.section-title.small{ font-size: .95rem; }
+
+/* ===== RAILS ===== */
+.account-rail{
+  position:relative;
+  max-width: 900px;
+  padding-bottom: 32px; /* space for bottom-right arrows if used */
+}
+.rail{
+  display:flex; gap:12px; overflow:auto; scroll-behavior:smooth;
+  padding: 6px 0 2px;
+
+  /* hide scrollbar across browsers */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.rail::-webkit-scrollbar{ display:none; }
+
+/* snap to cards for nicer mobile swipes */
+.rail{ scroll-snap-type: x mandatory; }
+
+.account-card{
+  scroll-snap-align: start;
+  min-width: 245px; max-width: 245px;
+  background: var(--card-bg);
+  border: 1px solid var(--panel-border);          /* was #eff5ef */
+  border-radius: 14px; padding: 14px;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer; user-select: none;
+  transition: transform .1s ease, box-shadow .1s ease, border-color .1s ease;
+  outline: none;
+}
+.account-card .brand{
+  font-size:.8rem; color: var(--muted);
+  font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+}
+.account-card .balance{
+  font-size:1.4rem; font-weight:800; margin:6px 0; color: var(--text);
+}
+.account-card .detail{ color: var(--muted); font-size:.9rem; }
+
+.account-card:hover{
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Selected state (ring uses accent) */
+.account-card.selected{
+  border-color: var(--card-ring);
+  box-shadow: 0 0 0 var(--ring-w)
+    color-mix(in oklab, var(--color-accent) 55%, white);
+}
+
+/* Keyboard focus */
+.account-card:focus-visible{
+  box-shadow: 0 0 0 calc(var(--ring-w) + 1px)
+    color-mix(in oklab, var(--color-accent) 70%, white);
+}
+
+/* Disabled option */
+.account-card.disabled{
+  opacity: .45;
+  pointer-events: none;
+  filter: grayscale(.2);
+}
+
+.small-rail .account-card{ min-width:240px; max-width:240px; }
+
+/* ===== ARROWS ===== */
+.rail-arrows{
+  position:absolute; right:8px; top:-6px; display:flex; gap:6px;
+}
+.rail-arrows.bottom-right{ top:auto; bottom:4px; }
+.rail-btn{
+  border:0; background: var(--color-surface);
+  border-radius:10px; padding:4px 10px;
+  box-shadow: var(--shadow-sm);
+  font-weight:900; color: var(--dark);
+}
+.rail-btn:focus-visible{
+  outline: 2px solid var(--mid);
+  outline-offset: 2px;
+}
+
+/* ===== ACTIONS ===== */
+.actions{
+  display:flex; justify-content:flex-end; gap:10px;
+  padding-top:6px; border-top:1px dashed var(--panel-border);
+  margin-top:6px;
+}
+
+/* ===== MOBILE / RESPONSIVE ===== */
+@media (max-width: 992px){
+  .account-card{ min-width: 220px; max-width: 220px; }
+}
+@media (max-width: 768px){
+  .transfer-card{ padding: 12px; }
+  .account-card{ min-width: 200px; max-width: 200px; }
+}
+@media (max-width: 576px){
+  .account-card{ min-width: 85vw; max-width: 85vw; }
+  .rail-arrows{ top:-10px; }
+}
+
+/* ===== REDUCED MOTION ===== */
+@media (prefers-reduced-motion: reduce){
+  .rail{ scroll-behavior: auto; }
+  .account-card, .tab-btn{ transition: none; }
+}

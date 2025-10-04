@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6 col-lg-5">
+    <div class="alert alert-danger mt-4">
+      The password reset link is invalid or has expired.
+    </div>
+    <div class="text-center mt-3">
+      <a href="{{ url_for('auth.forgot_password') }}" class="btn btn-outline-secondary">Request a new link</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
