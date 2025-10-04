@@ -114,7 +114,7 @@
         maintainAspectRatio: false,
         cutout: '55%',
         plugins: {
-          legend: { position: 'bottom' },
+          legend: { display: false},
           tooltip: {
             callbacks: {
               label: (ctx) => {
