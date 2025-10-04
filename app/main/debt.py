@@ -6,7 +6,7 @@ from decimal import Decimal
 from ..extensions import db
 from ..models import DebtItem, DebtTxn, DebtDirection, Recipient, Currency
 from . import main
-
+from sqlalchemy import func, case, desc 
 def _uid():
     return current_user.id
 
@@ -59,21 +59,30 @@ def list_txns(user_id, t_filter=None, a_filter=None, q=None):
     return qy.limit(200).all()  # simple cap for now
 
 def list_by_person(user_id, t_filter=None):
+    # Postgres supports BOOL_AND; fall back to MIN(CASE ...) for SQLite/dev.
+    if db.session.bind.dialect.name == "postgresql":
+        is_paid_expr = func.bool_and(DebtItem.status == "settled").label("is_paid")
+    else:
+        # is_paid = True only if ALL rows in the group are settled
+        is_paid_expr = case(
+            (func.min(case((DebtItem.status == "settled", 1), else_=0)) == 1, True),
+            else_=False,
+        ).label("is_paid")
+
     qy = (
         db.session.query(
             DebtItem.direction,
             Recipient.name,
-            db.func.count(DebtItem.id).label("count"),
-            db.func.sum(DebtItem.original_principal).label("original"),
-            db.func.sum(DebtItem.original_principal - DebtItem.outstanding_principal).label("paid"),
-            db.func.sum(DebtItem.outstanding_principal).label("outstanding"),
-            db.case((DebtItem.status == "settled", True), else_=False).label("is_paid")
-  # works on Postgres
+            func.count(DebtItem.id).label("count"),
+            func.sum(DebtItem.original_principal).label("original"),
+            func.sum(DebtItem.original_principal - DebtItem.outstanding_principal).label("paid"),
+            func.sum(DebtItem.outstanding_principal).label("outstanding"),
+            is_paid_expr,
         )
         .join(Recipient, DebtItem.recipient_id == Recipient.id)
         .filter(DebtItem.user_id == user_id)
         .group_by(DebtItem.direction, Recipient.name)
-        .order_by(db.func.sum(DebtItem.outstanding_principal).desc())
+        .order_by(desc(func.sum(DebtItem.outstanding_principal)))
     )
     if t_filter in ("owe", "lend"):
         qy = qy.filter(DebtItem.direction == DebtDirection(t_filter))
