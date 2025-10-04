@@ -32,7 +32,9 @@ load_dotenv()
 
 def create_app() -> Flask:
     app = Flask(__name__)
-    app.config.from_object("app.config.Production")
+    env = os.getenv("FLASK_ENV", "development").lower()
+    cfg = "app.config.Production" if env == "production" else "app.config.Development"
+    app.config.from_object(cfg)
 
     register_extensions(app)
     register_blueprints(app)   # <--- this runs the block above

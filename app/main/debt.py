@@ -58,16 +58,12 @@ def list_txns(user_id, t_filter=None, a_filter=None, q=None):
         qy = qy.filter(Recipient.name.ilike(like))
     return qy.limit(200).all()  # simple cap for now
 
+# app/routes/debt.py
 def list_by_person(user_id, t_filter=None):
-    # Postgres supports BOOL_AND; fall back to MIN(CASE ...) for SQLite/dev.
-    if db.session.bind.dialect.name == "postgresql":
-        is_paid_expr = func.bool_and(DebtItem.status == "settled").label("is_paid")
-    else:
-        # is_paid = True only if ALL rows in the group are settled
-        is_paid_expr = case(
-            (func.min(case((DebtItem.status == "settled", 1), else_=0)) == 1, True),
-            else_=False,
-        ).label("is_paid")
+    # True only if EVERY item in the group is settled
+    is_paid_expr = (
+        (func.min(case((DebtItem.status == "settled", 1), else_=0)) == 1)
+    ).label("is_paid")
 
     qy = (
         db.session.query(
@@ -87,8 +83,6 @@ def list_by_person(user_id, t_filter=None):
     if t_filter in ("owe", "lend"):
         qy = qy.filter(DebtItem.direction == DebtDirection(t_filter))
     return qy.all()
-
-
 # ---------- pages ----------
 @main.route("/debts", methods=["GET"])
 @login_required

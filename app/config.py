@@ -17,7 +17,10 @@ class Config:
     MAIL_PASSWORD = os.getenv("MAIL_PASSWORD")
     MAIL_DEFAULT_SENDER = os.getenv("MAIL_DEFAULT_SENDER")
 
+class Development(Config):
+    pass  # allows SQLite fallback
+
 class Production(Config):
-    # Optional: fail fast if DATABASE_URL isn’t set (prevents silent SQLite fallback)
+    # only enforce in real prod
     if not os.getenv("DATABASE_URL"):
         raise RuntimeError("DATABASE_URL is required in Production")
