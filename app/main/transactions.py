@@ -1,59 +1,69 @@
-from datetime import date, timedelta
-from operator import and_, or_
-from flask import abort, jsonify, redirect, render_template, request, Response, stream_with_context, send_file, url_for
-from flask_login import login_required, current_user
-from sqlalchemy import String, cast, extract, func, case, literal, not_
-from sqlalchemy.orm import selectinload
-from ..main import main
-from ..extensions import db
-from ..models import Recipient, RecipientType, TransactionKRW, TransactionBDT, Account, Category, Currency, TxnType
+from datetime import date, timedelta, datetime
 from io import BytesIO, StringIO
 import csv
-# ---------- helpers ----------
-def _period_filters(year: int, month: int | None):
+
+from flask import (
+    abort, jsonify, redirect, render_template, request, Response,
+    stream_with_context, url_for, flash
+)
+from flask_login import login_required, current_user
+
+from sqlalchemy import (
+    and_, or_, not_,
+    func, extract, case, literal,
+    String, cast
+)
+from sqlalchemy.orm import selectinload
+
+from ..main import main
+from ..extensions import db
+from ..models import (
+    Recipient, RecipientType, TransactionKRW, TransactionBDT, Account,
+    Category, Currency, TxnType
+)
+
+# -------- Helpers (BDT) --------
+def _period_filters_bdt(year: int, month: int | None):
     flt = [
         TransactionBDT.user_id == current_user.id,
-        TransactionBDT.is_deleted.is_(False),             # <-- ignore soft-deleted
+        TransactionBDT.is_deleted.is_(False),
         extract("year", TransactionBDT.date) == year,
     ]
     if month:
         flt.append(extract("month", TransactionBDT.date) == month)
     return flt
 
-def _is_expense():
-    try:
-        return TransactionBDT.type == TxnType.expense
-    except Exception:
-        return func.lower(cast(TransactionBDT.type, String)) == 'expense'
+def _is_expense_bdt():
+    # enum path only; if you kept cast/like fallbacks elsewhere, not needed here
+    return TransactionBDT.type == TxnType.expense
 
-def _is_transfer_any():
-    # robust to enum literal differences
-    like_part = func.lower(cast(TransactionBDT.type, String)).like('transfer%')
-    try:
-        enum_part = or_(
-            TransactionBDT.type == TxnType.transfer_domestic,
-            TransactionBDT.type == TxnType.transfer_international,
-        )
-        return or_(enum_part, like_part)
-    except Exception:
-        return like_part
+def _is_transfer_bdt():
+    return TransactionBDT.type.in_([TxnType.transfer_domestic, TxnType.transfer_international])
 
-def _is_sent_type():
-    return or_(_is_expense(), _is_transfer_any())
+def _is_sent_type_bdt():
+    return _is_expense_bdt() | _is_transfer_bdt()
 
-def _is_self_transfer():
-    # tweak if you have explicit self recipient/account fields
-    return or_(
-        func.lower(func.trim(TransactionBDT.recipient_name)) == 'self',
-        TransactionBDT.recipient_id.is_(None),
-    )
+def _is_self_transfer_bdt():
+    """
+    Treat as 'self' only when it is actually a transfer AND looks self-ish.
+    This is intentionally NARROW so we don't exclude everything.
 
-def _exclude_all_self_transfers():
-    return ~and_(_is_transfer_any(), _is_self_transfer())
+    Conditions:
+      - Transfer type
+      - recipient_name = 'self' (case/space-insensitive)
+        OR recipient_name is NULL/empty AND recipient_id is NULL
+    """
+    name_is_self = func.coalesce(func.lower(func.trim(TransactionBDT.recipient_name)), '') == 'self'
+    name_empty_and_id_null = (func.coalesce(func.nullif(func.trim(TransactionBDT.recipient_name), ''), literal(None)) == None) & (TransactionBDT.recipient_id.is_(None))  # noqa: E711
+    return _is_transfer_bdt() & (name_is_self | name_empty_and_id_null)
 
-def _sum_abs():
-    # robust if outflows stored as + or -
+def _exclude_all_self_transfers_bdt():
+    return ~_is_self_transfer_bdt()
+
+def _sum_abs_bdt():
     return func.coalesce(func.sum(func.abs(TransactionBDT.amount)), 0)
+
+
 # ----------------------------
 # EXPORT (CSV / PDF)
 # ----------------------------
@@ -832,65 +842,95 @@ def transactions_export(cur, fmt):
                     headers={"Content-Disposition": f"attachment; filename={filename}"})
 
 
-# ---------- route ----------
+# -------- API --------
+
 @main.route("/api/send_overview", methods=["GET"])
+@login_required
 def send_overview():
     now = datetime.utcnow()
     year  = request.args.get("year", type=int, default=now.year)
-    month = request.args.get("month", type=int)  # optional -> whole year if absent
+    month = request.args.get("month", type=int)  # optional
 
-    period_filters = _period_filters(year, month)
+    # ---------- Base filters ----------
+    base_filters = [
+        TransactionBDT.user_id == current_user.id,
+        TransactionBDT.is_deleted.is_(False),
+        extract("year", TransactionBDT.date) == year,
+    ]
+    if month:
+        base_filters.append(extract("month", TransactionBDT.date) == month)
 
-    # KPI: total sent (exclude deleted + all self-transfers)
-    total_sent = (
-        db.session.query(_sum_abs())
-        .filter(*period_filters)
-        .filter(_is_sent_type())
-        .filter(_exclude_all_self_transfers())
-        .scalar() or 0
-    )
+    # ---------- Type & self rules ----------
+    is_expense   = (TransactionBDT.type == TxnType.expense)
+    is_transfer  = TransactionBDT.type.in_([TxnType.transfer_domestic, TxnType.transfer_international])
 
-    # Monthly totals for whole year (also exclude deleted + self-transfers)
-    monthly_rows = (
-        db.session.query(
-            extract("month", TransactionBDT.date).label("m"),
-            _sum_abs().label("total"),
-        )
-        .filter(TransactionBDT.user_id == current_user.id)
-        .filter(TransactionBDT.is_deleted.is_(False))     # <-- ignore soft-deleted
-        .filter(extract("year", TransactionBDT.date) == year)
-        .filter(_is_sent_type())
-        .filter(_exclude_all_self_transfers())
-        .group_by("m")
-        .all()
-    )
-    monthly = {int(m): float(t) for m, t in monthly_rows}
+    # Only treat explicit "self" text as self; do NOT exclude NULL/blank (to avoid dropping legit data)
+    name_lower = func.lower(func.trim(TransactionBDT.recipient_name))
+    is_self    = (name_lower == 'self')
 
-    # Per recipient/category (exclude deleted + self-transfers)
-    label_expr = func.coalesce(
+    # ---------- Labels ----------
+    # For breakdown we use recipient_name first (transfers) otherwise fall back to category
+    name_expr = func.coalesce(
         TransactionBDT.recipient_name,
         Category.name,
         literal("Uncategorized"),
-    )
-    per_target_rows = (
+    ).label("name")
+
+    month_expr = extract("month", TransactionBDT.date).label("m")
+
+    # ---------- What counts as "sent" ----------
+    # 1) Expenses → include ABS(amount)
+    # 2) Transfers that are NOT self → include ABS(amount)
+    # 3) Everything else → 0
+    sent_amount = case(
+        (is_expense, func.abs(TransactionBDT.amount)),
+        (and_(is_transfer, ~is_self), func.abs(TransactionBDT.amount)),
+        else_=0,
+    ).label("sent_amount")
+
+    subq = (
         db.session.query(
-            label_expr.label("name"),
-            _sum_abs().label("total"),
+            name_expr,        # label for grouping
+            month_expr,       # month number 1..12
+            sent_amount,      # numeric
         )
+        .select_from(TransactionBDT)
         .outerjoin(Category, Category.id == TransactionBDT.category_id)
-        .filter(*period_filters)
-        .filter(_is_sent_type())
-        .filter(_exclude_all_self_transfers())
-        .group_by("name")
-        .order_by(func.sum(func.abs(TransactionBDT.amount)).desc())
+        .filter(*base_filters)
+    ).subquery()
+
+    # ---------- KPI total for the selected period ----------
+    kpi_q = db.session.query(func.coalesce(func.sum(subq.c.sent_amount), 0))
+    total_sent = float(kpi_q.scalar() or 0)
+
+    # ---------- Monthly totals for the whole selected year ----------
+    # (subq already filtered to the selected month if provided, so monthly will reflect that)
+    monthly_rows = (
+        db.session.query(
+            subq.c.m,
+            func.coalesce(func.sum(subq.c.sent_amount), 0),
+        )
+        .group_by(subq.c.m)
         .all()
     )
-    recipients = [{"name": n, "total": float(t)} for n, t in per_target_rows]
+    monthly = {int(m): float(t) for m, t in monthly_rows if m is not None}
+
+    # ---------- Per recipient/category for the selected period ----------
+    per_rows = (
+        db.session.query(
+            subq.c.name,
+            func.coalesce(func.sum(subq.c.sent_amount), 0),
+        )
+        .group_by(subq.c.name)
+        .order_by(func.sum(subq.c.sent_amount).desc())
+        .all()
+    )
+    recipients = [{"name": n, "total": float(t)} for n, t in per_rows]
 
     return jsonify({
         "year": year,
         "month": month,
-        "total_sent": float(total_sent),
+        "total_sent": total_sent,
         "monthly": monthly,
         "recipients": recipients,
     })
