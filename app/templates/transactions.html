@@ -479,7 +479,7 @@
           </div>
           <div class="mb-2">
             <label class="form-label">Account</label>
-            <select class="form-select" name="account_id" id="tx-account" required>
+            <select class="form-select" name="account_id" id="tx-account">
               {% for a in accounts_krw %}<option data-cur="KRW" value="{{ a.id }}">{{ a.name }}</option>{% endfor %}
               {% for a in accounts_bdt %}<option data-cur="BDT" value="{{ a.id }}">{{ a.name }}</option>{% endfor %}
             </select>
@@ -498,7 +498,7 @@
           </div>
           <div class="mb-2">
             <label class="form-label">Type</label>
-            <select class="form-select" name="type" id="tx-type" required>
+            <select class="form-select" name="type" id="tx-type">
               {% for tt in ['income','expense','transfer_domestic','transfer_international','refund','fee','adjustment'] %}
                 <option value="{{ tt }}">{{ tt|capitalize }}</option>
               {% endfor %}
