@@ -412,3 +412,30 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
+
+document.addEventListener("DOMContentLoaded", function () {
+  var btn = document.getElementById("toggle-inactive-btn");
+  var track = document.getElementById("accounts-track");
+  if (!btn || !track) return;
+
+  btn.addEventListener("click", function () {
+    var showing = btn.getAttribute("data-show") === "1";
+    if (showing) {
+      track.classList.remove("show-inactive");
+      btn.textContent = "Show inactive";
+      btn.setAttribute("data-show", "0");
+      btn.setAttribute("aria-pressed", "false");
+      // ensure one visible radio stays checked
+      var visChecked = track.querySelector(".acct-card:not(.is-inactive) input.acct-radio:checked");
+      if (!visChecked) {
+        var firstVis = track.querySelector(".acct-card:not(.is-inactive) input.acct-radio:not([disabled])");
+        if (firstVis) firstVis.checked = true;
+      }
+    } else {
+      track.classList.add("show-inactive");
+      btn.textContent = "Hide inactive";
+      btn.setAttribute("data-show", "1");
+      btn.setAttribute("aria-pressed", "true");
+    }
+  });
+});

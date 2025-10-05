@@ -73,93 +73,139 @@
   <!-- Accounts slider -->
   <div class="account-slider d-flex align-items-center gap-2 mb-3">
     <div class="slider-viewport py-3">
-      <div class="slider-track">
-        {% if accounts and accounts|length %}
-          {% for a in accounts %}
-            {% set curr_code = (a.currency.value if a.currency is not string else a.currency)|string|upper %}
-            {% set type_code = (a.type.value if a.type is not string else a.type)|string|lower %}
-            {% set sym_map   = {"KRW": "₩", "BDT": "৳"} %}
-            <label class="acct-card {% if loop.first %}active{% endif %} {% if not a.is_active %}is-inactive{% endif %}"
-                  data-id="{{ a.id }}"
-                  data-name="{{ a.name|e }}"
-                  data-currency="{{ curr_code }}"
-                  data-type="{{ type_code }}"
-                  data-initial="{{ a.initial_balance or 0 }}"
-                  data-active="{{ 1 if a.is_active else 0 }}"
-                  data-symbol="{{ sym_map.get(curr_code, '') }}"
-                  data-balance="{{ (balances.get(a.id) or 0) }}"
-                  data-limit="{{ (a.credit_limit or 0) | float }}"
-                  data-pending="{{ (pending_totals.get(a.id) or 0) | float }}">
-              <input class="d-none acct-radio" type="radio" name="account_id"
-                    value="{{ a.id }}" {% if not a.is_active %}disabled{% endif %}
-                    {% if loop.first %}checked{% endif %}>
+{# =================== Accounts slider (active by default) =================== #}
 
-              <div class="acct-body">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <span class="badge rounded-pill text-bg-light">{{ type_code|capitalize }}</span>
-                  <span class="small text-muted">{{ curr_code }}</span>
-                </div>
+{# Counts for header #}
+{% set active_count   = accounts | selectattr('is_active', 'in', [True, 1, '1']) | list | length %}
+{% set inactive_count = accounts | rejectattr('is_active', 'in', [True, 1, '1']) | list | length %}
 
-                <div class="fw-bold d-flex align-items-center gap-2">
-                  <i class="bi bi-grip-vertical text-muted sort-handle" title="Drag"></i>
-                  {{ a.name }}
-                  {% if not a.is_active %}
-                    <span class="badge text-bg-secondary ms-2">Inactive</span>
-                  {% endif %}
-                </div>
+<div class="d-flex justify-content-between align-items-center mb-2">
+  <div class="small text-muted">
+    {{ active_count }} active{% if inactive_count %} · {{ inactive_count }} inactive{% endif %}
+  </div>
 
-                <div class="display-9 fw-semibold my-1">
-                  {% if a.type == AccountType.credit %}
-                    <div class="d-flex align-items-baseline justify-content-between">
-                      <div class="fw-bold">
-                        Available:
-                        <span data-role="avail">
-                          {{ currency_symbol(a) }}{{ (balances.get(a.id) or 0) | money }}
-                        </span>
-                      </div>
-                      <div class="small text-muted">
-                        Pending:
-                        {{ currency_symbol(a) }}{{ (pending_totals.get(a.id) or 0) | money }}
-                      </div>
-                    </div>
+  {% if inactive_count %}
+    <button id="toggle-inactive-btn" type="button"
+            class="btn btn-sm btn-outline-secondary"
+            data-show="0" aria-pressed="false">
+      Show inactive
+    </button>
+  {% endif %}
+</div>
 
-                    {# Progress bar #}
-                    {% set avail = balances.get(a.id) or 0 %}
-                    {% set orig_limit = a.credit_limit or 0 %}
-                    {% set used = (orig_limit - avail) if orig_limit > 0 else 0 %}
-                    {% set pct = (used / orig_limit * 100) if orig_limit > 0 else 0 %}
+<div class="slider-track" id="accounts-track">
+  {# ---------- ACTIVE ACCOUNTS ---------- #}
+  {% set first_active_rendered = False %}
+  {% for a in accounts if a.is_active in [True, 1, '1'] %}
+    {% set curr_code = (a.currency.value if a.currency is not string else a.currency)|string|upper %}
+    {% set type_code = (a.type.value if a.type is not string else a.type)|string|lower %}
+    {% set sym_map   = {"KRW": "₩", "BDT": "৳"} %}
 
-                    <div class="limit-bar mt-2" role="progressbar" aria-label="Credit limit usage">
-                      <div class="limit-bar-fill
-                                  {% if pct >= 80 %} bg-danger
-                                  {% elif pct >= 50 %} bg-warning
-                                  {% else %} bg-success
-                                  {% endif %}"
-                          style="width: {{ "%.0f"|format(pct) }}%;">
-                      </div>
-                    </div>
+    <label class="acct-card {% if not first_active_rendered %}active{% endif %}"
+           data-id="{{ a.id }}"
+           data-name="{{ a.name|e }}"
+           data-currency="{{ curr_code }}"
+           data-type="{{ type_code }}"
+           data-initial="{{ a.initial_balance or 0 }}"
+           data-active="1"
+           data-symbol="{{ sym_map.get(curr_code, '') }}"
+           data-balance="{{ (balances.get(a.id) or 0) }}"
+           data-limit="{{ (a.credit_limit or 0) | float }}"
+           data-pending="{{ (pending_totals.get(a.id) or 0) | float }}">
+      <input class="d-none acct-radio" type="radio" name="account_id"
+             value="{{ a.id }}" {% if not first_active_rendered %}checked{% endif %}>
 
-                    <div class="d-flex justify-content-between small mt-1">
-                      <span class="text-muted">Remaining</span>
-                      <span data-role="used" class="fw-semibold">
-                        {{ "%.0f"|format(pct) }}% used
-                      </span>
-                    </div>
-                  {% else %}
-                    {{ currency_symbol(a) }}{{ (balances.get(a.id) or 0) | money }}
-                  {% endif %}
-                </div>
+      <div class="acct-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="badge rounded-pill text-bg-light">{{ type_code|capitalize }}</span>
+          <span class="small text-muted">{{ curr_code }}</span>
+        </div>
 
+        <div class="fw-bold d-flex align-items-center gap-2">
+          <i class="bi bi-grip-vertical text-muted sort-handle" title="Drag"></i>
+          {{ a.name }}
+        </div>
 
+        <div class="display-9 fw-semibold my-1">
+          {% if a.type == AccountType.credit %}
+            {% set avail = balances.get(a.id) or 0 %}
+            {% set orig_limit = a.credit_limit or 0 %}
+            {% set used = (orig_limit - avail) if orig_limit > 0 else 0 %}
+            {% set pct = (used / orig_limit * 100) if orig_limit > 0 else 0 %}
+            <div class="d-flex align-items-baseline justify-content-between">
+              <div class="fw-bold">
+                Available:
+                <span data-role="avail">{{ currency_symbol(a) }}{{ (balances.get(a.id) or 0) | money }}</span>
               </div>
-            </label>
-
-
-          {% endfor %}
-        {% else %}
-          <div class="p-3 text-muted small">No active accounts yet. Create one to make a payment.</div>
-        {% endif %}
+              <div class="small text-muted">
+                Pending: {{ currency_symbol(a) }}{{ (pending_totals.get(a.id) or 0) | money }}
+              </div>
+            </div>
+            <div class="limit-bar mt-2">
+              <div class="limit-bar-fill
+                          {% if pct >= 80 %} bg-danger
+                          {% elif pct >= 50 %} bg-warning
+                          {% else %} bg-success
+                          {% endif %}"
+                   style="width: {{ '%.0f'|format(pct) }}%;">
+              </div>
+            </div>
+            <div class="d-flex justify-content-between small mt-1">
+              <span class="text-muted">Remaining</span>
+              <span data-role="used" class="fw-semibold">{{ '%.0f'|format(pct) }}% used</span>
+            </div>
+          {% else %}
+            {{ currency_symbol(a) }}{{ (balances.get(a.id) or 0) | money }}
+          {% endif %}
+        </div>
       </div>
+    </label>
+
+    {% set first_active_rendered = True %}
+  {% endfor %}
+
+  {% if active_count == 0 %}
+    <div class="p-3 text-muted small">No active accounts yet. Create one to make a payment.</div>
+  {% endif %}
+
+  {# ---------- INACTIVE ACCOUNTS (hidden by default) ---------- #}
+  {% for a in accounts if a.is_active not in [True, 1, '1'] %}
+    {% set curr_code = (a.currency.value if a.currency is not string else a.currency)|string|upper %}
+    {% set type_code = (a.type.value if a.type is not string else a.type)|string|lower %}
+    {% set sym_map   = {"KRW": "₩", "BDT": "৳"} %}
+
+    <label class="acct-card is-inactive"
+           data-id="{{ a.id }}"
+           data-name="{{ a.name|e }}"
+           data-currency="{{ curr_code }}"
+           data-type="{{ type_code }}"
+           data-initial="{{ a.initial_balance or 0 }}"
+           data-active="0"
+           data-symbol="{{ sym_map.get(curr_code, '') }}"
+           data-balance="{{ (balances.get(a.id) or 0) }}"
+           data-limit="{{ (a.credit_limit or 0) | float }}"
+           data-pending="{{ (pending_totals.get(a.id) or 0) | float }}">
+      <input class="d-none acct-radio" type="radio" name="account_id" value="{{ a.id }}" disabled>
+
+      <div class="acct-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="badge rounded-pill text-bg-secondary">Inactive</span>
+          <span class="small text-muted">{{ curr_code }}</span>
+        </div>
+
+        <div class="fw-bold d-flex align-items-center gap-2">
+          <i class="bi bi-grip-vertical text-muted sort-handle" title="Drag"></i>
+          {{ a.name }}
+          <span class="badge text-bg-secondary ms-2">Inactive</span>
+        </div>
+
+        <div class="display-9 fw-semibold my-1">
+          {{ currency_symbol(a) }}{{ (balances.get(a.id) or 0) | money }}
+        </div>
+      </div>
+    </label>
+  {% endfor %}
+</div>
           <!-- overlay controls in the top-right corner -->
       <div class="slider-controls top-right" aria-hidden="false">
         <button class="btn slider-nav prev" type="button" aria-label="Previous">‹</button>

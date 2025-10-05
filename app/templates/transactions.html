@@ -690,35 +690,49 @@ document.getElementById('editTxModal').addEventListener('show.bs.modal', functio
     });
   }
 
-  // ---------- Fetch + Render ----------
-  async function load() {
-    const year  = Number(yearSel.value);
-    const month = monthSel.value ? Number(monthSel.value) : null;
+// ---------- Fetch + Render ----------
+async function load() {
+  const year  = Number(yearSel.value);
+  const month = monthSel.value ? Number(monthSel.value) : null;
 
-    const params = new URLSearchParams({ year: String(year) });
-    if (month) params.set('month', String(month));
+  // Build query strings
+  const qsYear   = new URLSearchParams({ year: String(year) }).toString();     // yearly (no month)
+  const qsScoped = new URLSearchParams({ year: String(year) });                // month-scoped (optional)
+  if (month) qsScoped.set('month', String(month));
 
-    try {
-      const res = await fetch(`/api/send_overview?${params.toString()}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
+  try {
+    // Fetch both in parallel
+    const [resYear, resScoped] = await Promise.all([
+      fetch(`/api/send_overview?${qsYear}`),
+      fetch(`/api/send_overview?${qsScoped.toString()}`)
+    ]);
 
-      // KPI
-      const total = Number(data.total_sent || 0);
-      kpiAmount.textContent = fmt(total);
-      if (data.month) {
-        kpiPeriod.textContent = `${monthName(data.month)}, ${data.year}`;
-      } else {
-        kpiPeriod.textContent = `${data.year}`;
-      }
+    if (!resYear.ok)   throw new Error(`yearly HTTP ${resYear.status}`);
+    if (!resScoped.ok) throw new Error(`scoped HTTP ${resScoped.status}`);
 
-      // Charts
-      buildLineChart(data.monthly || {});
-      buildBarChart(data.recipients || []);
-    } catch (err) {
-      console.error('[send-overview] Failed:', err);
+    const [dataYear, dataScoped] = await Promise.all([resYear.json(), resScoped.json()]);
+
+    // ----- KPI (use scoped if month selected, else yearly) -----
+    const kpiData = month ? dataScoped : dataYear;
+    const total = Number(kpiData.total_sent || 0);
+    kpiAmount.textContent = fmt(total);
+    if (kpiData.month) {
+      kpiPeriod.textContent = `${monthName(kpiData.month)}, ${kpiData.year}`;
+    } else {
+      kpiPeriod.textContent = `${kpiData.year}`;
     }
+
+    // ----- Line chart (always full year) -----
+    buildLineChart(dataYear.monthly || {});
+
+    // ----- Bar chart (use scoped to reflect filter) -----
+    buildBarChart((dataScoped.recipients || []));
+
+  } catch (err) {
+    console.error('[send-overview] Failed:', err);
   }
+}
+
 
   // ---------- Events ----------
   yearSel.addEventListener('change', load);

@@ -343,7 +343,11 @@ body {
 
 /* Left pane layout */
 .left-pane { height: 75svh; display: flex; flex-direction: column; }
-.left-scroll { overflow: auto; min-height: 0; }
+.left-scroll { 
+  overflow-x: hidden;   /* hides horizontal scrollbar */
+  overflow-y: auto;     /* shows vertical scrollbar when needed */
+  min-height: 600px; 
+}
 
 /* ==========================================================================
    5) ACCOUNT SLIDER (HORIZONTAL DRAG/SORT)
@@ -459,3 +463,5 @@ body {
   width: 100% !important;
   height: 100% !important;
 }
+  .slider-track .acct-card.is-inactive { display: none !important; }
+  .slider-track.show-inactive .acct-card.is-inactive { display: block !important; }

@@ -18,23 +18,56 @@ def budget_page():
     currency = request.args.get("currency") or "KRW"   # or "BDT" as needed
 
     data = compute_budget_page(current_user.id, currency, year, month)
-    income_total_val = month_income_total(current_user.id, currency, year, month)  # <- CALL IT
-    # If you want yearly line chart: compute 12 months quickly here (optional)
-    # line_labels = [f"{m:02d}" for m in range(1,13)]
-    # line_budget = []
-    # line_spent  = []
-    # for m in range(1,13):
-    #     d = compute_budget_page(current_user.id, currency, year, m)
-    #     line_budget.append(d["totals"]["budget"])
-    #     line_spent.append(d["totals"]["spent"])
-    # inside budget_page()
+    income_total_val = month_income_total(current_user.id, currency, year, month)
+
+    # --------- ADD THIS BLOCK (fallback to previous month) ---------
+    # 1) any budgets exist for selected month?
+    curr_exists = (
+        db.session.query(Budget.id)
+        .filter(
+            Budget.user_id == current_user.id,
+            Budget.year == year, Budget.month == month
+        )
+        .first()
+        is not None
+    )
+
+    if not curr_exists:
+        # find previous month
+        prev_y, prev_m = (year - 1, 12) if month == 1 else (year, month - 1)
+
+        # map: {category_id: amount} for previous month
+        prev_map = {
+            cid: amt
+            for cid, amt in db.session.query(Budget.category_id, Budget.amount)
+            .filter(
+                Budget.user_id == current_user.id,
+                Budget.year == prev_y, Budget.month == prev_m
+            )
+            .all()
+        }
+
+        if prev_map:
+            # inject into your data.table (expects items with id/name/budget)
+            # NOTE: we only touch parent rows—your compute_budget_page should already build parent rows there
+            for row in (data.get("table") or []):
+                # row like {"id": <cat_id>, "name": "...", "budget": Decimal|None, ...}
+                if row.get("budget") in (None, 0, "0", ""):
+                    row["budget"] = prev_map.get(row["id"], row.get("budget"))
+            data["used_fallback"] = True
+        else:
+            data["used_fallback"] = False
+    else:
+        data["used_fallback"] = False
+    # --------- END ADDED BLOCK ---------
+
+    # (your yearly lines – unchanged)
     line_labels = [f"{m:02d}" for m in range(1, 13)]
     line_budget, line_spent = [], []
     for m in range(1, 13):
         d = compute_budget_page(current_user.id, currency, year, m)
         line_budget.append(d["totals"]["budget"])
         line_spent.append(d["totals"]["spent"])
-
 
     return render_template(
         "budget.html",

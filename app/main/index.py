@@ -13,7 +13,7 @@ from ..models import Account, Currency
 from decimal import Decimal
 from sqlalchemy import desc
 from ..extensions import db
-
+from app.services.krw_overview import krw_income_spent
 _SYMBOL = {"KRW": "₩", "BDT": "৳"}
 
 def _fmt(sym: str, n: float) -> str:
@@ -174,3 +174,11 @@ def api_expense_breakdown():
     }
     return jsonify(payload)
     
+@main.route("/api/krw_income_spent", methods=["GET"], endpoint="api_krw_income_spent")
+@login_required
+def api_krw_income_spent():
+    today = date.today()
+    year  = request.args.get("year", type=int)  or today.year
+    month = request.args.get("month", type=int) or today.month
+    data = krw_income_spent(current_user.id, year, month)
+    return jsonify({"year": year, "month": month, **data})

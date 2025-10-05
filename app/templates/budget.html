@@ -285,7 +285,12 @@
           <input type="hidden" name="year" value="{{ year }}">
           <input type="hidden" name="month" value="{{ month }}">
           <input type="hidden" name="currency" value="{{ currency }}">
-
+          {% if data.used_fallback %}
+            <div class="alert alert-warning py-2 small">
+              No budgets found for {{ year }}-{{ "%02d"|format(month) }}.
+              Prefilled with <strong>previous month</strong> values.
+            </div>
+          {% endif %}
           <div class="alert alert-light border small mb-3">
             Budgets apply to <strong>parent categories</strong> only. Child rows show how much they have spent
             as a percentage of their parent’s budget. Leave a field blank to remove that parent’s budget.
@@ -301,22 +306,22 @@
               </thead>
               <tbody>
                 {% for parent in data.table %}
-                  <!-- Parent input -->
                   <tr class="table-light">
                     <td class="fw-semibold">{{ parent.name }}</td>
                     <td class="text-end">
                       <div class="input-group input-group-sm">
                         <span class="input-group-text">₩</span>
                         <input type="number" step="0.01" min="0"
-                               class="form-control text-end"
-                               name="budget[{{ parent.id }}]"
-                               value="{{ parent.budget or '' }}"
-                               placeholder="0">
+                              class="form-control text-end"
+                              name="budget[{{ parent.id }}]"
+                              value="{{ parent.budget or '' }}" 
+                              placeholder="0">
                       </div>
                     </td>
                   </tr>
                 {% endfor %}
               </tbody>
+
             </table>
           </div>
         </div>
@@ -353,31 +358,6 @@
     </div>
   </div>
 </div>
-
-<!-- Reset Budget Modal -->
-<div class="modal fade" id="resetBudgetModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <form action="{{ url_for('main.budget_reset') }}" method="post">
-        <div class="modal-header">
-          <h5 class="modal-title">Reset Budgets — {{ year }}-{{ "%02d"|format(month) }}</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body">
-          Are you sure you want to remove all budgets for this month? This cannot be undone.
-          <input type="hidden" name="year" value="{{ year }}">
-          <input type="hidden" name="month" value="{{ month }}">
-          <input type="hidden" name="currency" value="{{ currency }}">
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
-          <button class="btn btn-danger">Reset</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-
 <!-- Embed Data for JS -->
 <script>
   window.__BUDGET_DATA__ = {{ data|tojson }};

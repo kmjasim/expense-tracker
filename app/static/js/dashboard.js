@@ -325,3 +325,55 @@ function paint(d) {
   });
 })();
 
+(function () {
+  const elSpent  = document.getElementById('krwSpent');
+  const elIncome = document.getElementById('krwIncome');
+  const elPct    = document.getElementById('krwPct');
+
+  // set these if you already have selectors on the page; else it defaults to current month
+  const params = new URLSearchParams({
+    year:  new Date().getFullYear(),
+    month: new Date().getMonth() + 1,
+  });
+
+  fetch(`/api/krw_income_spent?${params.toString()}`)
+    .then(r => r.json())
+    .then(d => {
+      const fmt = n => Number(n || 0).toLocaleString();
+      const pct = d.income > 0 ? Math.round((d.spent / d.income) * 100) : 0;
+      elSpent.textContent  = `₩${fmt(d.spent)}`;
+      elIncome.textContent = `₩${fmt(d.income)}`;
+      elPct.textContent = `${pct}%`;   // ← add % sign
+
+    })
+    .catch(err => console.error('[krwIncomeSpent] failed', err));
+})();
+
+function colorizePct(el, pct) {
+  el.classList.remove('text-success','text-warning','text-danger');
+  if (isNaN(pct)) pct = 0;
+
+  if (pct < 30) {
+    el.classList.add('text-success');
+  } else if (pct <= 60) {
+    el.classList.add('text-warning');
+  } else {
+    el.classList.add('text-danger');
+  }
+}
+
+// Example: call this after you set the values from your API
+(function () {
+  const elSpent  = document.getElementById('krwSpent');
+  const elIncome = document.getElementById('krwIncome');
+  const elPct    = document.getElementById('krwPct');
+
+  // ...after fetch + compute:
+  // elSpent.textContent = '...';
+  // elIncome.textContent = '...';
+  // const pct = Math.round((spent / income) * 100);
+
+  // Demo line (replace with your real pct):
+  const pct = Number(elPct.textContent) || 0;
+  colorizePct(elPct, pct);
+})();

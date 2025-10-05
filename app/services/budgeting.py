@@ -3,21 +3,42 @@ from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
-from sqlalchemy import func, and_, not_
+from sqlalchemy import func, and_, not_, select
 from ..extensions import db
 from ..models import (
     Category, Budget, TxnType,
     TransactionKRW, TransactionBDT, Currency
 )
 from .textutils import is_cc_settlement  # if you already have something similar, else ignore
+def prev_month(y: int, m: int):
+    return (y - 1, 12) if m == 1 else (y, m - 1)
 
-# app/services/budgeting.py (only the changed / key parts)
+def load_parent_categories(user_id: int):
+    rows = db.session.execute(
+        select(Category.id, Category.name)
+        .where(Category.user_id == user_id, Category.parent_id.is_(None))
+        .order_by(Category.name)
+    ).all()
+    # rows -> list[Row(id=..., name=...)]
+    return [{"id": r.id, "name": r.name} for r in rows]
 
-from collections import defaultdict
-from dataclasses import dataclass
-from decimal import Decimal
-from sqlalchemy import func, and_, not_
-# ... imports as before
+def budgets_for(user_id: int, year: int, month: int):
+    rows = db.session.execute(
+        select(Budget.category_id, Budget.amount)
+        .where(Budget.user_id == user_id,
+               Budget.year == year,
+               Budget.month == month)
+    ).all()
+    # return {category_id: amount}
+    return {r.category_id: r.amount for r in rows}
+
+def resolve_budget_map_with_fallback(user_id: int, year: int, month: int):
+    current = budgets_for(user_id, year, month)
+    if current:
+        return current, False
+    py, pm = prev_month(year, month)
+    prev = budgets_for(user_id, py, pm)
+    return prev, bool(prev)
 
 @dataclass
 class Row:
