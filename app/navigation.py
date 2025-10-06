@@ -31,6 +31,12 @@ MENU = [
         },
     ],
 },
+{
+    "label": "Credit Cards",
+    "icon": "bi bi-credit-card-2-front",
+    "endpoint": "main.credit_cards_page",
+},
+
     {
         "label": "Transactions",
         "icon": "bi bi-journal-text",

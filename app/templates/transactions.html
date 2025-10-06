@@ -184,25 +184,77 @@
           {% endfor %}
         </tbody>
       </table>
-      {% set krw_pages = (krw_total // krw_per_page) + (1 if krw_total % krw_per_page else 0) %}
-      <nav aria-label="KRW pagination">
-        <ul class="pagination pagination-sm justify-content-center">
-          {% for p in range(1, krw_pages + 1) %}
-            <li class="page-item {% if p == krw_page %}active{% endif %}">
-              <a class="page-link"
-                href="{{ url_for('main.transactions_page',
-                                  krw_page=p,
-                                  krw_q=krw_q,
-                                  krw_category_id=krw_category_id,
-                                  krw_account_id=krw_account_id,
-                                  krw_from=krw_from_str,
-                                  krw_to=krw_to_str) }}#krw-table">
-                {{ p }}
-              </a>
-            </li>
-          {% endfor %}
-        </ul>
-      </nav>
+{# ---------- KRW SAFE DEFAULTS ---------- #}
+{% set _krw_total = krw_total|default(0)|int %}
+{% set _krw_per   = krw_per_page|default(10)|int %}
+{% set _krw_page  = krw_page|default(1)|int %}
+{% set _krw_pages = krw_pages|default(((_krw_total + _krw_per - 1)//_krw_per))|int %}
+
+{# ---------- KRW PAGINATION (windowed, max 10) ---------- #}
+{% if _krw_pages >= 1 %}
+  {% set page = _krw_page %}
+  {% set total = _krw_pages %}
+  {% set win = 10 if total >= 10 else total %}
+  {% set half = win // 2 %}
+
+  {% set start = page - half %}
+  {% if start < 1 %}{% set start = 1 %}{% endif %}
+  {% set end = start + win - 1 %}
+  {% if end > total %}
+    {% set end = total %}
+    {% set start = end - win + 1 %}
+    {% if start < 1 %}{% set start = 1 %}{% endif %}
+  {% endif %}
+
+  {% macro krw_item(p, label=None, disabled=False, active=False) -%}
+    {% set lbl = label or p %}
+    {% if disabled %}
+      <li class="page-item disabled"><span class="page-link">{{ lbl }}</span></li>
+    {% elif active %}
+      <li class="page-item active" aria-current="page"><span class="page-link">{{ lbl }}</span></li>
+    {% else %}
+      <li class="page-item">
+        <a class="page-link"
+           href="{{ url_for('main.transactions_page',
+                            krw_page=p,
+                            krw_q=krw_q,
+                            krw_category_id=krw_category_id,
+                            krw_account_id=krw_account_id,
+                            krw_from=krw_from_str,
+                            krw_to=krw_to_str) }}#krw-table">{{ lbl }}</a>
+      </li>
+    {% endif %}
+  {%- endmacro %}
+
+  <nav aria-label="KRW pagination">
+    <ul class="pagination pagination-sm justify-content-center flex-wrap">
+      {{ krw_item(1, '« First', disabled=(page == 1)) }}
+      {{ krw_item(page-1, '‹ Prev', disabled=(page == 1)) }}
+
+      {% if start > 1 %}
+        {{ krw_item(1, '1') }}
+        {% if start > 2 %}
+          <li class="page-item disabled"><span class="page-link">…</span></li>
+        {% endif %}
+      {% endif %}
+
+      {% for p in range(start, end + 1) %}
+        {{ krw_item(p, active=(p == page)) }}
+      {% endfor %}
+
+      {% if end < total %}
+        {% if end < total - 1 %}
+          <li class="page-item disabled"><span class="page-link">…</span></li>
+        {% endif %}
+        {{ krw_item(total, total) }}
+      {% endif %}
+
+      {{ krw_item(page+1, 'Next ›', disabled=(page == total)) }}
+      {{ krw_item(total, 'Last »', disabled=(page == total)) }}
+    </ul>
+  </nav>
+{% endif %}
+
 
     </div>
   </div>
@@ -374,25 +426,77 @@
           {% endfor %}
         </tbody>
       </table>
-      {% set bdt_pages = (bdt_total // bdt_per_page) + (1 if bdt_total % bdt_per_page else 0) %}
-      <nav aria-label="BDT pagination">
-        <ul class="pagination pagination-sm justify-content-center">
-          {% for p in range(1, bdt_pages + 1) %}
-            <li class="page-item {% if p == bdt_page %}active{% endif %}">
-              <a class="page-link"
-                href="{{ url_for('main.transactions_page',
-                                  bdt_page=p,
-                                  bdt_q=bdt_q,
-                                  bdt_category_id=bdt_category_id,
-                                  bdt_account_id=bdt_account_id,
-                                  bdt_from=bdt_from_str,
-                                  bdt_to=bdt_to_str) }}#bdt-table">
-                {{ p }}
-              </a>
-            </li>
-          {% endfor %}
-        </ul>
-      </nav>
+{# ---------- BDT SAFE DEFAULTS ---------- #}
+{% set _bdt_total = bdt_total|default(0)|int %}
+{% set _bdt_per   = bdt_per_page|default(10)|int %}
+{% set _bdt_page  = bdt_page|default(1)|int %}
+{% set _bdt_pages = bdt_pages|default(((_bdt_total + _bdt_per - 1)//_bdt_per))|int %}
+
+{# ---------- BDT PAGINATION (windowed, max 10) ---------- #}
+{% if _bdt_pages >= 1 %}
+  {% set page = _bdt_page %}
+  {% set total = _bdt_pages %}
+  {% set win = 10 if total >= 10 else total %}
+  {% set half = win // 2 %}
+
+  {% set start = page - half %}
+  {% if start < 1 %}{% set start = 1 %}{% endif %}
+  {% set end = start + win - 1 %}
+  {% if end > total %}
+    {% set end = total %}
+    {% set start = end - win + 1 %}
+    {% if start < 1 %}{% set start = 1 %}{% endif %}
+  {% endif %}
+
+  {% macro bdt_item(p, label=None, disabled=False, active=False) -%}
+    {% set lbl = label or p %}
+    {% if disabled %}
+      <li class="page-item disabled"><span class="page-link">{{ lbl }}</span></li>
+    {% elif active %}
+      <li class="page-item active" aria-current="page"><span class="page-link">{{ lbl }}</span></li>
+    {% else %}
+      <li class="page-item">
+        <a class="page-link"
+           href="{{ url_for('main.transactions_page',
+                            bdt_page=p,
+                            bdt_q=bdt_q,
+                            bdt_category_id=bdt_category_id,
+                            bdt_account_id=bdt_account_id,
+                            bdt_from=bdt_from_str,
+                            bdt_to=bdt_to_str) }}#bdt-table">{{ lbl }}</a>
+      </li>
+    {% endif %}
+  {%- endmacro %}
+
+  <nav aria-label="BDT pagination">
+    <ul class="pagination pagination-sm justify-content-center flex-wrap">
+      {{ bdt_item(1, '« First', disabled=(page == 1)) }}
+      {{ bdt_item(page-1, '‹ Prev', disabled=(page == 1)) }}
+
+      {% if start > 1 %}
+        {{ bdt_item(1, '1') }}
+        {% if start > 2 %}
+          <li class="page-item disabled"><span class="page-link">…</span></li>
+        {% endif %}
+      {% endif %}
+
+      {% for p in range(start, end + 1) %}
+        {{ bdt_item(p, active=(p == page)) }}
+      {% endfor %}
+
+      {% if end < total %}
+        {% if end < total - 1 %}
+          <li class="page-item disabled"><span class="page-link">…</span></li>
+        {% endif %}
+        {{ bdt_item(total, total) }}
+      {% endif %}
+
+      {{ bdt_item(page+1, 'Next ›', disabled=(page == total)) }}
+      {{ bdt_item(total, 'Last »', disabled=(page == total)) }}
+    </ul>
+  </nav>
+{% endif %}
+
 
     </div>
   </div>

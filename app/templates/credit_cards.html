@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% set page_title = "Credit Cards" %}
+{% block content %}
+
+<div class="container-fluid py-3">
+
+  <!-- Filters -->
+  <form method="get" class="row g-2 align-items-end mb-3">
+    <div class="col-auto">
+      <label class="form-label small">Year</label>
+      <input type="number" class="form-control" name="year" value="{{ year }}">
+    </div>
+    <div class="col-auto">
+      <label class="form-label small">Month</label>
+      <input type="number" class="form-control" name="month" value="{{ month }}">
+    </div>
+    <div class="col-auto">
+      <label class="form-label small">Account</label>
+      <select class="form-select" name="account_id">
+        <option value="0">All Cards</option>
+        {% for t in totals %}
+          <option value="{{ t.id }}" {% if account_id == t.id %}selected{% endif %}>{{ t.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-auto">
+      <button class="btn btn-primary">Apply</button>
+    </div>
+  </form>
+
+  <!-- Account summary cards -->
+<div id="ccCards" class="row g-3 mb-4 align-items-center">
+  {% for t in totals %}
+  <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+    <div class="card shadow-sm h-100 border-0">
+      <div class="card-body">
+        <div class="text-muted tiny">{{ t.name }}</div>
+        <h5 class="fw-bold text-danger mb-0">₩{{ "{:,}".format((t.total_spent or 0)|int) }}</h5>
+        <div class="tiny text-muted">Spent this month</div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+  {% if totals|length == 0 %}
+    <div class="text-muted small ps-2">No credit cards found.</div>
+  {% endif %}
+</div>
+
+
+  <!-- Transactions table -->
+  <div class="card shadow-sm">
+    <div class="card-header fw-semibold">Transactions — {{ year }}-{{ "%02d"|format(month) }}</div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+
+<!-- Transactions table (no Recipient col) -->
+<table class="table table-sm mb-0 table-bordered table-striped">
+  <thead class="table-dark">
+    <tr>
+      <th>Date</th>
+      <th>Account</th>
+      <th>Category</th>
+      <th>Note</th>
+      <th class="text-end">Amount</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for t in txns %}
+    <tr>
+      <td>{{ t.date.strftime('%Y-%m-%d') }}</td>
+      <td>{{ t.account_name }}</td>
+      <td>{{ t.category_name or '—' }}</td>
+      <td class="text-truncate" style="max-width:280px;">{{ t.note or '—' }}</td>
+      <td class="text-end text-danger">₩{{ "{:,}".format((t.amount or 0)|abs|int) }}</td>
+    </tr>
+    {% endfor %}
+    {% if txns|length == 0 %}
+      <tr><td colspan="5" class="text-center text-muted py-3">No transactions found</td></tr>
+    {% endif %}
+  </tbody>
+</table>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+<script>
+(async function(){
+  const cardsWrap = document.getElementById('ccCards');
+  const year  = {{ year|int }};
+  const month = {{ month|int }};
+
+  async function loadCards() {
+    const qs = new URLSearchParams({ year, month });
+    const url = "{{ url_for('main.api_credit_cards_totals') }}?" + qs.toString();
+    console.log('[cards] fetch', url);
+    const res = await fetch(url);
+    if (!res.ok) {
+      console.error('[cards] fetch failed', res.status);
+      cardsWrap.innerHTML = '<div class="text-muted small ps-2">Failed to load card totals.</div>';
+      return;
+    }
+    const totals = await res.json();
+    console.log('[cards] data', totals);
+    paintCards(totals);
+  }
+  loadCards();
+})();
+</script>
+
+
+{% endblock %}

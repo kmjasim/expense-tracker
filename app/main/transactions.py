@@ -1,6 +1,7 @@
 from datetime import date, timedelta, datetime
 from io import BytesIO, StringIO
 import csv
+from math import ceil
 
 from flask import (
     abort, jsonify, redirect, render_template, request, Response,
@@ -651,6 +652,8 @@ def _sent_amount_expr():
         ),
         0
     ) 
+
+
 @main.route("/transactions", methods=["GET"], endpoint="transactions_page")
 @login_required
 def transactions_page():
@@ -679,52 +682,47 @@ def transactions_page():
                   .filter(Category.user_id == current_user.id, Category.parent_id.is_(None))
                   .options(selectinload(Category.children))
                   .order_by(Category.name.asc()).all())
+
     accounts_krw = (db.session.query(Account)
                     .filter(Account.user_id == current_user.id,
                             Account.currency == Currency.KRW,
                             Account.is_active.is_(True))
                     .order_by(Account.display_order.asc()).all())
+
     accounts_bdt = (db.session.query(Account)
                     .filter(Account.user_id == current_user.id,
                             Account.currency == Currency.BDT,
                             Account.is_active.is_(True))
                     .order_by(Account.display_order.asc()).all())
 
-    # ---------------- Table rows ----------------
-    # (hide refunds in UI; show settlements)
-    krw_page = request.args.get("krw_page", 1, type=int)
+    # ---------------- Base queries (shared filters applied once) ----------------
+    krw_query = _base_for_table(TransactionKRW, krw_start, krw_end,
+                                krw_q, krw_category_id, krw_account_id)
+
+    bdt_query = _base_for_table(TransactionBDT, bdt_start, bdt_end,
+                                bdt_q, bdt_category_id, bdt_account_id)
+
+    # ---------------- Pagination (KRW) ----------------
+    krw_page = max(request.args.get("krw_page", 1, type=int), 1)
     krw_per_page = 10
+    krw_total = krw_query.count()
+    krw_pages = max(1, ceil(krw_total / krw_per_page)) if krw_per_page else 1
 
-    krw_rows = (
-        _base_for_table(TransactionKRW, krw_start, krw_end,
-                        krw_q, krw_category_id, krw_account_id)
-        .offset((krw_page - 1) * krw_per_page)
-        .limit(krw_per_page)
-        .all()
-    )
+    krw_rows = (krw_query
+                .offset((krw_page - 1) * krw_per_page)
+                .limit(krw_per_page)
+                .all())
 
-    krw_total = (
-        _base_for_table(TransactionKRW, krw_start, krw_end,
-                        krw_q, krw_category_id, krw_account_id)
-        .count()
-    )
-
-    bdt_page = request.args.get("bdt_page", 1, type=int)
+    # ---------------- Pagination (BDT) ----------------
+    bdt_page = max(request.args.get("bdt_page", 1, type=int), 1)
     bdt_per_page = 10
+    bdt_total = bdt_query.count()
+    bdt_pages = max(1, ceil(bdt_total / bdt_per_page)) if bdt_per_page else 1
 
-    bdt_rows = (
-        _base_for_table(TransactionBDT, bdt_start, bdt_end,
-                        bdt_q, bdt_category_id, bdt_account_id)
-        .offset((bdt_page - 1) * bdt_per_page)
-        .limit(bdt_per_page)
-        .all()
-    )
-
-    bdt_total = (
-        _base_for_table(TransactionBDT, bdt_start, bdt_end,
-                        bdt_q, bdt_category_id, bdt_account_id)
-        .count()
-    )
+    bdt_rows = (bdt_query
+                .offset((bdt_page - 1) * bdt_per_page)
+                .limit(bdt_per_page)
+                .all())
 
     # ---------------- KPIs ----------------
     # (exclude refunds from IN; exclude “credit card settlement” from OUT)
@@ -732,8 +730,7 @@ def transactions_page():
                     krw_q, krw_category_id, krw_account_id)
     kpi_bdt = _kpis_bdt(bdt_start, bdt_end, bdt_q, bdt_category_id, bdt_account_id)
 
-
-    # export URLs
+    # ---------------- export URLs ----------------
     krw_csv_url = _export_url("KRW", "csv", krw_q, krw_category_id, krw_account_id, krw_from_str, krw_to_str)
     krw_pdf_url = _export_url("KRW", "pdf", krw_q, krw_category_id, krw_account_id, krw_from_str, krw_to_str)
     bdt_csv_url = _export_url("BDT", "csv", bdt_q, bdt_category_id, bdt_account_id, bdt_from_str, bdt_to_str)
@@ -743,40 +740,26 @@ def transactions_page():
         "transactions.html",
         page_title="Transactions", page_slug="transactions",
 
-        # KRW
+        # KRW state
         krw_q=krw_q, krw_category_id=krw_category_id, krw_account_id=krw_account_id,
         krw_from_str=krw_from_str, krw_to_str=krw_to_str,
         accounts_krw=accounts_krw, krw_rows=krw_rows, kpi_krw=kpi_krw,
-        krw_page=krw_page, krw_per_page=krw_per_page, krw_total=krw_total,
-        # BDT
+        krw_page=krw_page, krw_per_page=krw_per_page, krw_total=krw_total, krw_pages=krw_pages,
+
+        # BDT state
         bdt_q=bdt_q, bdt_category_id=bdt_category_id, bdt_account_id=bdt_account_id,
         bdt_from_str=bdt_from_str, bdt_to_str=bdt_to_str,
         accounts_bdt=accounts_bdt, bdt_rows=bdt_rows, kpi_bdt=kpi_bdt,
-        bdt_page=bdt_page, bdt_per_page=bdt_per_page, bdt_total=bdt_total,
+        bdt_page=bdt_page, bdt_per_page=bdt_per_page, bdt_total=bdt_total, bdt_pages=bdt_pages,
+
         # shared
         categories=categories,
+
         # export URLs
         krw_csv_url=krw_csv_url, krw_pdf_url=krw_pdf_url,
         bdt_csv_url=bdt_csv_url, bdt_pdf_url=bdt_pdf_url,
     )
-    start, end, _ = _date_range(ym)
 
-    model = TransactionKRW if cur == "KRW" else TransactionBDT
-    qset = _base(model, start, end, q, category_id, account_id).order_by(model.date.asc())
-
-    def gen():
-        yield "currency,date,account,type,amount,category,note,status\n"
-        for t in qset:
-            status = "deleted" if t.is_deleted else ("pending" if t.is_pending else "completed")
-            acct = t.account.name if t.account else ""
-            cat  = getattr(t, "category_name", "") or ""
-            note = (t.note or "").replace('"','""')
-            yield f'{cur},{t.date.isoformat()},"{acct}",{t.type.value},{t.amount},"{cat}","{note}",{status}\n'
-
-    fname = f"transactions_{cur}_{start.isoformat()}_{end.isoformat()}.csv"
-    return Response(stream_with_context(gen()),
-                    mimetype="text/csv",
-                    headers={"Content-Disposition": f'attachment; filename="{fname}"'})
 
 
 # ----------------------------

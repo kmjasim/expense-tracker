@@ -443,3 +443,46 @@ def accounts_set_balance_exact():
 
     db.session.commit()
     return redirect(url_for("main.payments_page", success="Balance updated"))
+
+
+from datetime import datetime
+from flask import Blueprint, render_template, request
+from flask_login import login_required, current_user
+from ..services.credit_cards import cc_totals_by_account, cc_transactions
+
+@main.route("/credit-cards", endpoint="credit_cards_page")
+@login_required
+def credit_cards_page():
+    now = datetime.now()
+    year = int(request.args.get("year") or now.year)
+    month = int(request.args.get("month") or now.month)
+    account_id = int(request.args.get("account_id") or 0)
+
+    totals = cc_totals_by_account(current_user.id, year, month)
+    txns = cc_transactions(current_user.id, year, month, account_id)
+
+    return render_template(
+        "credit_cards.html",
+        year=year, month=month,
+        account_id=account_id,
+        totals=totals, txns=txns,
+    )
+
+@main.get("/api/credit-cards/totals", endpoint="api_credit_cards_totals")
+@login_required
+def api_credit_cards_totals():
+    from datetime import datetime
+    now = datetime.now()
+    year  = int(request.args.get("year")  or now.year)
+    month = int(request.args.get("month") or now.month)
+
+    totals = cc_totals_by_account(current_user.id, year, month)
+
+    def fmt(v): 
+        try: return f"₩{int(v or 0):,}"
+        except: return "₩0"
+
+    return jsonify([
+        {"id": t["id"], "name": t["name"], "total_spent": float(t["total_spent"]), "total_spent_fmt": fmt(t["total_spent"])}
+        for t in totals
+    ])
