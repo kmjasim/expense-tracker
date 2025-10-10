@@ -465,3 +465,10 @@ body {
 }
   .slider-track .acct-card.is-inactive { display: none !important; }
   .slider-track.show-inactive .acct-card.is-inactive { display: block !important; }
+
+.rotate-on-collapse {
+  transition: transform .15s ease-in-out;
+}
+.rotate-on-collapse[aria-expanded="true"] {
+  transform: rotate(90deg);
+}

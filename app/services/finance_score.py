@@ -129,40 +129,31 @@ def _score_from(inputs: FinanceInputs) -> FinanceScore:
     outflow = inputs.outflow
     pending = inputs.pending_outflow
 
-    # avoid divide-by-zero; treat no-income month as worst case
     base = inflow if inflow > 0 else EPS
 
-    spent_ratio   = _clamp(outflow / base, Decimal(0), Decimal(1))        # 0.00–1.00
-    pending_ratio = _clamp(pending / base, Decimal(0), Decimal(1))        # 0.00–1.00
+    total_spend = outflow + pending
+    spent_ratio = _clamp(total_spend / base, Decimal(0), Decimal(1))  # 0..1 inclusive
 
-    # Core idea: score is the inverse of spending %
-    # 100% spend -> 0, 0% spend -> 100
-    # Nonlinear: curve exponent (>1 tightens the drop when spent_ratio is high)
-    core = Decimal(100) * (Decimal(1) - spent_ratio) ** Decimal("1.20")
+    # Linear: spend more ⇒ lower score
+    score = Decimal(100) * (Decimal(1) - spent_ratio)
 
+    # Optional (harsher drop when spending is high):
+    # score = Decimal(100) * (Decimal(1) - spent_ratio) ** Decimal("1.20")
 
-    # Optional: small penalty for pending (unsettled) outflow, capped at 20 points
-    # e.g., 10% pending -> -10 points, 30% pending -> -20 (cap)
-    pending_penalty = min(Decimal(20), pending_ratio * Decimal(100))
+    score_int = int(round(float(_clamp(score, Decimal(0), Decimal(100)))))
 
-    score = core - pending_penalty
-    score = _clamp(score, Decimal(0), Decimal(100))
-    score_int = int(round(float(score)))
-
-    # Helpful details for your UI
     return FinanceScore(
         score=score_int,
         label=_grade(score_int),
         details={
-            "inflow":          str(inflow),
-            "outflow":         str(outflow),
-            "pending_outflow": str(pending),
-            "spent_ratio":     float(spent_ratio),      # 0..1
-            "pending_ratio":   float(pending_ratio),    # 0..1
-            "core_before_penalty": float(core),
-            "pending_penalty": float(pending_penalty),
+            "inflow":            str(inflow),
+            "outflow":           str(outflow),
+            "pending_outflow":   str(pending),
+            "total_spend":       str(total_spend),
+            "spent_ratio":       float(spent_ratio),  # includes pending
         },
     )
+
 
 
 def get_finance_score(
