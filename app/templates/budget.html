@@ -15,13 +15,6 @@
         <label class="form-label small mb-1">Month</label>
         <input type="number" name="month" class="form-control" min="1" max="12" value="{{ month }}">
       </div>
-      <div>
-        <label class="form-label small mb-1">Currency</label>
-        <select name="currency" class="form-select">
-          <option value="KRW" {{ 'selected' if currency=='KRW' else '' }}>KRW</option>
-          <option value="BDT" {{ 'selected' if currency=='BDT' else '' }}>BDT</option>
-        </select>
-      </div>
       <button class="btn btn-primary">Apply</button>
     </form>
 
@@ -36,229 +29,222 @@
   </div>
 
   <!-- Summary Cards -->
-<!-- Summary Cards -->
-<div class="row g-3 mb-3">
-  <div class="col-md-4">
-    <div class="card shadow-sm h-100">
-      <div class="card-body">
-        <div class="small text-muted">Total Budget</div>
-        <div class="h4 mb-0">{{ "{:,.0f}".format(data.totals.budget) }}</div>
+  <div class="row g-3 mb-3">
+    <div class="col-md-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <div class="small text-muted">Total Budget</div>
+          <div class="h4 mb-0">{{ "{:,.0f}".format(data.totals.budget) }}</div>
+        </div>
       </div>
     </div>
-  </div>
-  <div class="col-md-4">
-    <div class="card shadow-sm h-100">
-      <div class="card-body">
-        <div class="small text-muted">Total Spent</div>
-        <div class="h4 mb-0">{{ "{:,.0f}".format(data.totals.spent) }}</div>
+    <div class="col-md-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <div class="small text-muted">Total Spent</div>
+          <div class="h4 mb-0">{{ "{:,.0f}".format(data.totals.spent) }}</div>
+        </div>
       </div>
     </div>
-  </div>
-  <div class="col-md-4">
-    <div class="card shadow-sm h-100">
-      <div class="card-body">
-        <div class="small text-muted">{{ 'Remaining' if data.totals.remaining >= 0 else 'Over' }}</div>
-        <div class="h4 mb-0">{{ "{:,.0f}".format(data.totals.remaining) }}</div>
-        <div class="small {{ 'text-success' if data.totals.status=='under' else 'text-danger' }}">
-          {{ data.totals.pct_of_budget is not none and (data.totals.pct_of_budget|string ~ '% of budget spent') or 'No budget set' }}
+    <div class="col-md-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <div class="small text-muted">{{ 'Remaining' if data.totals.remaining >= 0 else 'Over' }}</div>
+          <div class="h4 mb-0">{{ "{:,.0f}".format(data.totals.remaining) }}</div>
+          <div class="small {{ 'text-success' if data.totals.status=='under' else 'text-danger' }}">
+            {{ data.totals.pct_of_budget is not none and (data.totals.pct_of_budget|string ~ '% of budget spent') or 'No budget set' }}
+          </div>
         </div>
       </div>
     </div>
   </div>
-</div>
-
 
   <!-- Budget Table -->
   <div class="card shadow-sm mb-3">
-  <div class="card-header"><strong>Budgets by Category</strong></div>
-  <div class="card-body p-0">
-    <div class="table-responsive">
-      <table class="table table-sm align-middle mb-0 table-striped table-bordered">
-        <thead class="table-dark">
-          <tr>
-            <th style="width:40%">Category</th>
-            <th class="text-end">Budget (₩)</th>
-            <th class="text-end">Spent (₩)</th>
-            <th style="width:28%">Progress</th>
-            <th class="text-center" style="width:10%">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for parent in data.table %}
-            {% set pct = (parent.pct_of_cat_budget or 0) %}
-            {% set over = parent.spent > parent.budget %}
-
-            <!-- Parent Row -->
-            <tr class="table-light">
-              <td>
-                {% if parent.children|length > 0 %}
-                  <button class="btn btn-link btn-sm p-0 me-1" data-bs-toggle="collapse"
-                          data-bs-target="#cat-{{ parent.id }}-rows" aria-expanded="false">▸</button>
-                {% endif %}
-                <span class="fw-semibold">{{ parent.name }}</span>
-              </td>
-              <td class="text-end">₩{{ "{:,.0f}".format(parent.budget) }}</td>
-              <td class="text-end">₩{{ "{:,.0f}".format(parent.spent) }}</td>
-              <td>
-                <div class="d-flex align-items-center gap-2">
-                  <div class="progress flex-fill" style="height:6px">
-                    <div class="progress-bar {{ 'bg-danger' if pct>100 else (pct>=80 and 'bg-warning' or 'bg-success') }}"
-                         role="progressbar"
-                         style="width: {{ pct }}%;"
-                         aria-valuenow="{{ pct }}" aria-valuemin="0" aria-valuemax="100"></div>
-                  </div>
-                  <span class="small text-muted">{{ pct|round(1) }}%</span>
-                </div>
-              </td>
-              <td class="text-center">
-                <span class="badge {{ 'bg-danger' if over else 'bg-success' }}">{{ 'Over' if over else 'Under' }}</span>
-              </td>
+    <div class="card-header"><strong>Budgets by Category & Type</strong></div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0 table-striped table-bordered">
+          <thead class="table-dark">
+            <tr>
+              <th style="width:40%">Category / Type</th>
+              <th class="text-end">Budget (₩)</th>
+              <th class="text-end">Spent (₩)</th>
+              <th style="width:28%">Progress</th>
+              <th class="text-center" style="width:10%">Status</th>
             </tr>
+          </thead>
+          <tbody>
+            {% for parent in data.table %}
+              {% set pct = (parent.pct_of_cat_budget or 0) %}
+              {% set over = parent.spent > parent.budget %}
 
-            <!-- Children (collapsed) -->
-            {% if parent.children|length > 0 %}
-              <tr class="collapse" id="cat-{{ parent.id }}-rows">
-                <td colspan="5" class="p-0">
-                  <table class="table table-sm mb-0">
-                    <tbody>
-                      {% for ch in parent.children %}
-                        {% set cpct = (ch.pct_parent_budget or 0) %}
-                        <tr>
-                          <td class="ps-4">— {{ ch.name }}</td>
-                          <td class="text-end">—</td>
-                          <td class="text-end">₩{{ "{:,.0f}".format(ch.spent) }}</td>
-                          <td>
-                            <div class="d-flex align-items-center gap-2">
-                              <div class="progress flex-fill" style="height:6px">
-                                <div class="progress-bar bg-info"
-                                     role="progressbar"
-                                     style="width: {{ cpct }}%;"
-                                     aria-valuenow="{{ cpct }}" aria-valuemin="0" aria-valuemax="100"></div>
-                              </div>
-                              <span class="small text-muted">{{ cpct|round(1) }}% of parent</span>
-                            </div>
-                          </td>
-                          <td class="text-center"><span class="badge bg-secondary">Child</span></td>
-                        </tr>
-                      {% endfor %}
-                    </tbody>
-                  </table>
+              <!-- Parent Row (category parents + the type pseudo-row) -->
+              <tr class="table-light">
+                <td>
+                  {# categories may have children; the type pseudo-row won't #}
+                  {% if parent.children and parent.children|length > 0 %}
+                    <button class="btn btn-link btn-sm p-0 me-1" data-bs-toggle="collapse"
+                            data-bs-target="#cat-{{ parent.id }}-rows" aria-expanded="false">▸</button>
+                  {% endif %}
+                  <span class="fw-semibold">
+                    {{ parent.name }}
+                  </span>
+                </td>
+                <td class="text-end">₩{{ "{:,.0f}".format(parent.budget) }}</td>
+                <td class="text-end">₩{{ "{:,.0f}".format(parent.spent) }}</td>
+                <td>
+                  <div class="d-flex align-items-center gap-2">
+                    <div class="progress flex-fill" style="height:6px">
+                      <div class="progress-bar {{ 'bg-danger' if pct>100 else (pct>=80 and 'bg-warning' or 'bg-success') }}"
+                           role="progressbar"
+                           style="width: {{ pct }}%;"
+                           aria-valuenow="{{ pct }}" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                    <span class="small text-muted">{{ pct|round(1) }}%</span>
+                  </div>
+                </td>
+                <td class="text-center">
+                  <span class="badge {{ 'bg-danger' if over else 'bg-success' }}">{{ 'Over' if over else 'Under' }}</span>
                 </td>
               </tr>
-            {% endif %}
-          {% else %}
-            <tr><td colspan="5" class="text-muted">No categories or budgets yet.</td></tr>
-          {% endfor %}
-        </tbody>
 
-        <tfoot class="table-light">
-          <tr>
-            <th>Total</th>
-            <th class="text-end">₩{{ "{:,.0f}".format(data.totals.budget) }}</th>
-            <th class="text-end">₩{{ "{:,.0f}".format(data.totals.spent) }}</th>
-            <th>
-              {% if data.totals.pct_of_budget is not none %}
-                <div class="d-flex align-items-center gap-2">
-                  <div class="progress flex-fill" style="height:6px">
-                    <div class="progress-bar {{ 'bg-danger' if data.totals.spent>data.totals.budget else (data.totals.pct_of_budget>=80 and 'bg-warning' or 'bg-success') }}"
-                         style="width: {{ data.totals.pct_of_budget }}%;"></div>
-                  </div>
-                  <span class="small text-muted">{{ data.totals.pct_of_budget|round(1) }}%</span>
-                </div>
+              <!-- Children (collapsed; for categories only) -->
+              {% if parent.children and parent.children|length > 0 %}
+                <tr class="collapse" id="cat-{{ parent.id }}-rows">
+                  <td colspan="5" class="p-0">
+                    <table class="table table-sm mb-0">
+                      <tbody>
+                        {% for ch in parent.children %}
+                          {% set cpct = (ch.pct_parent_budget or 0) %}
+                          <tr>
+                            <td class="ps-4">— {{ ch.name }}</td>
+                            <td class="text-end">—</td>
+                            <td class="text-end">₩{{ "{:,.0f}".format(ch.spent) }}</td>
+                            <td>
+                              <div class="d-flex align-items-center gap-2">
+                                <div class="progress flex-fill" style="height:6px">
+                                  <div class="progress-bar bg-info"
+                                       role="progressbar"
+                                       style="width: {{ cpct }}%;"
+                                       aria-valuenow="{{ cpct }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                                <span class="small text-muted">{{ cpct|round(1) }}% of parent</span>
+                              </div>
+                            </td>
+                            <td class="text-center"><span class="badge bg-secondary">Child</span></td>
+                          </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </td>
+                </tr>
               {% endif %}
-            </th>
-            <th class="text-center">
-              {% set over_all = data.totals.remaining < 0 %}
-              <span class="badge {{ 'bg-danger' if over_all else 'bg-success' }}">{{ 'Over' if over_all else 'Under' }}</span>
-            </th>
-          </tr>
-        </tfoot>
-      </table>
+            {% else %}
+              <tr><td colspan="5" class="text-muted">No categories or budgets yet.</td></tr>
+            {% endfor %}
+          </tbody>
+
+          <tfoot class="table-light">
+            <tr>
+              <th>Total</th>
+              <th class="text-end">₩{{ "{:,.0f}".format(data.totals.budget) }}</th>
+              <th class="text-end">₩{{ "{:,.0f}".format(data.totals.spent) }}</th>
+              <th>
+                {% if data.totals.pct_of_budget is not none %}
+                  <div class="d-flex align-items-center gap-2">
+                    <div class="progress flex-fill" style="height:6px">
+                      <div class="progress-bar {{ 'bg-danger' if data.totals.spent>data.totals.budget else (data.totals.pct_of_budget>=80 and 'bg-warning' or 'bg-success') }}"
+                           style="width: {{ data.totals.pct_of_budget }}%;"></div>
+                    </div>
+                    <span class="small text-muted">{{ data.totals.pct_of_budget|round(1) }}%</span>
+                  </div>
+                {% endif %}
+              </th>
+              <th class="text-center">
+                {% set over_all = data.totals.remaining < 0 %}
+                <span class="badge {{ 'bg-danger' if over_all else 'bg-success' }}">{{ 'Over' if over_all else 'Under' }}</span>
+              </th>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
     </div>
   </div>
-</div>
 
+  {# Overall summary block (kept from your version) #}
+  {% set budget    = data.totals.budget or 0 %}
+  {% set spent     = data.totals.spent or 0 %}
+  {% set remaining = data.totals.remaining or 0 %}
+  {% set over      = remaining < 0 %}
+  {% set spent_pct_of_budget = (spent / budget * 100) if budget > 0 else None %}
+  {% set remaining_pct       = (remaining / budget * 100) if (budget > 0 and not over) else None %}
+  {% set over_pct            = ((-remaining) / budget * 100) if (budget > 0 and over) else None %}
 
-  <!-- Summary Card -->
-{# Expect: data.totals = { budget, spent, remaining, pct_of_budget } and optionally: income_total #}
-{% set budget    = data.totals.budget or 0 %}
-{% set spent     = data.totals.spent or 0 %}
-{% set remaining = data.totals.remaining or 0 %}
-{% set over      = remaining < 0 %}
-{% set spent_pct_of_budget = (spent / budget * 100) if budget > 0 else None %}
-{% set remaining_pct       = (remaining / budget * 100) if (budget > 0 and not over) else None %}
-{% set over_pct            = ((-remaining) / budget * 100) if (budget > 0 and over) else None %}
+  {% set income_total = income_total if income_total is defined else None %}
+  {% set spent_pct_of_income = (spent / income_total * 100) if income_total and income_total > 0 else None %}
 
-{# Optional: % of income if you pass income_total from the route #}
-{% set income_total = income_total if income_total is defined else None %}
-{% set spent_pct_of_income = (spent / income_total * 100) if income_total and income_total > 0 else None %}
+  {% set status_class =
+      'bg-danger-subtle border-danger text-danger' if over else
+      ('bg-warning-subtle border-warning text-warning' if (spent_pct_of_budget and spent_pct_of_budget >= 90) else
+       'bg-success-subtle border-success text-success')
+  %}
 
-{# Color by status #}
-{% set status_class =
-    'bg-danger-subtle border-danger text-danger' if over else
-    ('bg-warning-subtle border-warning text-warning' if (spent_pct_of_budget and spent_pct_of_budget >= 90) else
-     'bg-success-subtle border-success text-success')
-%}
-
-<div class="card shadow-sm mb-3 {{ status_class }}">
-  <div class="card-body">
-    {% if over %}
-      <div class="h6 mb-1">
-        You are <strong>₩{{ "{:,.0f}".format(-remaining) }}</strong> over budget this month
-        {% if over_pct is not none %} (<strong>{{ over_pct|round(1) }}%</strong> of budget){% endif %}.
-      </div>
-    {% else %}
-      <div class="h6 mb-1">
-        You have <strong>₩{{ "{:,.0f}".format(remaining) }}</strong> remaining this month
-        {% if remaining_pct is not none %} (<strong>{{ remaining_pct|round(1) }}%</strong> of budget left){% endif %}.
-      </div>
-    {% endif %}
-
-    <div class="small">
-      <!-- Spent % of budget -->
-      {% if spent_pct_of_budget is not none %}
-        Spent <strong>{{ spent_pct_of_budget|round(1) }}%</strong> of your budget
-        (₩{{ "{:,.0f}".format(spent) }} / ₩{{ "{:,.0f}".format(budget) }}).
+  <div class="card shadow-sm mb-3 {{ status_class }}">
+    <div class="card-body">
+      {% if over %}
+        <div class="h6 mb-1">
+          You are <strong>₩{{ "{:,.0f}".format(-remaining) }}</strong> over budget this month
+          {% if over_pct is not none %} (<strong>{{ over_pct|round(1) }}%</strong> of budget){% endif %}.
+        </div>
       {% else %}
-        <em>No budget set yet.</em>
+        <div class="h6 mb-1">
+          You have <strong>₩{{ "{:,.0f}".format(remaining) }}</strong> remaining this month
+          {% if remaining_pct is not none %} (<strong>{{ remaining_pct|round(1) }}%</strong> of budget left){% endif %}.
+        </div>
       {% endif %}
-    </div>
 
-    <!-- Spent % of income (optional) -->
-    {% if spent_pct_of_income is not none %}
-      <div class="small mt-1">
-        Spent <strong>{{ spent_pct_of_income|round(1) }}%</strong> of your income
-        (income: ₩{{ "{:,.0f}".format(income_total) }}).
+      <div class="small">
+        {% if spent_pct_of_budget is not none %}
+          Spent <strong>{{ spent_pct_of_budget|round(1) }}%</strong> of your budget
+          (₩{{ "{:,.0f}".format(spent) }} / ₩{{ "{:,.0f}".format(budget) }}).
+        {% else %}
+          <em>No budget set yet.</em>
+        {% endif %}
       </div>
-    {% endif %}
 
-    <!-- Progress bar (overall) -->
-    {% if spent_pct_of_budget is not none %}
-      <div class="mt-3">
-        <div class="progress" style="height: 8px;">
-          <div
-            class="progress-bar {{ 'bg-danger' if over else ('bg-warning' if spent_pct_of_budget >= 90 else 'bg-success') }}"
-            role="progressbar"
-            style="width: {{ [spent_pct_of_budget, 100]|min }}%;"
-            aria-valuenow="{{ spent_pct_of_budget|round(1) }}" aria-valuemin="0" aria-valuemax="100">
+      {% if spent_pct_of_income is not none %}
+        <div class="small mt-1">
+          Spent <strong>{{ spent_pct_of_income|round(1) }}%</strong> of your income
+          (income: ₩{{ "{:,.0f}".format(income_total) }}).
+        </div>
+      {% endif %}
+
+      {% if spent_pct_of_budget is not none %}
+        <div class="mt-3">
+          <div class="progress" style="height: 8px;">
+            <div
+              class="progress-bar {{ 'bg-danger' if over else ('bg-warning' if spent_pct_of_budget >= 90 else 'bg-success') }}"
+              role="progressbar"
+              style="width: {{ [spent_pct_of_budget, 100]|min }}%;"
+              aria-valuenow="{{ spent_pct_of_budget|round(1) }}" aria-valuemin="0" aria-valuemax="100">
+            </div>
+          </div>
+          <div class="d-flex justify-content-between small mt-1">
+            <span>0%</span>
+            <span>{{ spent_pct_of_budget|round(1) }}%</span>
+            <span>100%</span>
           </div>
         </div>
-        <div class="d-flex justify-content-between small mt-1">
-          <span>0%</span>
-          <span>{{ spent_pct_of_budget|round(1) }}%</span>
-          <span>100%</span>
-        </div>
-      </div>
-    {% endif %}
+      {% endif %}
+    </div>
   </div>
-</div>
-
 
   <!-- Charts -->
   <div class="row g-3">
     <div class="col-md-6">
       <div class="card shadow-sm">
-        <div class="card-header"><strong>Spending by Category ({{ year }}-{{ "%02d"|format(month) }})</strong></div>
+        <div class="card-header"><strong>Spending by Category / Type ({{ year }}-{{ "%02d"|format(month) }})</strong></div>
         <div class="card-body"><canvas id="barByCategory"></canvas></div>
       </div>
     </div>
@@ -271,6 +257,7 @@
   </div>
 
 </div>
+
 <!-- Set Budget Modal -->
 <div class="modal fade" id="setBudgetModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-scrollable">
@@ -284,46 +271,80 @@
         <div class="modal-body">
           <input type="hidden" name="year" value="{{ year }}">
           <input type="hidden" name="month" value="{{ month }}">
-          <input type="hidden" name="currency" value="{{ currency }}">
+          <input type="hidden" name="currency" value="KRW">
+
           {% if data.used_fallback %}
             <div class="alert alert-warning py-2 small">
               No budgets found for {{ year }}-{{ "%02d"|format(month) }}.
               Prefilled with <strong>previous month</strong> values.
             </div>
           {% endif %}
+
           <div class="alert alert-light border small mb-3">
             Budgets apply to <strong>parent categories</strong> only. Child rows show how much they have spent
-            as a percentage of their parent’s budget. Leave a field blank to remove that parent’s budget.
+            as a percentage of their parent’s budget. The International Transfer budget is set <strong>by type</strong>.
           </div>
 
+          <!-- Category budgets -->
           <div class="table-responsive">
             <table class="table table-sm align-middle">
               <thead class="table-light">
                 <tr>
-                  <th style="width:60%">Category</th>
+                  <th style="width:60%">Parent Category</th>
                   <th class="text-end" style="width:40%">Budget (₩)</th>
                 </tr>
               </thead>
               <tbody>
-                {% for parent in data.table %}
+                {% for parent in data.table if parent.id != 'type:transfer_international' %}
                   <tr class="table-light">
                     <td class="fw-semibold">{{ parent.name }}</td>
                     <td class="text-end">
                       <div class="input-group input-group-sm">
                         <span class="input-group-text">₩</span>
                         <input type="number" step="0.01" min="0"
-                              class="form-control text-end"
-                              name="budget[{{ parent.id }}]"
-                              value="{{ parent.budget or '' }}" 
-                              placeholder="0">
+                               class="form-control text-end"
+                               name="budget[{{ parent.id }}]"
+                               value="{{ parent.budget or '' }}"
+                               placeholder="0">
                       </div>
                     </td>
                   </tr>
                 {% endfor %}
               </tbody>
-
             </table>
           </div>
+
+          <hr class="my-2">
+
+          <!-- Type budgets -->
+          <div class="small text-muted mb-1">Type Budgets</div>
+          <div class="table-responsive">
+            <table class="table table-sm align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th style="width:60%">Type</th>
+                  <th class="text-end" style="width:40%">Budget (₩)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% set type_row = (data.table | selectattr('id', 'equalto', 'type:transfer_international') | list | first) %}
+                <tr class="table-light">
+                  <td class="fw-semibold">International Transfer (Type)</td>
+                  <td class="text-end">
+                    <div class="input-group input-group-sm">
+                      <span class="input-group-text">₩</span>
+                      <input type="number" step="0.01" min="0"
+                             class="form-control text-end"
+                             name="budget_type[transfer_international]"
+                             value="{{ (type_row and type_row.budget) or '' }}"
+                             placeholder="0">
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
         </div>
 
         <div class="modal-footer">
@@ -345,10 +366,10 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
-          Remove all parent-category budgets for this month?
+          Remove all budgets (parent categories and type budgets) for this month?
           <input type="hidden" name="year" value="{{ year }}">
           <input type="hidden" name="month" value="{{ month }}">
-          <input type="hidden" name="currency" value="{{ currency }}">
+          <input type="hidden" name="currency" value="KRW">
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
@@ -358,6 +379,7 @@
     </div>
   </div>
 </div>
+
 <!-- Embed Data for JS -->
 <script>
   window.__BUDGET_DATA__ = {{ data|tojson }};

@@ -4,7 +4,7 @@ from enum import Enum
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 
-from sqlalchemy import text, select, and_
+from sqlalchemy import func, text, select, and_
 from sqlalchemy.orm import relationship, declared_attr, column_property
 from .extensions import db
 
@@ -359,3 +359,26 @@ class DebtTxn(db.Model):
 
     note = db.Column(db.Text)
     created_at = db.Column(db.DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+
+
+# models.py
+from enum import Enum
+
+class BudgetType(db.Model):
+    __tablename__ = "budgets_type"
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "year", "month", "txn_type",
+                            name="uq_btype_user_year_month_type"),
+        {"sqlite_autoincrement": True},
+    )
+
+    id       = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id  = db.Column(db.Integer, db.ForeignKey("users.id"), index=True, nullable=False)
+    year     = db.Column(db.Integer, nullable=False)
+    month    = db.Column(db.Integer, nullable=False)
+    # store the TxnType enum name (e.g., "transfer_international")
+    txn_type = db.Column(db.Enum(TxnType, name="txn_type_enum"), nullable=False)
+    amount   = db.Column(db.Numeric(14, 2), nullable=False, default=0)
+
+    created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)

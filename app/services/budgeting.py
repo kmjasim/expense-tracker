@@ -1,38 +1,57 @@
 # app/services/budgeting.py
+from __future__ import annotations
+
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
+
 from sqlalchemy import func, and_, not_, select
+
 from ..extensions import db
 from ..models import (
-    Category, Budget, TxnType,
-    TransactionKRW, TransactionBDT, Currency
+    Category,
+    Budget,
+    BudgetType,        # <-- NEW: table for type-scoped budgets
+    TxnType,
+    TransactionKRW,
+    TransactionBDT,    # (unused but kept for parity)
+    Currency,          # (unused here; KRW-only per requirement)
 )
-from .textutils import is_cc_settlement  # if you already have something similar, else ignore
-def prev_month(y: int, m: int):
+
+# Pseudo-row constants for type budget
+TYPE_ROW_ID = "type:transfer_international"
+TYPE_ROW_LABEL = "International Transfer (Type)"
+
+
+# --------------------------
+# Utilities
+# --------------------------
+def prev_month(y: int, m: int) -> tuple[int, int]:
     return (y - 1, 12) if m == 1 else (y, m - 1)
 
-def load_parent_categories(user_id: int):
+
+def load_parent_categories(user_id: int) -> list[dict]:
     rows = db.session.execute(
         select(Category.id, Category.name)
         .where(Category.user_id == user_id, Category.parent_id.is_(None))
         .order_by(Category.name)
     ).all()
-    # rows -> list[Row(id=..., name=...)]
     return [{"id": r.id, "name": r.name} for r in rows]
 
-def budgets_for(user_id: int, year: int, month: int):
+
+def budgets_for(user_id: int, year: int, month: int) -> dict[int, Decimal]:
     rows = db.session.execute(
         select(Budget.category_id, Budget.amount)
         .where(Budget.user_id == user_id,
                Budget.year == year,
                Budget.month == month)
     ).all()
-    # return {category_id: amount}
-    return {r.category_id: r.amount for r in rows}
+    # Only normal category budgets (exclude None, but your schema likely disallows NULL anyway)
+    return {r.category_id: r.amount for r in rows if r.category_id is not None}
 
-def resolve_budget_map_with_fallback(user_id: int, year: int, month: int):
+
+def resolve_budget_map_with_fallback(user_id: int, year: int, month: int) -> tuple[dict[int, Decimal], bool]:
     current = budgets_for(user_id, year, month)
     if current:
         return current, False
@@ -40,9 +59,10 @@ def resolve_budget_map_with_fallback(user_id: int, year: int, month: int):
     prev = budgets_for(user_id, py, pm)
     return prev, bool(prev)
 
+
 @dataclass
 class Row:
-    id: int | None
+    id: int | str | None
     name: str
     parent_id: int | None
     budget: Decimal          # parent-only budget; children will be 0
@@ -51,54 +71,93 @@ class Row:
     pct_of_cat_budget: float | None   # parent’s spent % of its own budget
     children: list
 
-def _month_bounds(y: int, m: int):
-    from datetime import date
+
+def _month_bounds(y: int, m: int) -> tuple[date, date]:
     start = date(y, m, 1)
     end_y = y + (m == 12)
     end_m = (m % 12) + 1
     end = date(end_y, end_m, 1)
     return start, end
 
-def _model_for_currency(currency: str):
-    return TransactionKRW if currency == "KRW" else TransactionBDT
 
-def compute_budget_page(user_id: int, currency: str, year: int, month: int):
-    Model = _model_for_currency(currency)
+def _model_for_currency(_currency_ignored: str):
+    """Force KRW per requirement."""
+    return TransactionKRW
+
+
+# --------------------------
+# Core: compute budget page
+# --------------------------
+def compute_budget_page(user_id: int, currency: str, year: int, month: int) -> dict:
+    """
+    KRW-only:
+      - Parent-category budgets from Budget
+      - 'International Transfer' shown as a separate TYPE pseudo-row:
+          budget from BudgetType(txn_type=transfer_international)
+          spent  from transactions of type transfer_international
+    """
+    Model = _model_for_currency("KRW")
     start, end = _month_bounds(year, month)
 
     # --- categories for THIS user only
     cats = db.session.query(Category.id, Category.name, Category.parent_id)\
         .filter(Category.user_id == user_id).all()
     by_id = {cid: (name, pid) for cid, name, pid in cats}
-    children_of = defaultdict(list)
-    roots = []
+    children_of: dict[int, list[int]] = defaultdict(list)
+    roots: list[int] = []
     for cid, (name, pid) in by_id.items():
         if pid is None:
             roots.append(cid)
         else:
             children_of[pid].append(cid)
 
-    # --- budgets: parent-only (enforce by ignoring children here)
-    raw_budgets = db.session.query(Budget.category_id, func.coalesce(func.sum(Budget.amount), 0))\
-        .filter(Budget.user_id == user_id, Budget.year == year, Budget.month == month,
-                Budget.category_id.in_(roots))\
-        .group_by(Budget.category_id).all()
-    budget_map = {cid: Decimal(amt or 0) for cid, amt in raw_budgets}  # parents only
+    # --- budgets: parent-only (ignore children here)
+    raw_budgets = (
+        db.session.query(Budget.category_id, func.coalesce(func.sum(Budget.amount), 0))
+        .filter(Budget.user_id == user_id,
+                Budget.year == year, Budget.month == month,
+                Budget.category_id.in_(roots))
+        .group_by(Budget.category_id)
+        .all()
+    )
+    budget_map: dict[int, Decimal] = {cid: Decimal(amt or 0) for cid, amt in raw_budgets}
 
-    # --- spent per category (exclude settlements)
+    # --- TYPE budget: transfer_international (from BudgetType)
+    type_budget_val = (
+        db.session.query(func.coalesce(func.sum(BudgetType.amount), 0))
+        .filter(BudgetType.user_id == user_id,
+                BudgetType.year == year, BudgetType.month == month,
+                BudgetType.txn_type == TxnType.transfer_international)
+        .scalar() or 0
+    )
+    type_budget = Decimal(type_budget_val or 0)
+
+    # --- spent per category (exclude credit-card settlements)
     note_l = func.lower(func.coalesce(Model.note, ""))
     is_settlement = and_(note_l.like("%credit%card%"), note_l.like("%settlement%"))
-    spent_rows = db.session.query(
-        Model.category_id,
-        func.coalesce(func.sum(-Model.amount), 0)
-    ).filter(
-        Model.user_id == user_id,
-        Model.is_deleted.is_(False),
-        Model.date >= start, Model.date < end,
-        Model.type.in_([TxnType.expense, TxnType.fee]),
-        not_(is_settlement),
-    ).group_by(Model.category_id).all()
-    spent_map = {cid: Decimal(val or 0) for cid, val in spent_rows}
+
+    spent_rows = (
+        db.session.query(Model.category_id, func.coalesce(func.sum(-Model.amount), 0))
+        .filter(Model.user_id == user_id,
+                Model.is_deleted.is_(False),
+                Model.date >= start, Model.date < end,
+                Model.type.in_([TxnType.expense, TxnType.fee]),
+                not_(is_settlement))
+        .group_by(Model.category_id)
+        .all()
+    )
+    spent_map: dict[int | None, Decimal] = {cid: Decimal(val or 0) for cid, val in spent_rows}
+
+    # --- spent for the TYPE row (transfer_international)
+    type_spent_val = (
+        db.session.query(func.coalesce(func.sum(-Model.amount), 0))
+        .filter(Model.user_id == user_id,
+                Model.is_deleted.is_(False),
+                Model.date >= start, Model.date < end,
+                Model.type == TxnType.transfer_international)
+        .scalar() or 0
+    )
+    type_spent = Decimal(type_spent_val or 0)
 
     # --- build rows: parents first
     def build_parent_row(pid: int) -> Row:
@@ -116,8 +175,8 @@ def compute_budget_page(user_id: int, currency: str, year: int, month: int):
         # parent progress vs own budget
         pct_of_cat_budget = float((p_spent / p_budget) * 100) if p_budget > 0 else None
 
-        # build children rows (direct children only for UI; their % is child_spent / parent_budget)
-        kids = []
+        # children rows (only direct children for UI; % = child_spent / parent_budget)
+        kids: list[Row] = []
         for cid in children_of.get(pid, []):
             cname, _ = by_id[cid]
             c_spent = spent_map.get(cid, Decimal(0))
@@ -136,17 +195,30 @@ def compute_budget_page(user_id: int, currency: str, year: int, month: int):
             children=kids
         )
 
-    parent_rows = [build_parent_row(pid) for pid in roots]
+    parent_rows: list[Row] = [build_parent_row(pid) for pid in roots]
 
-    # totals
+    # --- append TYPE pseudo-parent (no children)
+    pct_type = float((type_spent / type_budget) * 100) if type_budget > 0 else None
+    parent_rows.append(Row(
+        id=TYPE_ROW_ID,
+        name=TYPE_ROW_LABEL,
+        parent_id=None,
+        budget=type_budget,
+        spent=type_spent,
+        pct_parent_budget=None,
+        pct_of_cat_budget=pct_type,
+        children=[]
+    ))
+
+    # --- totals
     total_budget = sum((r.budget for r in parent_rows), Decimal(0))
     total_spent  = sum((r.spent for r in parent_rows), Decimal(0))
     remaining = total_budget - total_spent
     status = "under" if remaining >= 0 else "over"
     pct_of_budget = float((total_spent / total_budget) * 100) if total_budget > 0 else None
 
-    # table payload
-    def to_dict(r: Row):
+    # --- serialize table for template/JS (sorted: categories first, type row last)
+    def to_dict(r: Row) -> dict:
         return {
             "id": r.id, "name": r.name,
             "budget": float(r.budget), "spent": float(r.spent),
@@ -154,9 +226,13 @@ def compute_budget_page(user_id: int, currency: str, year: int, month: int):
             "pct_parent_budget": (round(r.pct_parent_budget, 1) if r.pct_parent_budget is not None else None),
             "children": [to_dict(c) for c in r.children]
         }
-    table = sorted([to_dict(r) for r in parent_rows], key=lambda x: x["name"].lower())
 
-    # bar chart (parents only)
+    table = sorted(
+        (to_dict(r) for r in parent_rows),
+        key=lambda x: (x["id"] == TYPE_ROW_ID, x["name"].lower())
+    )
+
+    # bar chart (parents + type)
     bar_labels = [r["name"] for r in table]
     bar_values = [r["spent"] for r in table]
 
@@ -172,9 +248,14 @@ def compute_budget_page(user_id: int, currency: str, year: int, month: int):
         "bar_chart": {"labels": bar_labels, "values": bar_values},
         "symbol": "₩",  # KRW
     }
+
+
+# --------------------------
+# KPIs
+# --------------------------
 def month_income_total(user_id: int, currency: str, year: int, month: int) -> Decimal:
-    """Sum of INCOME transactions for the month (amounts are positive for income)."""
-    Model = _model_for_currency(currency)
+    """Sum of INCOME (KRW) transactions for the month (amounts are positive for income)."""
+    Model = TransactionKRW  # forced
     start, end = _month_bounds(year, month)
 
     val = (db.session.query(func.coalesce(func.sum(Model.amount), 0))
