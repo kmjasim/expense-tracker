@@ -113,45 +113,10 @@
             </div>
           </form>
         </div>
-
-        <!-- Repayment -->
+        
 <!-- Repayment -->
 <div class="tab-pane fade" id="repay-pane">
   <div class="row g-3">
-    <!-- LEFT: old behavior = repay single item -->
-    <div class="col-md-6">
-      <h6 class="mb-1 small text-muted">Repay single item</h6>
-      <form class="row g-2" method="post" action="{{ url_for('main.debts_repay') }}">
-        <div class="col-12">
-          <label class="form-label small">Select Item (by Recipient)</label>
-          <select name="item_id" class="form-select form-select-sm" required>
-            {% for itm in open_items %}
-              <option value="{{ itm.id }}">
-                {{ itm.recipient.name }}
-                – {{ itm.direction.value|capitalize }}
-                – Outstanding: {{ "%.2f"|format(itm.outstanding_principal) }} {{ itm.currency.value }}
-              </option>
-            {% endfor %}
-          </select>
-        </div>
-
-        <div class="col-md-6">
-          <label class="form-label small">Date</label>
-          <input type="date" class="form-control form-control-sm" name="date">
-        </div>
-        <div class="col-md-6">
-          <label class="form-label small">Amount</label>
-          <input type="number" step="0.01" class="form-control form-control-sm" name="amount" required>
-        </div>
-
-        <div class="col-12">
-          <input type="text" class="form-control form-control-sm" name="note" placeholder="Note (optional)">
-        </div>
-        <div class="col-12 d-flex justify-content-end">
-          <button class="btn btn-sm btn-outline-success">Record Payment (Item)</button>
-        </div>
-      </form>
-    </div>
 
     <!-- RIGHT: new behavior = repay by person (auto-splits across all open items) -->
     <div class="col-md-6">
