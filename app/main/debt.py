@@ -13,6 +13,40 @@ def _uid():
 # ---------- helpers ----------
 def _sum_or_zero(v):
     return v or Decimal("0")
+def _apply_repayment_to_item(item, amount, when, note):
+    """
+    Apply up to `amount` to a single DebtItem.
+    Returns the remaining amount (if payment was larger than outstanding).
+    """
+    amount = Decimal(amount)
+    if amount <= 0:
+        return Decimal("0")
+
+    pay = min(amount, item.outstanding_principal)
+    if pay <= 0:
+        return amount
+
+    # Update item
+    new_out = item.outstanding_principal - pay
+    item.outstanding_principal = new_out
+    if new_out == 0:
+        item.status = "settled"
+
+    # Create txn
+    txn = DebtTxn(
+        user_id=_uid(),
+        item_id=item.id,
+        action="repayment",
+        date=when,
+        amount=pay,
+        principal_portion=pay,
+        interest_portion=Decimal("0"),
+        fee_portion=Decimal("0"),
+        note=note,
+    )
+    db.session.add(txn)
+
+    return amount - pay
 
 def debt_totals(user_id):
     # cards: totals + progress for both directions
@@ -171,25 +205,51 @@ def debts_repay():
     if not item or item.user_id != _uid():
         return redirect(url_for("main.debts_page"))
 
-    # ✅ 100% to principal
-    p = amount
-    new_out = max(Decimal("0"), item.outstanding_principal - p)
-    item.outstanding_principal = new_out
-    if new_out == 0:
-        item.status = "settled"
+    # Use the helper for this single item
+    _apply_repayment_to_item(item, amount, when, note)
 
-    txn = DebtTxn(
-        user_id=_uid(),
-        item_id=item.id,
-        action="repayment",
-        date=when,
-        amount=amount,
-        principal_portion=p,
-        interest_portion=Decimal("0"),   # 👈 removed
-        fee_portion=Decimal("0"),        # 👈 removed
-        note=note,
+    db.session.commit()
+    return redirect(url_for("main.debts_page"))
+
+@main.route("/debts/repay_person", methods=["POST"])
+@login_required
+def debts_repay_person():
+    """
+    Repay an amount to a person (recipient) at once.
+    The payment will be allocated across all open items for that person
+    in the given direction (owe / lend), oldest first.
+    """
+    recipient_id = int(request.form["recipient_id"])
+    direction = DebtDirection(request.form["direction"])  # 'owe' or 'lend'
+    amount = Decimal(request.form["amount"])
+    date_str = request.form.get("date")
+    when = datetime.strptime(date_str, "%Y-%m-%d").date() if date_str else date.today()
+    note = request.form.get("note") or ""
+
+    # Get all open items for this recipient & direction
+    items = (
+        DebtItem.query
+        .filter_by(
+            user_id=_uid(),
+            recipient_id=recipient_id,
+            direction=direction,
+            status="active",
+        )
+        .filter(DebtItem.outstanding_principal > 0)
+        .order_by(DebtItem.start_date.asc(), DebtItem.id.asc())  # pay oldest first
+        .all()
     )
-    db.session.add(txn)
+
+    remaining = amount
+
+    for item in items:
+        if remaining <= 0:
+            break
+        remaining = _apply_repayment_to_item(item, remaining, when, note)
+
+    # If remaining > 0 here, it means the user tried to pay more than outstanding.
+    # You can ignore the leftover, or later show a message. For now we just cap at total outstanding.
+
     db.session.commit()
     return redirect(url_for("main.debts_page"))
 
