@@ -37,7 +37,7 @@ def krw_income_spent(user_id: int, year: int, month: int):
                 TransactionKRW.type == TxnType.expense,
                 TransactionKRW.type == TxnType.transfer_international
             ),
-            TransactionKRW.note != "Credit card settlement"
+            ~TransactionKRW.note.ilike("%credit card settlement%")
         )
         .scalar()
     )
