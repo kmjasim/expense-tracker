@@ -27,12 +27,21 @@ def krw_income_spent(user_id: int, year: int, month: int):
     income = Decimal(income or 0)
 
     # Spent = expenses + transfer_international (outflow; stored negative)
-    spent = (db.session.query(func.coalesce(func.sum(TransactionKRW.amount), 0))
-             .filter(*base_filters,
-                     or_(TransactionKRW.type == TxnType.expense,
-                         TransactionKRW.type == TxnType.transfer_international),
-                     TransactionKRW.amount < 0)
-             .scalar())
+
+    spent = (
+        db.session.query(func.coalesce(func.sum(TransactionKRW.amount), 0))
+        .filter(
+            *base_filters,
+            TransactionKRW.amount < 0,
+            or_(
+                TransactionKRW.type == TxnType.expense,
+                TransactionKRW.type == TxnType.transfer_international
+            ),
+            TransactionKRW.note != "Credit card settlement"
+        )
+        .scalar()
+    )
+
     spent_abs = abs(Decimal(spent or 0))
 
     pct = Decimal("0")
