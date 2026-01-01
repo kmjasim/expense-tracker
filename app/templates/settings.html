@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h4 class="mb-0">Salary Settings</h4>
+    <div class="text-muted small">
+      These values control salary calculation and defaults in daily entry.
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-9">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h6 class="mb-3">Main Settings</h6>
+
+        <form method="post" action="{{ url_for('main.salary_settings_page') }}" class="row g-2">
+          <div class="col-md-4">
+  <label class="form-label small">Effective From (month)</label>
+  <input type="date" class="form-control form-control-sm" name="effective_from"
+         value="{{ (settings.effective_from.isoformat() if settings else today.isoformat()) }}" required>
+  <div class="form-text small text-muted">We’ll use the 1st day of that month automatically.</div>
+</div>
+
+          {% if csrf_token is defined %}
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          {% endif %}
+          
+          <div class="col-md-6">
+            <label class="form-label small">Base Monthly Salary (KRW)</label>
+            <input type="number" class="form-control form-control-sm" name="base_salary"
+                   value="{{ settings.base_salary|int if settings else 2096270 }}" min="0" required>
+            <div class="form-text small text-muted">Your fixed monthly salary.</div>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label small">Hourly Rate (KRW / hour)</label>
+            <input type="number" step="0.01" class="form-control form-control-sm" name="hourly_rate"
+                   value="{{ settings.hourly_rate if settings else 10030 }}" min="0" required>
+            <div class="form-text small text-muted">Used for OT and leave deductions.</div>
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label small">Hours Per Day</label>
+            <input type="number" step="0.01" class="form-control form-control-sm" name="hours_per_day"
+                   value="{{ settings.hours_per_day if settings else 8 }}" min="0" required>
+            <div class="form-text small text-muted">Regular hours cap per weekday (usually 8).</div>
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label small">OT Multiplier</label>
+            <input type="number" step="0.01" class="form-control form-control-sm" name="overtime_multiplier"
+                   value="{{ settings.overtime_multiplier if settings else 1.5 }}" min="0" required>
+            <div class="form-text small text-muted">Example: 1.5</div>
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label small">Default Lunch (minutes)</label>
+            <input type="number" class="form-control form-control-sm" name="default_lunch_minutes"
+                   value="{{ settings.default_lunch_minutes if settings else 0 }}" min="0">
+            <div class="form-text small text-muted">Default for daily entry (you can change each day).</div>
+          </div>
+
+          <div class="col-12 d-flex justify-content-end mt-2">
+            <button class="btn btn-sm btn-primary">
+              Save Settings
+            </button>
+          </div>
+        </form>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-3">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h6 class="mb-2">Your Rules (Reference)</h6>
+        <ul class="small text-muted mb-0">
+          <li>Week: Monday → Sunday</li>
+          <li>Workdays: Monday → Friday</li>
+          <li>Weekend/Holiday work = overtime</li>
+          <li>Weekday overtime = hours above {{ settings.hours_per_day if settings else 8 }}h</li>
+          <li>Leave penalty applies only full-day leaves</li>
+          <li>Weekly leave deduction = leave days + 1 penalty day (per week with any leave)</li>
+          <li>Long leave skips weekends + holidays</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="card shadow-sm mt-3">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <div class="fw-semibold">Settings History</div>
+      <div class="text-muted small">{{ history|length }} version(s)</div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-sm align-middle">
+        <thead class="text-muted small">
+          <tr>
+            <th style="width:140px;">Effective From</th>
+            <th class="text-end">Base</th>
+            <th class="text-end">Hourly</th>
+            <th class="text-end">Hrs/Day</th>
+            <th class="text-end">OT x</th>
+            <th class="text-end">Lunch</th>
+          </tr>
+        </thead>
+        <tbody class="small">
+          {% for r in history %}
+            <tr {% if settings and r.id == settings.id %}class="table-light"{% endif %}>
+              <td class="fw-semibold">{{ r.effective_from.strftime("%Y-%m-01") }}</td>
+              <td class="text-end">{{ "{:,}".format(r.base_salary|int) }}</td>
+              <td class="text-end">{{ r.hourly_rate }}</td>
+              <td class="text-end">{{ r.hours_per_day }}</td>
+              <td class="text-end">{{ r.overtime_multiplier }}</td>
+              <td class="text-end">{{ r.default_lunch_minutes }}m</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

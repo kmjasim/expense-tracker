@@ -382,3 +382,92 @@ class BudgetType(db.Model):
 
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+
+# --- Salary Tracker Models ---
+
+from datetime import date
+
+class SalarySettings(db.Model):
+    __tablename__ = "salary_settings"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, index=True, nullable=False)
+
+    # Defaults based on your numbers
+    base_salary = db.Column(db.Numeric(12, 0), nullable=False, default=2096270)  # KRW
+    hourly_rate = db.Column(db.Numeric(12, 2), nullable=False, default=10030)   # KRW per hour
+    hours_per_day = db.Column(db.Numeric(5, 2), nullable=False, default=8)
+    overtime_multiplier = db.Column(db.Numeric(4, 2), nullable=False, default=1.50)
+    default_lunch_minutes = db.Column(db.Integer, nullable=False, default=0)
+
+    effective_from = db.Column(db.Date, nullable=False, default=date.today)
+    created_at = db.Column(db.Date, nullable=False, default=date.today)
+
+
+class WorkLog(db.Model):
+    __tablename__ = "work_logs"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, index=True, nullable=False)
+    work_date = db.Column(db.Date, nullable=False, index=True)
+
+    in_time = db.Column(db.Time, nullable=True)
+    out_time = db.Column(db.Time, nullable=True)
+    lunch_minutes = db.Column(db.Integer, nullable=False, default=0)
+
+    # Weekly penalty applies ONLY if full-day leave
+    is_full_day_leave = db.Column(db.Boolean, nullable=False, default=False)
+
+    note = db.Column(db.String(255), default="")
+
+    # store computed minutes (fast summary and consistent)
+    worked_minutes = db.Column(db.Integer, nullable=False, default=0)
+    regular_minutes = db.Column(db.Integer, nullable=False, default=0)
+    overtime_minutes = db.Column(db.Integer, nullable=False, default=0)
+
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "work_date", name="uq_worklog_user_date"),
+    )
+
+
+class Holiday(db.Model):
+    __tablename__ = "holidays"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, index=True, nullable=False)
+
+    holiday_date = db.Column(db.Date, nullable=False, index=True)
+    name = db.Column(db.String(120), nullable=False, default="")
+    kind = db.Column(db.String(20), nullable=False, default="public")  # 'public' | 'company'
+    year = db.Column(db.Integer, nullable=False, index=True)
+
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "holiday_date", name="uq_holiday_user_date"),
+    )
+
+
+class SalaryAdjust(db.Model):
+    """
+    Monthly adjustments lines:
+      - allowance (positive)
+      - deduction (negative)
+    Examples: Health insurance, Tax, Meal allowance, etc.
+    """
+    __tablename__ = "salary_adjustments"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, index=True, nullable=False)
+
+    year = db.Column(db.Integer, nullable=False, index=True)
+    month = db.Column(db.Integer, nullable=False, index=True)
+
+    kind = db.Column(db.String(20), nullable=False)   # 'allowance' | 'deduction'
+    label = db.Column(db.String(60), nullable=False)
+    amount = db.Column(db.Numeric(12, 0), nullable=False, default=0)
+
+    created_at = db.Column(db.Date, nullable=False, default=date.today)
+
+    __table_args__ = (
+        db.Index("ix_salary_adjust_user_month", "user_id", "year", "month"),
+    )

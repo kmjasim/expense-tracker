@@ -52,4 +52,27 @@ MENU = [
         "icon": "bi bi-cash-coin",
         "endpoint": "main.debts_page",
     },
+{
+    "label": "Salary",
+    "icon": "bi bi-currency-exchange",
+    "endpoint": "#",  # parent itself doesn’t point anywhere
+    "children": [
+        {
+            "label": "Salary Tracker",
+            "icon": "bi bi-calendar2-check",
+            "endpoint": "main.salary_page",
+        },
+        {
+            "label": "Holidays",
+            "icon": "bi bi-calendar-event",
+            "endpoint": "main.holidays_page",
+        },
+        {
+            "label": "Settings",
+            "icon": "bi bi-sliders",
+            "endpoint": "main.salary_settings_page",  # or modal later; page is easiest first
+        },
+    ],
+},
+
 ]

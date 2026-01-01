@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h4 class="mb-0">Holidays</h4>
+    <div class="text-muted small">Used to skip days in Long Leave + Salary calculations.</div>
+  </div>
+
+  <form method="get" action="{{ url_for('main.holidays_page') }}" class="d-flex gap-2 align-items-center">
+    <label class="small text-muted">Year</label>
+    <select name="year" class="form-select form-select-sm" style="width:110px;" onchange="this.form.submit()">
+      {% for y in range(year-3, year+2) %}
+        <option value="{{ y }}" {% if y==year %}selected{% endif %}>{{ y }}</option>
+      {% endfor %}
+    </select>
+  </form>
+</div>
+
+<!-- Add Holiday (accordion, closed by default) -->
+<div class="accordion mb-3" id="holidayAccordion">
+  <div class="accordion-item shadow-sm">
+    <h2 class="accordion-header">
+      <button class="accordion-button collapsed" type="button"
+              data-bs-toggle="collapse" data-bs-target="#holidayAddCollapse"
+              aria-expanded="false" aria-controls="holidayAddCollapse">
+        <span class="fw-semibold">Add Holiday</span>
+        <span class="text-muted small ms-2">(manual)</span>
+      </button>
+    </h2>
+
+    <div id="holidayAddCollapse" class="accordion-collapse collapse" data-bs-parent="#holidayAccordion">
+      <div class="accordion-body">
+        <form class="row g-2" method="post" action="{{ url_for('main.holiday_add') }}">
+          {% if csrf_token is defined %}
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          {% endif %}
+
+          <div class="col-md-3">
+            <label class="form-label small">Date</label>
+            <input type="date" class="form-control form-control-sm" name="holiday_date"
+                   value="{{ today.isoformat() }}" required>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small">Kind</label>
+            <select class="form-select form-select-sm" name="kind" required>
+              <option value="public" selected>Public</option>
+              <option value="company">Company</option>
+            </select>
+          </div>
+
+          <div class="col-md-3">
+            <label class="form-label small">Holiday name</label>
+            <input type="text" class="form-control form-control-sm" name="name"
+                   placeholder="e.g., Chuseok / Lunar New Year" required>
+          </div>
+
+          <div class="col-md-3 d-flex align-items-end justify-content-end">
+            <button class="btn btn-sm btn-primary px-6">
+              <i class="bi bi-plus-lg me-1"></i>Add
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- List -->
+<div class="card shadow-sm">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <div class="fw-semibold">Holidays in {{ year }}</div>
+      <div class="text-muted small">{{ holidays|length }} day(s)</div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-sm align-middle">
+        <thead class="text-muted small">
+          <tr>
+            <th style="width:140px;">Date</th>
+            <th style="width:110px;">Day</th>
+            <th>Name</th>
+            <th class="text-end" style="width:120px;">Action</th>
+            <th style="width:110px;">Kind</th>
+          </tr>
+
+        </thead>
+
+        <tbody class="small">
+          {% for h in holidays %}
+            {% set isWeekend = h.holiday_date.weekday() >= 5 %}
+            <tr class="{% if isWeekend %}table-primary{% endif %}">
+              <td class="fw-semibold">{{ h.holiday_date.strftime("%Y-%m-%d") }}</td>
+              <td class="text-muted">
+                {{ h.holiday_date.strftime("%a") }}
+                {% if isWeekend %}
+                  <span class="badge text-bg-primary ms-1">Weekend</span>
+                {% endif %}
+              </td>
+
+              <td>{{ h.name }}</td>
+              <td class="text-end">
+                <form method="post" action="{{ url_for('main.holiday_delete', hid=h.id) }}" class="d-inline">
+                  {% if csrf_token is defined %}
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  {% endif %}
+                  <button class="btn btn-sm btn-outline-danger">Delete</button>
+                </form>
+              </td>
+                            <td>
+                {% if h.kind == "company" %}
+                  <span class="badge text-bg-secondary">Company</span>
+                {% else %}
+                  <span class="badge text-bg-warning">Public</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="4" class="text-center text-muted py-3">
+                No holidays saved for {{ year }}.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
