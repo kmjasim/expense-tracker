@@ -1,10 +1,11 @@
+from __future__ import annotations
 from datetime import datetime
 from enum import Enum
 
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 
-from sqlalchemy import func, text, select, and_
+from sqlalchemy import func, text, select, and_,Index, UniqueConstraint, ForeignKey
 from sqlalchemy.orm import relationship, declared_attr, column_property
 from .extensions import db
 from sqlalchemy.dialects.postgresql import JSONB
@@ -476,12 +477,7 @@ class SalaryAdjust(db.Model):
 
 # app/models_lotto.py (or paste into your existing app/models.py)
 
-from __future__ import annotations
 
-from datetime import datetime
-from sqlalchemy import Index, UniqueConstraint, ForeignKey
-from sqlalchemy.dialects.postgresql import JSONB
-from app import db
 
 
 class LottoGame(db.Model):
