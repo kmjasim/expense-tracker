@@ -14,7 +14,63 @@
       {{ message }}
     </div>
   {% endif %}
+<div class="card mb-3">
+  <div class="card-header">
+    <strong>Smart Generator</strong>
+  </div>
 
+  <div class="card-body">
+    <form method="post" class="row g-2 align-items-end">
+      <input type="hidden" name="action" value="generate">
+
+      <div class="col-md-3">
+        <label class="form-label small text-muted">Window</label>
+        <select name="gen_window" class="form-select form-select-sm">
+          {% for w in [20, 50, 100, 200, 500] %}
+            <option value="{{ w }}">{{ w }} draws</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-md-3">
+        <label class="form-label small text-muted">How many sets</label>
+        <select name="gen_count" class="form-select form-select-sm">
+          {% for c in [1,2,3,4,5] %}
+            <option value="{{ c }}">{{ c }} set{{ 's' if c>1 else '' }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-md-3">
+        <button class="btn btn-primary btn-sm" type="submit" name="action" value="generate">
+          Generate
+        </button>
+
+      </div>
+    </form>
+
+    {% if generated_picks %}
+      <hr>
+      <div class="d-flex flex-column gap-2">
+        {% for p in generated_picks %}
+          <div class="border rounded p-2 d-flex justify-content-between align-items-center flex-wrap">
+            <div>
+              {{ ball_list(p.numbers) }}
+            </div>
+
+            <div class="text-muted small">
+              Score: <strong>{{ p.score }}</strong> |
+              Sum: {{ p.explain.sum }} |
+              O/E: {{ p.explain.odd_even }} |
+              L/H: {{ p.explain.low_high }} |
+              PairSynergy: {{ p.explain.synergy }}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+</div>
   <div class="card mb-4">
     <div class="card-header">
       <strong>Add Draw</strong>
@@ -171,63 +227,7 @@
   </div>
 </div>
 
-<div class="card mb-3">
-  <div class="card-header">
-    <strong>Smart Generator</strong>
-  </div>
 
-  <div class="card-body">
-    <form method="post" class="row g-2 align-items-end">
-      <input type="hidden" name="action" value="generate">
-
-      <div class="col-md-3">
-        <label class="form-label small text-muted">Window</label>
-        <select name="gen_window" class="form-select form-select-sm">
-          {% for w in [20, 50, 100, 200, 500] %}
-            <option value="{{ w }}">{{ w }} draws</option>
-          {% endfor %}
-        </select>
-      </div>
-
-      <div class="col-md-3">
-        <label class="form-label small text-muted">How many sets</label>
-        <select name="gen_count" class="form-select form-select-sm">
-          {% for c in [1,2,3,4,5] %}
-            <option value="{{ c }}">{{ c }} set{{ 's' if c>1 else '' }}</option>
-          {% endfor %}
-        </select>
-      </div>
-
-      <div class="col-md-3">
-        <button class="btn btn-primary btn-sm" type="submit" name="action" value="generate">
-          Generate
-        </button>
-
-      </div>
-    </form>
-
-    {% if generated_picks %}
-      <hr>
-      <div class="d-flex flex-column gap-2">
-        {% for p in generated_picks %}
-          <div class="border rounded p-2 d-flex justify-content-between align-items-center flex-wrap">
-            <div>
-              {{ ball_list(p.numbers) }}
-            </div>
-
-            <div class="text-muted small">
-              Score: <strong>{{ p.score }}</strong> |
-              Sum: {{ p.explain.sum }} |
-              O/E: {{ p.explain.odd_even }} |
-              L/H: {{ p.explain.low_high }} |
-              PairSynergy: {{ p.explain.synergy }}
-            </div>
-          </div>
-        {% endfor %}
-      </div>
-    {% endif %}
-  </div>
-</div>
 
   <div class="card">
     <div class="card-header">
