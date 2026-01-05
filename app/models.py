@@ -7,6 +7,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import func, text, select, and_
 from sqlalchemy.orm import relationship, declared_attr, column_property
 from .extensions import db
+from sqlalchemy.dialects.postgresql import JSONB
 
 # --------------------------
 # Users
@@ -471,3 +472,186 @@ class SalaryAdjust(db.Model):
     __table_args__ = (
         db.Index("ix_salary_adjust_user_month", "user_id", "year", "month"),
     )
+
+
+# app/models_lotto.py (or paste into your existing app/models.py)
+
+from __future__ import annotations
+
+from datetime import datetime
+from sqlalchemy import Index, UniqueConstraint, ForeignKey
+from sqlalchemy.dialects.postgresql import JSONB
+from app import db
+
+
+class LottoGame(db.Model):
+    __tablename__ = "lotto_game"
+
+    id = db.Column(db.BigInteger, primary_key=True)
+    name = db.Column(db.Text, nullable=False, unique=True)
+
+    numbers_per_draw = db.Column(db.SmallInteger, nullable=False, default=6)
+    min_num = db.Column(db.SmallInteger, nullable=False, default=1)
+    max_num = db.Column(db.SmallInteger, nullable=False, default=45)
+    has_bonus = db.Column(db.Boolean, nullable=False, default=True)
+    low_high_split = db.Column(db.SmallInteger, nullable=False, default=22)  # 1..22 low, 23..45 high
+
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+    draws = db.relationship(
+        "LottoDraw",
+        backref="game",
+        lazy=True,
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+
+class LottoDraw(db.Model):
+    __tablename__ = "lotto_draw"
+    __table_args__ = (
+        UniqueConstraint("game_id", "round_no", name="uq_lotto_draw_game_round"),
+        Index("idx_lotto_draw_game_date", "game_id", "draw_date"),
+        Index("idx_lotto_draw_game_round", "game_id", "round_no"),
+    )
+
+    id = db.Column(db.BigInteger, primary_key=True)
+
+    game_id = db.Column(
+        db.BigInteger,
+        ForeignKey("lotto_game.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+    round_no = db.Column(db.Integer, nullable=False)
+    draw_date = db.Column(db.Date, nullable=False)
+
+    # keep bonus here too (convenient), and also store as normalized row in lotto_draw_number
+    bonus = db.Column(db.SmallInteger, nullable=True)
+
+    source = db.Column(db.Text, nullable=False, default="manual")
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+    numbers = db.relationship(
+        "LottoDrawNumber",
+        backref="draw",
+        lazy=True,
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    stats = db.relationship(
+        "LottoDrawStats",
+        backref="draw",
+        uselist=False,
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+
+class LottoDrawNumber(db.Model):
+    __tablename__ = "lotto_draw_number"
+    __table_args__ = (
+        # Prevent duplicate numbers within the same draw (also prevents bonus = main number)
+        UniqueConstraint("draw_id", "num", name="uq_draw_num"),
+        Index("idx_lotto_draw_number_num", "num"),
+        Index("idx_lotto_draw_number_draw", "draw_id"),
+        Index("idx_lotto_draw_number_num_draw", "num", "draw_id"),
+        # NOTE: do NOT use a normal unique constraint on (draw_id, position) here,
+        # because we want it to apply only to main numbers (bonus has position NULL).
+        # We'll enforce main-position uniqueness with a partial unique index in SQL:
+        #   CREATE UNIQUE INDEX uq_draw_position_main
+        #   ON lotto_draw_number(draw_id, position)
+        #   WHERE is_bonus = FALSE;
+    )
+
+    id = db.Column(db.BigInteger, primary_key=True)
+
+    draw_id = db.Column(
+        db.BigInteger,
+        ForeignKey("lotto_draw.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+    num = db.Column(db.SmallInteger, nullable=False)
+
+    # For main numbers: 1..6, For bonus: NULL
+    position = db.Column(db.SmallInteger, nullable=True)
+
+    # Bonus row: True, main rows: False
+    is_bonus = db.Column(db.Boolean, nullable=False, default=False)
+
+
+class LottoDrawStats(db.Model):
+    __tablename__ = "lotto_draw_stats"
+    __table_args__ = (
+        Index("idx_lotto_draw_stats_sum", "sum_total"),
+    )
+
+    draw_id = db.Column(
+        db.BigInteger,
+        ForeignKey("lotto_draw.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+
+    sum_total = db.Column(db.Integer, nullable=False)
+
+    odd_count = db.Column(db.SmallInteger, nullable=False)
+    even_count = db.Column(db.SmallInteger, nullable=False)
+
+    low_count = db.Column(db.SmallInteger, nullable=False)
+    high_count = db.Column(db.SmallInteger, nullable=False)
+
+    range_span = db.Column(db.SmallInteger, nullable=False)
+
+    avg_gap = db.Column(db.Numeric(6, 3), nullable=False)
+    min_gap = db.Column(db.SmallInteger, nullable=False)
+    max_gap = db.Column(db.SmallInteger, nullable=False)
+
+    consecutive_pairs_count = db.Column(db.SmallInteger, nullable=False)
+    max_consecutive_run = db.Column(db.SmallInteger, nullable=False)
+
+    repeat_from_prev1 = db.Column(db.SmallInteger, nullable=True)
+    repeat_from_prev2 = db.Column(db.SmallInteger, nullable=True)
+
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+
+class LottoPickSet(db.Model):
+    __tablename__ = "lotto_pick_set"
+    __table_args__ = (
+        Index("idx_lotto_pick_set_game_generated", "game_id", "generated_at"),
+        Index("idx_lotto_pick_set_game_round", "game_id", "generated_for_round_no"),
+        # NOTE: create the GIN index for JSONB in SQL (recommended):
+        #   CREATE INDEX IF NOT EXISTS idx_lotto_pick_set_numbers_gin
+        #   ON lotto_pick_set USING GIN (numbers);
+    )
+
+    id = db.Column(db.BigInteger, primary_key=True)
+
+    game_id = db.Column(
+        db.BigInteger,
+        ForeignKey("lotto_game.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+    generated_for_round_no = db.Column(db.Integer, nullable=True)
+    generated_at = db.Column(db.DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+    method = db.Column(db.Text, nullable=False)
+
+    # JSON array of 6 numbers, sorted (e.g. [3,11,18,27,33,41])
+    numbers = db.Column(JSONB, nullable=False)
+
+    rules_snapshot = db.Column(JSONB, nullable=True)
+    score = db.Column(db.Numeric(10, 4), nullable=True)
+    notes = db.Column(JSONB, nullable=True)
+
+    # Backtest results
+    result_round_no = db.Column(db.Integer, nullable=True)
+    matched_main_count = db.Column(db.SmallInteger, nullable=True)
+    matched_bonus = db.Column(db.Boolean, nullable=True)
+
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+# --- Alembic migration snippet ---
+    # ### commands auto generated by Alembic - please adjust! ###

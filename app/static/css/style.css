@@ -472,3 +472,25 @@ body {
 .rotate-on-collapse[aria-expanded="true"] {
   transform: rotate(90deg);
 }
+.lotto-ball {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  font-weight: 600;
+  color: #fff;
+  margin-right: 4px;
+  font-size: 14px;
+}
+
+/* Color groups */
+.lotto-1 { background-color: #fbc02d; }   /* 1–10 yellow */
+.lotto-2 { background-color: #42a5f5; }   /* 11–20 blue */
+.lotto-3 { background-color: #ef5350; }   /* 21–30 red */
+.lotto-4 { background-color: #757575; }   /* 31–40 gray */
+.lotto-5 { background-color: #66bb6a; }   /* 41–45 green */
+.lotto-bonus {
+  box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.95) inset;
+}

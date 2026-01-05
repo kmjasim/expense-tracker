@@ -74,5 +74,11 @@ MENU = [
         },
     ],
 },
+{
+    "label": "Lotto Analyzer",
+    "icon": "bi bi-bar-chart-line",
+    "endpoint": "main.lotto_analyzer",
+},
+
 
 ]

@@ -126,3 +126,96 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
+(function () {
+  const yearEl = document.getElementById("sumYear");
+  const monthEl = document.getElementById("sumMonth");
+  const applyBtn = document.getElementById("sumApply");
+
+  const labelEl = document.getElementById("sumLabel");
+  const grossEl = document.getElementById("sumGross");
+  const netEl = document.getElementById("sumNet");
+
+  const ctx = document.getElementById("salaryLineChart");
+  if (!ctx) return;
+
+  let chart = null;
+
+  const fmtKRW = (n) => {
+    if (n === null || n === undefined) return "—";
+    return Math.round(n).toLocaleString("en-US") + " KRW";
+  };
+
+  async function loadSummary() {
+    const year = yearEl.value;
+    const month = monthEl.value;
+
+    const url = new URL("/salary/summary-data", window.location.origin);
+    url.searchParams.set("year", year);
+    if (month) url.searchParams.set("month", month);
+
+    const res = await fetch(url.toString(), { headers: { "Accept": "application/json" } });
+    const data = await res.json();
+    if (!data.ok) return;
+
+    // Update text summary
+    if (data.summary.mode === "month") {
+      labelEl.textContent = `${data.summary.year}-${String(data.summary.month).padStart(2, "0")}`;
+    } else {
+      labelEl.textContent = `${data.summary.year} (Whole Year)`;
+    }
+    grossEl.textContent = fmtKRW(data.summary.gross);
+    netEl.textContent = fmtKRW(data.summary.net);
+
+    // Chart
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+    const labels = data.labels.map(m => monthNames[m - 1]);
+
+    const grossSeries = data.gross_series;
+    const netSeries = data.net_series;
+
+    if (chart) chart.destroy();
+
+    chart = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels,
+        datasets: [
+          { label: "Gross", data: grossSeries, tension: 0.25 },
+          { label: "Net", data: netSeries, tension: 0.25 },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: true },
+          tooltip: {
+            callbacks: {
+              label: (item) => `${item.dataset.label}: ${fmtKRW(item.raw)}`
+            }
+          }
+        },
+        scales: {
+          y: {
+          ticks: {
+            callback: (value) => {
+              if (value >= 1_000_000) {
+                return (value / 1_000_000).toFixed(1) + "M";
+              }
+              return value.toLocaleString();
+            }
+          }
+
+          }
+        }
+      }
+    });
+  }
+
+  applyBtn.addEventListener("click", loadSummary);
+
+  // Initial load
+  loadSummary();
+})();

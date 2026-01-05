@@ -158,9 +158,9 @@
           <div class="display-6 fw-bold net-amount text-primary">
             {{ net_salary_str }}
           </div>
-
-          <div class="small text-muted">
-            This month after OT, leave, deductions
+          <div class="text-muted small mt-3">
+            Gross salary:
+            <span class="fw-bold text-primary">{{ gross_salary_str }}</span>
           </div>
         </div>
 
@@ -664,6 +664,80 @@
 
       </table>
     </div>
+  </div>
+</div>
+<div class="card shadow-sm mt-4">
+  <div class="card-body">
+    <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+      <div>
+        <div class="fw-semibold">Salary Summary</div>
+        <div class="text-muted small">Gross vs Net (year trend + selected period)</div>
+      </div>
+
+      <div class="d-flex gap-2 align-items-end">
+        <div>
+          <label class="form-label small mb-1">Year</label>
+          <select id="sumYear" class="form-select form-select-sm">
+          {% for y in range(year-3, year+2) %}
+            <option value="{{ y }}" {% if y==year %}selected{% endif %}>{{ y }}</option>
+          {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label class="form-label small mb-1">Month</label>
+          <select id="sumMonth" class="form-select form-select-sm">
+            <option value="">Whole Year</option>
+            {% for m in range(1, 13) %}
+              <option value="{{ m }}">{{ m }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <button id="sumApply" class="btn btn-sm btn-primary">
+          Apply
+        </button>
+      </div>
+    </div>
+
+    <div class="row g-3 align-items-stretch">
+      <!-- Left: chart (80% width inside column) -->
+      <div class="col-lg-8">
+        <div class="d-flex justify-content-center">
+          <div style="width:80%;">
+            <canvas id="salaryLineChart" height="170"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: text summary -->
+      <div class="col-lg-4">
+        <div class="border rounded-3 p-3 h-100 bg-light">
+          <div class="fw-semibold mb-2">Selected Summary</div>
+
+          <div class="d-flex justify-content-between small mb-2">
+            <span class="text-muted" id="sumLabel">—</span>
+          </div>
+
+          <div class="d-flex justify-content-between mb-2">
+            <span class="text-muted">Gross</span>
+            <span class="fw-semibold" id="sumGross">—</span>
+          </div>
+
+          <div class="d-flex justify-content-between">
+            <span class="text-muted">Net</span>
+            <span class="fw-semibold" id="sumNet">—</span>
+          </div>
+
+          <hr class="my-3">
+
+          <div class="small text-muted">
+            Gross = Base + OT + Weekend/Holiday + Allowance
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 

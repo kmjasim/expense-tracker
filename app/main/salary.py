@@ -1,11 +1,9 @@
 # app/routes/salary.py
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
-
-from flask import render_template, request, redirect, url_for
+from flask import render_template, request, redirect, url_for,jsonify
 from flask_login import login_required, current_user
 from sqlalchemy import func
-
 from ..extensions import db
 from ..models import SalarySettings, WorkLog, Holiday, SalaryAdjust
 from . import main
@@ -259,6 +257,7 @@ def calc_month_summary(user_id: int, year: int, month: int):
     base_salary = _d(s.base_salary)
     weekend_holiday_pay = (Decimal(weekend_holiday_minutes) / Decimal(60)) * ot_rate
     # net = base + OT + allowance - (deductions + leave_deduction)
+    gross= base_salary + weekend_holiday_pay + overtime_pay + allowance_total
     net = base_salary + weekend_holiday_pay + overtime_pay + allowance_total - (deduction_total + leave_deduction + short_hours_deduction)
 
 
@@ -287,6 +286,7 @@ def calc_month_summary(user_id: int, year: int, month: int):
         "short_minutes": short_minutes,
         "short_hours_deduction": short_hours_deduction,
         "net": net,
+        "gross": gross,
     }
 
 
@@ -366,6 +366,7 @@ def salary_page():
         short_minutes=summary["short_minutes"],
         short_hours_deduction=summary["short_hours_deduction"],
         net_salary_str=fmt_krw(summary["net"]),
+        gross_salary_str=fmt_krw(summary["gross"]),
         days=days,
         log_by_date=log_by_date,
         # table
@@ -853,3 +854,68 @@ def salary_payslip_pdf():
 
     filename = f"payslip_{year}_{month:02d}.pdf"
     return send_file(tmp_path, as_attachment=True, download_name=filename, mimetype="application/pdf")
+
+
+
+
+@main.route("/salary/summary-data", methods=["GET"])
+@login_required
+def salary_summary_data():
+    year = request.args.get("year", type=int) or date.today().year
+    month = request.args.get("month", type=int)  # optional
+
+    # Year series: gross & net for each month
+    labels = []
+    gross_series = []
+    net_series = []
+
+    for m in range(1, 13):
+        s = calc_month_summary(_uid(), year, m)
+
+        gross = (
+            _d(s["base_salary"])
+            + _d(s["overtime_pay"])
+            + _d(s["weekend_holiday_pay"])
+            + _d(s["allowance_total"])
+        )
+        net = _d(s["net"])
+
+        labels.append(m)
+        gross_series.append(float(gross))
+        net_series.append(float(net))
+
+    # Selected month summary OR whole year summary
+    if month and 1 <= month <= 12:
+        s = calc_month_summary(_uid(), year, month)
+        gross = (
+            _d(s["base_salary"])
+            + _d(s["overtime_pay"])
+            + _d(s["weekend_holiday_pay"])
+            + _d(s["allowance_total"])
+        )
+        net = _d(s["net"])
+
+        payload = {
+            "mode": "month",
+            "year": year,
+            "month": month,
+            "gross": float(gross),
+            "net": float(net),
+        }
+    else:
+        payload = {
+            "mode": "year",
+            "year": year,
+            "gross": float(sum(gross_series)),
+            "net": float(sum(net_series)),
+        }
+
+    return jsonify(
+        ok=True,
+        year=year,
+        labels=labels,
+        gross_series=gross_series,
+        net_series=net_series,
+        summary=payload,
+    )
+
