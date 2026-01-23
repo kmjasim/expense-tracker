@@ -13,7 +13,22 @@ import os
 import tempfile
 from flask import send_file, request
 from . import main
-from app.utils.payslip_pdf import build_payslip_pdf
+from app.utils.payslip_pdf import draw_payslip_page, draw_logs_page
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+import os, tempfile, calendar
+
+
+def iter_months(y1, m1, y2, m2):
+    y, m = y1, m1
+    while (y < y2) or (y == y2 and m <= m2):
+        yield y, m
+        m += 1
+        if m == 13:
+            m = 1
+            y += 1
+
+
 
 def _uid():
     return current_user.id
@@ -290,6 +305,14 @@ def calc_month_summary(user_id: int, year: int, month: int):
     }
 
 
+def iter_months(y1, m1, y2, m2):
+    y, m = y1, m1
+    while (y < y2) or (y == y2 and m <= m2):
+        yield y, m
+        m += 1
+        if m == 13:
+            m = 1
+            y += 1
 # ---------- pages ----------
 @main.route("/salary", methods=["GET"])
 @login_required
@@ -812,50 +835,61 @@ def salary_long_leave_remove():
 
 
 
-@main.route("/salary/payslip/pdf", methods=["GET"])
+
+@main.route("/salary/download/pdf", methods=["GET"])
 @login_required
-def salary_payslip_pdf():
-    year = request.args.get("year", type=int) or date.today().year
-    month = request.args.get("month", type=int) or date.today().month
+def salary_download_pdf():
+    kind = request.args.get("kind", "payslip")
+    from_ym = request.args.get("from")  # "YYYY-MM"
+    to_ym = request.args.get("to")      # "YYYY-MM"
 
-    summary = calc_month_summary(_uid(), year, month)
+    if not from_ym or not to_ym:
+        return redirect(url_for("main.salary_page"))
 
-    month_name = calendar.month_name[month]
-    pay_period = f"{year}-{month:02d}-01 to {year}-{month:02d}-{calendar.monthrange(year, month)[1]}"
-    pay_date = f"{year}-{month:02d}-10"  # you can change later if needed
+    fy, fm = map(int, from_ym.split("-"))
+    ty, tm = map(int, to_ym.split("-"))
 
-    # Build earnings/deductions for the table
-    earnings = [
-        ("Base Salary", float(summary["base_salary"])),
-        ("Weekday Overtime", float(summary["overtime_pay"])),
-        ("Weekend/Holiday", float(summary["weekend_holiday_pay"])),
-        ("Allowance", float(summary["allowance_total"])),
-    ]
-    deductions = [
-        ("Deductions", float(summary["deduction_total"])),
-        ("Leave Deduction", float(summary["leave_deduction"])),
-    ]
+    # basic validation
+    if (fy, fm) > (ty, tm):
+        fy, fm, ty, tm = ty, tm, fy, fm
 
-    payload = {
-        "month_name": month_name,
-        "year": year,
-        "employee_name": current_user.name if hasattr(current_user, "name") and current_user.name else "Employee",
-        "designation": "Employee",  # later we can store in settings/profile
-        "pay_period": pay_period,
-        "pay_date": pay_date,
-        "net_salary": float(summary["net"]),
-        "earnings": earnings,
-        "deductions": deductions,
-    }
-
-    fd, tmp_path = tempfile.mkstemp(suffix=".pdf")
+    fd, out_path = tempfile.mkstemp(suffix=".pdf")
     os.close(fd)
-    build_payslip_pdf(tmp_path, payload)
 
-    filename = f"payslip_{year}_{month:02d}.pdf"
-    return send_file(tmp_path, as_attachment=True, download_name=filename, mimetype="application/pdf")
+    c = canvas.Canvas(out_path, pagesize=A4)
+
+    for year, month in iter_months(fy, fm, ty, tm):
+        summary = calc_month_summary(_uid(), year, month)
+
+        if kind == "payslip":
+            # ✅ build detailed deductions for THIS month
+            deduction_items = [
+                (d.label, d.amount)
+                for d in (SalaryAdjust.query
+                        .filter_by(user_id=_uid(), year=year, month=month, kind="deduction")
+                        .order_by(SalaryAdjust.label.asc())
+                        .all())
+            ]
 
 
+            draw_payslip_page(
+                c,
+                current_user,
+                year,
+                month,
+                summary,
+                deduction_items=deduction_items
+            )
+
+        else:
+            draw_logs_page(c, current_user, year, month, summary)
+
+        c.showPage()
+
+    c.save()
+
+    filename = f"{kind}_{fy}-{fm:02d}_to_{ty}-{tm:02d}.pdf"
+    return send_file(out_path, as_attachment=True, download_name=filename, mimetype="application/pdf")
 
 
 @main.route("/salary/summary-data", methods=["GET"])
