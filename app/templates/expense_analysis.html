@@ -1,0 +1,586 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-3">
+
+    <!-- Page Header -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-2">
+        <div>
+            <h2 class="mb-1">Expense Analysis</h2>
+            <p class="text-muted mb-0">
+                Analyze your expenses with charts, trends, and smart suggestions.
+            </p>
+        </div>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+
+                <!-- Currency -->
+                <div class="col-12 col-md-6 col-lg-2">
+                    <label for="currencyFilter" class="form-label">Currency</label>
+                    <select id="currencyFilter" class="form-select">
+                        <option value="KRW" selected>KRW</option>
+                        <option value="BDT">BDT</option>
+                    </select>
+                </div>
+
+                <!-- Month -->
+                <div class="col-6 col-md-3 col-lg-2">
+                    <label for="monthFilter" class="form-label">Month</label>
+                    <select id="monthFilter" class="form-select">
+                        {% for month in range(1, 13) %}
+                            <option value="{{ month }}" {% if month == current_month %}selected{% endif %}>
+                                {{ month }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Year -->
+                <div class="col-6 col-md-3 col-lg-2">
+                    <label for="yearFilter" class="form-label">Year</label>
+                    <select id="yearFilter" class="form-select">
+                        {% for year in range(current_year, current_year - 10, -1) %}
+                            <option value="{{ year }}" {% if year == current_year %}selected{% endif %}>
+                                {{ year }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Account -->
+                <div class="col-12 col-md-6 col-lg-3">
+                    <label for="accountFilter" class="form-label">Account</label>
+                    <select id="accountFilter" class="form-select">
+                        <option value="">All Accounts</option>
+                    </select>
+                </div>
+
+                <!-- Category -->
+                <div class="col-12 col-md-6 col-lg-3">
+                    <label for="categoryFilter" class="form-label">Category</label>
+                    <select id="categoryFilter" class="form-select">
+                        <option value="">All Categories</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <p class="text-muted mb-1">Total Expense</p>
+                    <h4 class="mb-0" id="totalExpenseCard">-</h4>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <p class="text-muted mb-1">Top Category</p>
+                    <h4 class="mb-0" id="topCategoryCard">-</h4>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <p class="text-muted mb-1">Average Daily Expense</p>
+                    <h4 class="mb-0" id="avgDailyExpenseCard">-</h4>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <p class="text-muted mb-1">Compared to Last Month</p>
+                    <h4 class="mb-0" id="compareLastMonthCard">-</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-xl-6">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white border-0 pb-0">
+                    <h5 class="mb-0">Expense by Category</h5>
+                </div>
+                <div class="card-body">
+                    <div style="height: 320px;">
+                        <canvas id="expenseCategoryChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-xl-6">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white border-0 pb-0">
+                    <h5 class="mb-0">Daily Expense Trend</h5>
+                </div>
+                <div class="card-body">
+                    <div style="height: 320px;">
+                    <canvas id="dailyExpenseTrendChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+<div class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white border-0 pb-0">
+                <h5 class="mb-0">Monthly Expense Trend (Year)</h5>
+            </div>
+            <div class="card-body">
+                <div style="height: 320px;">
+                    <canvas id="monthlyExpenseTrendChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Bottom Section -->
+
+    <!-- Row 1: Top Categories -->
+    <div class="row g-3 mb-3">
+        <div class="col-12">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white border-0 pb-0">
+                    <h5 class="mb-0">Top Expense Categories</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Category</th>
+                                    <th>Amount</th>
+                                    <th>Share</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="topExpenseCategoriesTable">
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted py-4">
+                                        No analysis loaded yet.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Row 2: Smart Advice -->
+    <div class="row g-3">
+        <div class="col-12">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white border-0 pb-0">
+                    <h5 class="mb-0">Smart Advice</h5>
+                </div>
+                <div class="card-body" id="expenseAdviceSection">
+                    <div class="text-muted">
+                        Advice will appear here based on your expense pattern.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const currencyFilter = document.getElementById('currencyFilter');
+    const monthFilter = document.getElementById('monthFilter');
+    const yearFilter = document.getElementById('yearFilter');
+    const accountFilter = document.getElementById('accountFilter');
+    const categoryFilter = document.getElementById('categoryFilter');
+
+    const totalExpenseCard = document.getElementById('totalExpenseCard');
+    const topCategoryCard = document.getElementById('topCategoryCard');
+    const avgDailyExpenseCard = document.getElementById('avgDailyExpenseCard');
+    const compareLastMonthCard = document.getElementById('compareLastMonthCard');
+
+    const topExpenseCategoriesTable = document.getElementById('topExpenseCategoriesTable');
+    const expenseAdviceSection = document.getElementById('expenseAdviceSection');
+
+    let expenseCategoryChartInstance = null;
+    let dailyExpenseTrendChartInstance = null;
+    let monthlyExpenseTrendChartInstance = null;
+    function renderMonthlyExpenseTrendChart(rows, currency) {
+        const ctx = document.getElementById('monthlyExpenseTrendChart');
+
+        if (monthlyExpenseTrendChartInstance) {
+            monthlyExpenseTrendChartInstance.destroy();
+        }
+
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const labels = (rows || []).map(row => monthNames[(row.month || 1) - 1]);
+        const values = (rows || []).map(row => row.amount);
+
+        monthlyExpenseTrendChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: values
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return formatCurrency(context.raw || 0, currency);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return formatCurrency(value, currency);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    function renderDailyExpenseTrendChart(rows, currency) {
+        const ctx = document.getElementById('dailyExpenseTrendChart');
+
+        if (dailyExpenseTrendChartInstance) {
+            dailyExpenseTrendChartInstance.destroy();
+        }
+
+        const labels = (rows || []).map(row => row.day);
+        const values = (rows || []).map(row => row.amount);
+
+        dailyExpenseTrendChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Daily Expense',
+                    data: values,
+                    tension: 0.3,
+                    fill: false
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const value = context.raw || 0;
+                                return formatCurrency(value, currency);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Day'
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return formatCurrency(value, currency);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    function formatCurrency(amount, currency) {
+        const value = Number(amount || 0);
+        if (currency === 'BDT') {
+            return '৳' + value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+        }
+        return '₩' + value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+    }
+
+    function populateAccounts(accounts) {
+        const currentValue = accountFilter.value;
+        accountFilter.innerHTML = '<option value="">All Accounts</option>';
+
+        accounts.forEach(account => {
+            const option = document.createElement('option');
+            option.value = account.id;
+            option.textContent = account.name;
+            accountFilter.appendChild(option);
+        });
+
+        if ([...accountFilter.options].some(opt => opt.value === currentValue)) {
+            accountFilter.value = currentValue;
+        }
+    }
+
+    function populateCategories(categories) {
+        const currentValue = categoryFilter.value;
+        categoryFilter.innerHTML = '<option value="">All Categories</option>';
+
+        categories.forEach(category => {
+            const option = document.createElement('option');
+            option.value = category.id;
+            option.textContent = category.name;
+            categoryFilter.appendChild(option);
+        });
+
+        if ([...categoryFilter.options].some(opt => opt.value === currentValue)) {
+            categoryFilter.value = currentValue;
+        }
+    }
+
+    function renderTopCategoriesTable(rows, currency) {
+        if (!rows || rows.length === 0) {
+            topExpenseCategoriesTable.innerHTML = `
+                <tr>
+                    <td colspan="4" class="text-center text-muted py-4">
+                        No expense data found for this filter.
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        const topRows = rows.slice(0, 5);
+
+        topExpenseCategoriesTable.innerHTML = topRows.map(row => {
+            let statusBadge = '<span class="badge text-bg-secondary">Normal</span>';
+
+            if (row.share >= 30) {
+                statusBadge = '<span class="badge text-bg-danger">High</span>';
+            } else if (row.share >= 15) {
+                statusBadge = '<span class="badge text-bg-warning">Medium</span>';
+            }
+
+            return `
+                <tr>
+                    <td>${row.category_name}</td>
+                    <td>${formatCurrency(row.amount, currency)}</td>
+                    <td>${row.share}%</td>
+                    <td>${statusBadge}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function renderAdvice(data, currency) {
+        const summary = data.summary || {};
+        const rows = data.category_breakdown || [];
+        const insights = data.insights || {};
+
+        if (!rows.length) {
+            expenseAdviceSection.innerHTML = `
+                <div class="text-muted">
+                    No advice available yet because there is no expense data for this selection.
+                </div>
+            `;
+            return;
+        }
+
+        const advice = [];
+        const top = rows[0];
+
+        if (top && top.share >= 30) {
+            advice.push({
+                type: 'danger',
+                title: 'Top category is taking a big share',
+                text: `${top.category_name} is ${top.share}% of your total expense. This is the first category to review if you want to reduce spending.`
+            });
+        }
+
+        if ((insights.top_3_share || 0) >= 70) {
+            advice.push({
+                type: 'info',
+                title: 'Most of your spending is concentrated',
+                text: `Your top 3 categories make up ${insights.top_3_share}% of total expenses. If you reduce only these categories, the impact will be much bigger.`
+            });
+        }
+
+        if ((insights.small_expense_count || 0) >= 5 && (insights.small_expense_total || 0) > 0) {
+            advice.push({
+                type: 'warning',
+                title: 'Small purchases are adding up',
+                text: `You made ${insights.small_expense_count} small purchases totaling ${formatCurrency(insights.small_expense_total, currency)}. These are easy places to cut without changing major needs.`
+            });
+        }
+
+        if (insights.highest_spending_day && insights.highest_spending_day_amount > 0) {
+            advice.push({
+                type: 'secondary',
+                title: 'Highest spending day',
+                text: `Your highest spending day was the ${insights.highest_spending_day}th, with ${formatCurrency(insights.highest_spending_day_amount, currency)} spent. Check what caused that spike.`
+            });
+        }
+
+        if (insights.biggest_growth_category && insights.biggest_growth_amount > 0) {
+            advice.push({
+                type: 'warning',
+                title: 'Fastest growing category',
+                text: `${insights.biggest_growth_category} increased by ${formatCurrency(insights.biggest_growth_amount, currency)} compared to last month (${insights.biggest_growth_percent}%).`
+            });
+        }
+
+        if (summary.compare_last_month_percent > 15) {
+            advice.push({
+                type: 'danger',
+                title: 'Overall spending increased',
+                text: `Your total expense is up by ${summary.compare_last_month_percent}% compared to last month. Review non-essential categories first.`
+            });
+        } else if (summary.compare_last_month_percent < 0) {
+            advice.push({
+                type: 'success',
+                title: 'Good improvement',
+                text: `Your total expense is lower than last month by ${Math.abs(summary.compare_last_month_percent)}%. Keep following the same pattern.`
+            });
+        }
+
+        if ((summary.top_category_amount || 0) > 0) {
+            const potentialSave = summary.top_category_amount * 0.15;
+            advice.push({
+                type: 'success',
+                title: 'Possible savings target',
+                text: `If you reduce ${summary.top_category} by just 15%, you could save around ${formatCurrency(potentialSave, currency)}.`
+            });
+        }
+
+        expenseAdviceSection.innerHTML = advice.map(item => `
+            <div class="alert alert-${item.type} mb-3">
+                <h6 class="mb-1">${item.title}</h6>
+                <div class="small">${item.text}</div>
+            </div>
+        `).join('');
+    }
+
+    function renderCategoryChart(rows, currency) {
+        const ctx = document.getElementById('expenseCategoryChart');
+
+        if (expenseCategoryChartInstance) {
+            expenseCategoryChartInstance.destroy();
+        }
+
+        if (!rows || rows.length === 0) {
+            expenseCategoryChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['No Data'],
+                    datasets: [{
+                        data: [1]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+            return;
+        }
+
+        expenseCategoryChartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: rows.map(row => row.category_name),
+                datasets: [{
+                    data: rows.map(row => row.amount)
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display:false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const value = context.raw || 0;
+                                const row = rows[context.dataIndex];
+                                return `${row.category_name}: ${formatCurrency(value, currency)} (${row.share}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    async function loadExpenseAnalysis() {
+        const params = new URLSearchParams({
+            currency: currencyFilter.value,
+            month: monthFilter.value,
+            year: yearFilter.value,
+            account_id: accountFilter.value,
+            category_id: categoryFilter.value
+        });
+
+        const response = await fetch(`/api/expense-analysis?${params.toString()}`);
+        const data = await response.json();
+
+        populateAccounts(data.filters.accounts || []);
+        populateCategories(data.filters.categories || []);
+
+        totalExpenseCard.textContent = formatCurrency(data.summary.total_expense, currencyFilter.value);
+        topCategoryCard.textContent = data.summary.top_category || '-';
+        avgDailyExpenseCard.textContent = formatCurrency(data.summary.avg_daily_expense, currencyFilter.value);
+        compareLastMonthCard.textContent = data.summary.compare_last_month || '0%';
+
+        renderTopCategoriesTable(data.category_breakdown || [], currencyFilter.value);
+        renderCategoryChart(data.category_breakdown || [], currencyFilter.value);
+        renderDailyExpenseTrendChart(data.daily_expense_trend || [], currencyFilter.value);
+        renderMonthlyExpenseTrendChart(data.monthly_expense_trend || [], currencyFilter.value);
+        renderAdvice(data, currencyFilter.value);
+    }
+
+    currencyFilter.addEventListener('change', loadExpenseAnalysis);
+    monthFilter.addEventListener('change', loadExpenseAnalysis);
+    yearFilter.addEventListener('change', loadExpenseAnalysis);
+    accountFilter.addEventListener('change', loadExpenseAnalysis);
+    categoryFilter.addEventListener('change', loadExpenseAnalysis);
+
+    loadExpenseAnalysis();
+});
+</script>
+{% endblock %}

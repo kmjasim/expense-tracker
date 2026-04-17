@@ -11,3 +11,4 @@ main = Blueprint("main", __name__)
 
 # Route modules (keep these imports at the end)
 from . import index, debt, payments, transfers, categories, accounts, recipients, finance_score_routes, transactions, transactions_actions,routes_recurring, routes_budget, salary, lotto # noqa: E402,F401
+from . import expense_analysis_api

@@ -80,5 +80,9 @@ MENU = [
     "endpoint": "main.lotto_analyzer",
 },
 
-
+{
+    "label": "Expense Analysis",
+    "icon": "bi bi-graph-up-arrow",
+    "endpoint": "main.expense_analysis",
+},
 ]

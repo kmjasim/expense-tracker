@@ -182,3 +182,16 @@ def api_krw_income_spent():
     month = request.args.get("month", type=int) or today.month
     data = krw_income_spent(current_user.id, year, month)
     return jsonify({"year": year, "month": month, **data})
+
+
+@main.route('/expense_analysis')
+@login_required
+def expense_analysis():
+    today = date.today()
+
+    return render_template(
+        'expense_analysis.html',
+        current_month=today.month,
+        current_year=today.year,
+        page_title=get_page_title(),
+    )
