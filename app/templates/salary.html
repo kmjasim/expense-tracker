@@ -103,7 +103,7 @@
       </div>
 
       <!-- 4) Allowance -->
-      <div class="col-md-4">
+      <div class="col-md-3">
         <div class="card shadow-sm border-0 h-100">
           <div class="card-body">
             <div class="text-muted small">Allowance</div>
@@ -118,7 +118,7 @@
       </div>
 
       <!-- 5) Deductions -->
-      <div class="col-md-4">
+      <div class="col-md-3">
         <div class="card shadow-sm border-0 h-100">
           <div class="card-body">
             <div class="text-muted small">Deductions (Insurance / Tax)</div>
@@ -133,7 +133,7 @@
       </div>
 
       <!-- 6) Leave + Penalty (grouped) -->
-      <div class="col-md-4">
+      <div class="col-md-3">
         <div class="card shadow-sm border-0 h-100">
           <div class="card-body">
             <div class="text-muted small">Leave Deduction + Penalty</div>
@@ -143,6 +143,21 @@
             <div class="small text-muted">
               Leave days: <span class="fw-semibold">{{ leave_days }}</span>
               · Penalty days: <span class="fw-semibold">{{ penalty_days }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-3">
+        <div class="card shadow-sm border-0 h-100">
+          <div class="card-body">
+            <div class="text-muted small">Paid Annual Leave</div>
+            <div class="fs-4 fw-semibold text-success">
+              {{ paid_leave_used_year }} / {{ paid_leave_yearly_limit }} days
+            </div>
+            <div class="small text-muted">
+              This month: <span class="fw-semibold">{{ paid_leave_days }}</span>
+              · Remaining: <span class="fw-semibold">{{ paid_leave_remaining_year }}</span>
             </div>
           </div>
         </div>
@@ -397,8 +412,14 @@
             <input type="date" class="form-control form-control-sm" name="end_date"
                    value="{{ today.isoformat() }}" required>
           </div>
-
-          <div class="col-md-4">
+          <div class="col-md-2">
+            <label class="form-label small">Leave Type</label>
+            <select class="form-select form-select-sm" name="leave_type" required>
+              <option value="paid">Paid Annual Leave</option>
+              <option value="unpaid">Unpaid Leave</option>
+            </select>
+          </div>
+          <div class="col-md-3">
             <label class="form-label small">Note (optional)</label>
             <input type="text" class="form-control form-control-sm" name="note"
                    placeholder="e.g., Vacation / Bangladesh trip">
@@ -547,6 +568,13 @@
               </label>
             </div>
           </div>
+          <div class="col-md-3">
+            <label class="form-label small">Leave Type</label>
+            <select class="form-select form-select-sm" name="leave_type">
+              <option value="paid">Paid Annual Leave</option>
+              <option value="unpaid" selected>Unpaid Leave</option>
+            </select>
+          </div>
 
           <div class="col-12">
             <input
@@ -595,6 +623,8 @@
     {% set isWeekend = d.weekday() >= 5 %}
     {% set isHoliday = dstr in holiday_dates %}
     {% set isLeave = l and l.is_full_day_leave %}
+    {% set leaveType = l.leave_type if l and l.leave_type else "unpaid" %}
+    {% set isPaidLeave = isLeave and leaveType == "paid" %}
 
     <tr class="
       {% if isLeave %}row-leave
@@ -612,9 +642,10 @@
         {% elif isWeekend %}
           <span class="badge badge-soft text-bg-primary ms-1">Weekend</span>
         {% endif %}
-
-        {% if isLeave %}
-          <span class="badge badge-soft text-bg-danger ms-1">Leave</span>
+        {% if isPaidLeave %}
+          <span class="badge badge-soft text-bg-success ms-1">Paid Leave</span>
+        {% elif isLeave %}
+          <span class="badge badge-soft text-bg-danger ms-1">Unpaid Leave</span>
         {% endif %}
       </td>
 
@@ -651,8 +682,10 @@
 
       <!-- Leave -->
       <td>
-        {% if isLeave %}
-          <span class="fw-semibold text-danger">Yes</span>
+        {% if isPaidLeave %}
+          <span class="fw-semibold text-success">Paid</span>
+        {% elif isLeave %}
+          <span class="fw-semibold text-danger">Unpaid</span>
         {% else %}
           <span class="text-muted">No</span>
         {% endif %}

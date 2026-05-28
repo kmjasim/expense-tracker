@@ -18,7 +18,58 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 import os, tempfile, calendar
 
+PAID_LEAVE_YEARLY_LIMIT = 16
 
+
+def is_paid_leave(log) -> bool:
+    return (
+        log
+        and log.is_full_day_leave
+        and (getattr(log, "leave_type", "unpaid") or "unpaid") == "paid"
+    )
+
+
+def count_paid_leave_days_for_year(user_id: int, year: int) -> int:
+    start = date(year, 1, 1)
+    end = date(year + 1, 1, 1)
+
+    holiday_rows = (
+        db.session.query(Holiday.holiday_date)
+        .filter(
+            Holiday.user_id == user_id,
+            Holiday.holiday_date >= start,
+            Holiday.holiday_date < end,
+        )
+        .all()
+    )
+    holiday_set = {row[0] for row in holiday_rows}
+
+    logs = (
+        WorkLog.query
+        .filter(
+            WorkLog.user_id == user_id,
+            WorkLog.work_date >= start,
+            WorkLog.work_date < end,
+            WorkLog.is_full_day_leave.is_(True),
+            WorkLog.leave_type == "paid",
+        )
+        .all()
+    )
+
+    count = 0
+    for log in logs:
+        d = log.work_date
+
+        # Paid leave should count only on normal working days
+        if d.weekday() >= 5:
+            continue
+
+        if d in holiday_set:
+            continue
+
+        count += 1
+
+    return count
 def iter_months(y1, m1, y2, m2):
     y, m = y1, m1
     while (y < y2) or (y == y2 and m <= m2):
@@ -200,26 +251,36 @@ def calc_month_summary(user_id: int, year: int, month: int):
             weekend_holiday_days += 1
             weekend_holiday_minutes += int(l.worked_minutes or 0)
 
-    # weekly leave + penalty (Mon–Sun, workdays Mon–Fri; skip weekends/holidays)
-    # penalty applies ONLY for full-day leave
-    leave_days = 0
+    # weekly unpaid leave + penalty
+    # paid annual leave does NOT create deduction or penalty
+    leave_days = 0          # unpaid leave days only
+    paid_leave_days = 0     # paid annual leave days this month
     penalty_days = 0
 
-    # group leave days by week_start
     week_map = {}
+
     for l in logs:
         d = l.work_date
+
         if is_weekend(d) or is_holiday(user_id, d):
             continue
-        if l.is_full_day_leave:
-            ws = week_start_monday(d)
-            week_map.setdefault(ws, 0)
-            week_map[ws] += 1
+
+        if not l.is_full_day_leave:
+            continue
+
+        if is_paid_leave(l):
+            paid_leave_days += 1
+            continue
+
+        # unpaid leave only
+        ws = week_start_monday(d)
+        week_map.setdefault(ws, 0)
+        week_map[ws] += 1
 
     for ws, L in week_map.items():
         if L > 0:
             leave_days += L
-            penalty_days += 1  # your rule: +1 per week when any full-day leave exists
+            penalty_days += 1  # if any unpaid leave in a week, count 1 penalty day for that week
 
     # money math
     hourly = _d(s.hourly_rate)
@@ -274,7 +335,8 @@ def calc_month_summary(user_id: int, year: int, month: int):
     # net = base + OT + allowance - (deductions + leave_deduction)
     gross= base_salary + weekend_holiday_pay + overtime_pay + allowance_total
     net = base_salary + weekend_holiday_pay + overtime_pay + allowance_total - (deduction_total + leave_deduction + short_hours_deduction)
-
+    paid_leave_used_year = count_paid_leave_days_for_year(user_id, year)
+    paid_leave_remaining_year = max(PAID_LEAVE_YEARLY_LIMIT - paid_leave_used_year, 0)
 
     # For your cards:
     return {
@@ -302,6 +364,10 @@ def calc_month_summary(user_id: int, year: int, month: int):
         "short_hours_deduction": short_hours_deduction,
         "net": net,
         "gross": gross,
+        "paid_leave_days": paid_leave_days,
+        "paid_leave_used_year": paid_leave_used_year,
+        "paid_leave_remaining_year": paid_leave_remaining_year,
+        "paid_leave_yearly_limit": PAID_LEAVE_YEARLY_LIMIT,
     }
 
 
@@ -394,6 +460,10 @@ def salary_page():
         log_by_date=log_by_date,
         # table
         logs=summary["logs"],
+        paid_leave_days=summary["paid_leave_days"],
+        paid_leave_used_year=summary["paid_leave_used_year"],
+        paid_leave_remaining_year=summary["paid_leave_remaining_year"],
+        paid_leave_yearly_limit=summary["paid_leave_yearly_limit"],
     )
 
 
@@ -556,6 +626,11 @@ def salary_log_save():
 
     lunch_min = int(request.form.get("lunch_minutes") or 0)
     full_leave = (request.form.get("is_full_day_leave") == "on")
+    leave_type = (request.form.get("leave_type") or "unpaid").strip()
+
+    if leave_type not in ("paid", "unpaid"):
+        leave_type = "unpaid"
+
     note = request.form.get("note") or ""
 
     s = get_or_create_settings(_uid())
@@ -571,6 +646,7 @@ def salary_log_save():
     log.out_time = out_t
     log.lunch_minutes = lunch_min
     log.is_full_day_leave = full_leave
+    log.leave_type = leave_type if full_leave else "unpaid"
     log.note = note
 
     log.worked_minutes = worked
@@ -731,6 +807,10 @@ def salary_long_leave_apply():
     end = datetime.strptime(request.form["end_date"], "%Y-%m-%d").date()
     note = (request.form.get("note") or "").strip()
     overwrite = (request.form.get("overwrite") == "on")
+    leave_type = (request.form.get("leave_type") or "unpaid").strip()
+
+    if leave_type not in ("paid", "unpaid"):
+        leave_type = "unpaid"
 
     # safety: swap if user inputs reversed
     if end < start:
@@ -782,6 +862,7 @@ def salary_long_leave_apply():
         # Mark as full day leave
         log.is_full_day_leave = True
         log.note = note
+        log.leave_type = leave_type
 
         # clear times (this is leave)
         log.in_time = None
@@ -953,3 +1034,274 @@ def salary_summary_data():
         summary=payload,
     )
 
+# ---------- Salary Analysis Page ----------
+@main.route("/salary-analysis", methods=["GET"])
+@login_required
+def salary_analysis():
+    today = date.today()
+
+    return render_template(
+        "salary_analysis.html",
+        page_title=get_page_title(),
+        current_year=today.year,
+        current_month=today.month,
+    )
+
+
+def _salary_float(value):
+    return round(float(_d(value)), 2)
+
+
+def _salary_hours_from_minutes(minutes):
+    return round(float(Decimal(minutes or 0) / Decimal(60)), 2)
+
+
+def _salary_adjust_breakdown(user_id, year, month=None):
+    query = SalaryAdjust.query.filter(
+        SalaryAdjust.user_id == user_id,
+        SalaryAdjust.year == year,
+    )
+
+    if month:
+        query = query.filter(SalaryAdjust.month == month)
+
+    rows = (
+        query
+        .with_entities(
+            SalaryAdjust.kind,
+            SalaryAdjust.label,
+            func.coalesce(func.sum(SalaryAdjust.amount), 0).label("total_amount"),
+            func.count(SalaryAdjust.id).label("count"),
+        )
+        .group_by(SalaryAdjust.kind, SalaryAdjust.label)
+        .order_by(SalaryAdjust.kind.asc(), func.sum(SalaryAdjust.amount).desc())
+        .all()
+    )
+
+    result = []
+
+    for row in rows:
+        result.append({
+            "kind": row.kind,
+            "label": row.label,
+            "amount": _salary_float(row.total_amount),
+            "count": int(row.count or 0),
+        })
+
+    return result
+
+
+def _salary_logs_for_period(user_id, year, month=None):
+    if month:
+        start, end = month_bounds(year, month)
+    else:
+        start = date(year, 1, 1)
+        end = date(year + 1, 1, 1)
+
+    logs = (
+        WorkLog.query
+        .filter(
+            WorkLog.user_id == user_id,
+            WorkLog.work_date >= start,
+            WorkLog.work_date < end,
+        )
+        .all()
+    )
+
+    worked_days = 0
+    total_worked_minutes = 0
+    total_regular_minutes = 0
+    total_overtime_minutes = 0
+    leave_days = 0
+
+    for log in logs:
+        worked_minutes = int(log.worked_minutes or 0)
+
+        if worked_minutes > 0:
+            worked_days += 1
+
+        if log.is_full_day_leave:
+            leave_days += 1
+
+        total_worked_minutes += worked_minutes
+        total_regular_minutes += int(log.regular_minutes or 0)
+        total_overtime_minutes += int(log.overtime_minutes or 0)
+
+    return {
+        "worked_days": worked_days,
+        "logged_days": len(logs),
+        "leave_days_logged": leave_days,
+        "worked_hours": _salary_hours_from_minutes(total_worked_minutes),
+        "regular_hours": _salary_hours_from_minutes(total_regular_minutes),
+        "overtime_hours_logged": _salary_hours_from_minutes(total_overtime_minutes),
+    }
+
+
+def _salary_analysis_insights(summary, adjustments):
+    insights = []
+
+    gross = summary["gross"]
+    net = summary["net"]
+    total_deductions = summary["total_deductions"]
+
+    if gross > 0:
+        deduction_rate = round((total_deductions / gross) * 100, 2)
+    else:
+        deduction_rate = 0
+
+    if deduction_rate >= 20:
+        insights.append({
+            "type": "warning",
+            "title": "High deduction ratio",
+            "text": f"Your total deductions are {deduction_rate}% of gross salary. Check insurance, tax, leave, and short-hour deductions.",
+        })
+    else:
+        insights.append({
+            "type": "success",
+            "title": "Deduction ratio looks controlled",
+            "text": f"Your total deductions are {deduction_rate}% of gross salary.",
+        })
+
+    deduction_items = [item for item in adjustments if item["kind"] == "deduction"]
+
+    if deduction_items:
+        top = max(deduction_items, key=lambda item: item["amount"])
+        insights.append({
+            "type": "info",
+            "title": "Biggest deduction",
+            "text": f"{top['label']} is your biggest deduction: {int(top['amount']):,}₩.",
+        })
+
+    if summary["overtime_pay"] > 0:
+        insights.append({
+            "type": "primary",
+            "title": "Overtime impact",
+            "text": f"Overtime added {int(summary['overtime_pay']):,}₩ to your salary.",
+        })
+
+    if summary["leave_deduction"] > 0:
+        insights.append({
+            "type": "danger",
+            "title": "Leave / short-hour deduction",
+            "text": f"Leave and short-hour deduction reduced salary by {int(summary['leave_deduction']):,}₩.",
+        })
+
+    if net > 0 and gross > 0:
+        insights.append({
+            "type": "secondary",
+            "title": "Net salary ratio",
+            "text": f"Your net salary is {round((net / gross) * 100, 2)}% of gross salary.",
+        })
+
+    return insights
+
+
+@main.route("/api/salary-analysis", methods=["GET"])
+@login_required
+def api_salary_analysis():
+    today = date.today()
+
+    year = request.args.get("year", type=int) or today.year
+    month = request.args.get("month", type=int)
+
+    if month is not None and not (1 <= month <= 12):
+        month = None
+
+    months_to_analyze = [month] if month else list(range(1, 13))
+
+    total_base_salary = Decimal("0")
+    total_overtime_pay = Decimal("0")
+    total_weekend_holiday_pay = Decimal("0")
+    total_allowance = Decimal("0")
+    total_regular_deduction = Decimal("0")
+    total_leave_deduction = Decimal("0")
+    total_gross = Decimal("0")
+    total_net = Decimal("0")
+
+    total_overtime_minutes = 0
+    total_weekend_holiday_minutes = 0
+    total_weekend_holiday_days = 0
+    total_leave_days = 0
+    total_penalty_days = 0
+    total_short_minutes = 0
+
+    monthly_series = []
+
+    for m in range(1, 13):
+        month_summary = calc_month_summary(_uid(), year, m)
+
+        gross = _d(month_summary["gross"])
+        net = _d(month_summary["net"])
+        regular_deduction = _d(month_summary["deduction_total"])
+        leave_deduction = _d(month_summary["leave_deduction"])
+
+        monthly_series.append({
+            "month": m,
+            "label": calendar.month_abbr[m],
+            "gross": _salary_float(gross),
+            "net": _salary_float(net),
+            "overtime_pay": _salary_float(month_summary["overtime_pay"]),
+            "weekend_holiday_pay": _salary_float(month_summary["weekend_holiday_pay"]),
+            "allowance": _salary_float(month_summary["allowance_total"]),
+            "deductions": _salary_float(regular_deduction + leave_deduction),
+        })
+
+        if m not in months_to_analyze:
+            continue
+
+        total_base_salary += _d(month_summary["base_salary"])
+        total_overtime_pay += _d(month_summary["overtime_pay"])
+        total_weekend_holiday_pay += _d(month_summary["weekend_holiday_pay"])
+        total_allowance += _d(month_summary["allowance_total"])
+        total_regular_deduction += _d(month_summary["deduction_total"])
+        total_leave_deduction += _d(month_summary["leave_deduction"])
+        total_gross += gross
+        total_net += net
+
+        total_overtime_minutes += int(month_summary["overtime_minutes"] or 0)
+        total_weekend_holiday_minutes += int(month_summary["weekend_holiday_minutes"] or 0)
+        total_weekend_holiday_days += int(month_summary["weekend_holiday_days"] or 0)
+        total_leave_days += int(month_summary["leave_days"] or 0)
+        total_penalty_days += int(month_summary["penalty_days"] or 0)
+        total_short_minutes += int(month_summary["short_minutes"] or 0)
+
+    adjustments = _salary_adjust_breakdown(_uid(), year, month)
+    log_summary = _salary_logs_for_period(_uid(), year, month)
+
+    total_deductions = total_regular_deduction + total_leave_deduction
+
+    summary = {
+        "year": year,
+        "month": month,
+        "mode": "month" if month else "year",
+
+        "base_salary": _salary_float(total_base_salary),
+        "overtime_pay": _salary_float(total_overtime_pay),
+        "weekend_holiday_pay": _salary_float(total_weekend_holiday_pay),
+        "allowance_total": _salary_float(total_allowance),
+
+        "regular_deduction_total": _salary_float(total_regular_deduction),
+        "leave_deduction": _salary_float(total_leave_deduction),
+        "total_deductions": _salary_float(total_deductions),
+
+        "gross": _salary_float(total_gross),
+        "net": _salary_float(total_net),
+
+        "overtime_hours": _salary_hours_from_minutes(total_overtime_minutes),
+        "weekend_holiday_hours": _salary_hours_from_minutes(total_weekend_holiday_minutes),
+        "weekend_holiday_days": total_weekend_holiday_days,
+        "leave_days": total_leave_days,
+        "penalty_days": total_penalty_days,
+        "short_hours": _salary_hours_from_minutes(total_short_minutes),
+    }
+
+    insights = _salary_analysis_insights(summary, adjustments)
+
+    return jsonify({
+        "ok": True,
+        "summary": summary,
+        "monthly_series": monthly_series,
+        "adjustments": adjustments,
+        "log_summary": log_summary,
+        "insights": insights,
+    })

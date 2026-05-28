@@ -72,6 +72,11 @@ MENU = [
             "icon": "bi bi-sliders",
             "endpoint": "main.salary_settings_page",  # or modal later; page is easiest first
         },
+        {
+            "label": "Salary Analysis",
+            "icon": "bi bi-cash-coin",
+            "endpoint": "main.salary_analysis",
+        },
     ],
 },
 {

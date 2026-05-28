@@ -413,14 +413,14 @@ class WorkLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, index=True, nullable=False)
     work_date = db.Column(db.Date, nullable=False, index=True)
-
+    
     in_time = db.Column(db.Time, nullable=True)
     out_time = db.Column(db.Time, nullable=True)
     lunch_minutes = db.Column(db.Integer, nullable=False, default=0)
 
     # Weekly penalty applies ONLY if full-day leave
     is_full_day_leave = db.Column(db.Boolean, nullable=False, default=False)
-
+    leave_type = db.Column(db.String(20),nullable=False,server_default="unpaid")  # unpaid | paid
     note = db.Column(db.String(255), default="")
 
     # store computed minutes (fast summary and consistent)

@@ -1,0 +1,645 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-3">
+
+  <!-- Header -->
+  <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
+    <div>
+      <h2 class="mb-1">Salary Analysis</h2>
+      <p class="text-muted mb-0">
+        Analyze gross salary, net salary, overtime, deductions, allowances, and work patterns.
+      </p>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2">
+      <button type="button" class="btn btn-outline-secondary btn-sm" id="resetBtn">
+        <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
+      </button>
+      <button type="button" class="btn btn-primary btn-sm" id="applyBtn">
+        <i class="bi bi-funnel me-1"></i> Apply
+      </button>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+      <div class="row g-3 align-items-end">
+        <div class="col-12 col-md-4 col-lg-3">
+          <label class="form-label">Year</label>
+          <select id="yearFilter" class="form-select">
+            {% for y in range(current_year - 4, current_year + 2) %}
+              <option value="{{ y }}" {% if y == current_year %}selected{% endif %}>
+                {{ y }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-12 col-md-4 col-lg-3">
+          <label class="form-label">Month</label>
+          <select id="monthFilter" class="form-select">
+            <option value="">Whole Year</option>
+            {% for m in range(1, 13) %}
+              <option value="{{ m }}" {% if m == current_month %}selected{% endif %}>
+                {{ "%02d"|format(m) }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-12 col-md-4 col-lg-6">
+          <div class="small text-muted">
+            Choose one month for detailed analysis, or choose Whole Year for yearly totals.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="salaryAnalysisAlert" class="alert d-none mb-4"></div>
+
+  <!-- Summary Cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-body">
+          <p class="text-muted mb-1">Gross Salary</p>
+          <h4 class="mb-0 text-primary" id="grossCard">-</h4>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-body">
+          <p class="text-muted mb-1">Net Salary</p>
+          <h4 class="mb-0 text-success" id="netCard">-</h4>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-body">
+          <p class="text-muted mb-1">Total Additions</p>
+          <h4 class="mb-0 text-success" id="additionsCard">-</h4>
+          <small class="text-muted">OT + Weekend/Holiday + Allowance</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-body">
+          <p class="text-muted mb-1">Total Deductions</p>
+          <h4 class="mb-0 text-danger" id="deductionsCard">-</h4>
+          <small class="text-muted">Insurance/tax + leave/short hours</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detailed Cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-12 col-md-6 col-xl-3">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-body">
+          <p class="text-muted mb-1">Base Salary</p>
+          <h5 class="mb-0" id="baseSalaryCard">-</h5>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-md-6 col-xl-3">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-body">
+          <p class="text-muted mb-1">Overtime</p>
+          <h5 class="mb-0 text-success" id="overtimePayCard">-</h5>
+          <small class="text-muted" id="overtimeHoursText">-</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-md-6 col-xl-3">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-body">
+          <p class="text-muted mb-1">Weekend / Holiday Work</p>
+          <h5 class="mb-0 text-success" id="weekendHolidayPayCard">-</h5>
+          <small class="text-muted" id="weekendHolidayText">-</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-md-6 col-xl-3">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-body">
+          <p class="text-muted mb-1">Leave / Short Deduction</p>
+          <h5 class="mb-0 text-danger" id="leaveDeductionCard">-</h5>
+          <small class="text-muted" id="leavePenaltyText">-</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div class="row g-3 mb-4">
+    <div class="col-12 col-xl-8">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-header bg-white border-0 pb-0">
+          <h5 class="mb-0">Gross vs Net Trend</h5>
+        </div>
+        <div class="card-body">
+          <div style="height: 340px;">
+            <canvas id="grossNetChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-xl-4">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-header bg-white border-0 pb-0">
+          <h5 class="mb-0">Salary Composition</h5>
+        </div>
+        <div class="card-body">
+          <div style="height: 340px;">
+            <canvas id="salaryCompositionChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- More Charts -->
+  <div class="row g-3 mb-4">
+    <div class="col-12 col-xl-6">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-header bg-white border-0 pb-0">
+          <h5 class="mb-0">Monthly Deductions</h5>
+        </div>
+        <div class="card-body">
+          <div style="height: 320px;">
+            <canvas id="deductionTrendChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-xl-6">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-header bg-white border-0 pb-0">
+          <h5 class="mb-0">Monthly Overtime Pay</h5>
+        </div>
+        <div class="card-body">
+          <div style="height: 320px;">
+            <canvas id="overtimeTrendChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tables + Insights -->
+  <div class="row g-3">
+    <div class="col-12 col-xl-6">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-header bg-white border-0 pb-0">
+          <h5 class="mb-0">Allowances & Deductions Breakdown</h5>
+        </div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Label</th>
+                  <th class="text-end">Amount</th>
+                  <th class="text-end">Count</th>
+                </tr>
+              </thead>
+              <tbody id="adjustmentTable">
+                <tr>
+                  <td colspan="4" class="text-center text-muted py-4">
+                    No data loaded yet.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-xl-6">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-header bg-white border-0 pb-0">
+          <h5 class="mb-0">Work Summary & Insights</h5>
+        </div>
+        <div class="card-body">
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <div class="border rounded-3 p-2">
+                <div class="text-muted small">Worked Days</div>
+                <div class="fw-bold" id="workedDaysText">-</div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="border rounded-3 p-2">
+                <div class="text-muted small">Worked Hours</div>
+                <div class="fw-bold" id="workedHoursText">-</div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="border rounded-3 p-2">
+                <div class="text-muted small">Regular Hours</div>
+                <div class="fw-bold" id="regularHoursText">-</div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="border rounded-3 p-2">
+                <div class="text-muted small">Logged Leave Days</div>
+                <div class="fw-bold" id="loggedLeaveDaysText">-</div>
+              </div>
+            </div>
+          </div>
+
+          <div id="salaryInsightsSection">
+            <div class="text-muted">Insights will appear here.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const yearFilter = document.getElementById('yearFilter');
+  const monthFilter = document.getElementById('monthFilter');
+  const applyBtn = document.getElementById('applyBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const salaryAnalysisAlert = document.getElementById('salaryAnalysisAlert');
+
+  const grossCard = document.getElementById('grossCard');
+  const netCard = document.getElementById('netCard');
+  const additionsCard = document.getElementById('additionsCard');
+  const deductionsCard = document.getElementById('deductionsCard');
+
+  const baseSalaryCard = document.getElementById('baseSalaryCard');
+  const overtimePayCard = document.getElementById('overtimePayCard');
+  const overtimeHoursText = document.getElementById('overtimeHoursText');
+  const weekendHolidayPayCard = document.getElementById('weekendHolidayPayCard');
+  const weekendHolidayText = document.getElementById('weekendHolidayText');
+  const leaveDeductionCard = document.getElementById('leaveDeductionCard');
+  const leavePenaltyText = document.getElementById('leavePenaltyText');
+
+  const adjustmentTable = document.getElementById('adjustmentTable');
+  const salaryInsightsSection = document.getElementById('salaryInsightsSection');
+
+  const workedDaysText = document.getElementById('workedDaysText');
+  const workedHoursText = document.getElementById('workedHoursText');
+  const regularHoursText = document.getElementById('regularHoursText');
+  const loggedLeaveDaysText = document.getElementById('loggedLeaveDaysText');
+
+  let grossNetChart = null;
+  let salaryCompositionChart = null;
+  let deductionTrendChart = null;
+  let overtimeTrendChart = null;
+
+  function formatKRW(value) {
+    return '₩' + Number(value || 0).toLocaleString(undefined, {
+      maximumFractionDigits: 0
+    });
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+  }
+
+  function setAlert(type, message) {
+    salaryAnalysisAlert.className = `alert alert-${type} mb-4`;
+    salaryAnalysisAlert.textContent = message;
+    salaryAnalysisAlert.classList.remove('d-none');
+  }
+
+  function hideAlert() {
+    salaryAnalysisAlert.classList.add('d-none');
+    salaryAnalysisAlert.textContent = '';
+  }
+
+  function destroyChart(chart) {
+    if (chart) {
+      chart.destroy();
+    }
+  }
+
+  function updateCards(summary) {
+    const additions =
+      Number(summary.overtime_pay || 0) +
+      Number(summary.weekend_holiday_pay || 0) +
+      Number(summary.allowance_total || 0);
+
+    grossCard.textContent = formatKRW(summary.gross);
+    netCard.textContent = formatKRW(summary.net);
+    additionsCard.textContent = formatKRW(additions);
+    deductionsCard.textContent = formatKRW(summary.total_deductions);
+
+    baseSalaryCard.textContent = formatKRW(summary.base_salary);
+
+    overtimePayCard.textContent = formatKRW(summary.overtime_pay);
+    overtimeHoursText.textContent = `${summary.overtime_hours || 0} hours`;
+
+    weekendHolidayPayCard.textContent = formatKRW(summary.weekend_holiday_pay);
+    weekendHolidayText.textContent =
+      `${summary.weekend_holiday_days || 0} days · ${summary.weekend_holiday_hours || 0} hours`;
+
+    leaveDeductionCard.textContent = formatKRW(summary.leave_deduction);
+    leavePenaltyText.textContent =
+      `Leave days: ${summary.leave_days || 0} · Penalty days: ${summary.penalty_days || 0} · Short: ${summary.short_hours || 0}h`;
+  }
+
+  function updateWorkSummary(logSummary) {
+    workedDaysText.textContent = logSummary.worked_days || 0;
+    workedHoursText.textContent = `${logSummary.worked_hours || 0}h`;
+    regularHoursText.textContent = `${logSummary.regular_hours || 0}h`;
+    loggedLeaveDaysText.textContent = logSummary.leave_days_logged || 0;
+  }
+
+  function renderGrossNetChart(series) {
+    destroyChart(grossNetChart);
+
+    grossNetChart = new Chart(document.getElementById('grossNetChart'), {
+      type: 'line',
+      data: {
+        labels: series.map(row => row.label),
+        datasets: [
+          {
+            label: 'Gross',
+            data: series.map(row => row.gross),
+            tension: 0.3
+          },
+          {
+            label: 'Net',
+            data: series.map(row => row.net),
+            tension: 0.3
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          mode: 'index',
+          intersect: false
+        },
+        plugins: {
+          tooltip: {
+            callbacks: {
+              label: function (context) {
+                return `${context.dataset.label}: ${formatKRW(context.raw || 0)}`;
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              callback: function (value) {
+                return formatKRW(value);
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  function renderCompositionChart(summary) {
+    destroyChart(salaryCompositionChart);
+
+    salaryCompositionChart = new Chart(document.getElementById('salaryCompositionChart'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Base Salary', 'Overtime', 'Weekend/Holiday', 'Allowance', 'Deductions'],
+        datasets: [{
+          data: [
+            summary.base_salary || 0,
+            summary.overtime_pay || 0,
+            summary.weekend_holiday_pay || 0,
+            summary.allowance_total || 0,
+            summary.total_deductions || 0
+          ]
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          tooltip: {
+            callbacks: {
+              label: function (context) {
+                return `${context.label}: ${formatKRW(context.raw || 0)}`;
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  function renderDeductionTrendChart(series) {
+    destroyChart(deductionTrendChart);
+
+    deductionTrendChart = new Chart(document.getElementById('deductionTrendChart'), {
+      type: 'bar',
+      data: {
+        labels: series.map(row => row.label),
+        datasets: [{
+          label: 'Deductions',
+          data: series.map(row => row.deductions)
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          },
+          tooltip: {
+            callbacks: {
+              label: function (context) {
+                return formatKRW(context.raw || 0);
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              callback: function (value) {
+                return formatKRW(value);
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  function renderOvertimeTrendChart(series) {
+    destroyChart(overtimeTrendChart);
+
+    overtimeTrendChart = new Chart(document.getElementById('overtimeTrendChart'), {
+      type: 'bar',
+      data: {
+        labels: series.map(row => row.label),
+        datasets: [{
+          label: 'Overtime Pay',
+          data: series.map(row => row.overtime_pay)
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          },
+          tooltip: {
+            callbacks: {
+              label: function (context) {
+                return formatKRW(context.raw || 0);
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              callback: function (value) {
+                return formatKRW(value);
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  function renderAdjustmentTable(rows) {
+    if (!rows || rows.length === 0) {
+      adjustmentTable.innerHTML = `
+        <tr>
+          <td colspan="4" class="text-center text-muted py-4">
+            No allowance or deduction data found.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    adjustmentTable.innerHTML = rows.map(row => {
+      const badge = row.kind === 'allowance'
+        ? '<span class="badge text-bg-success">Allowance</span>'
+        : '<span class="badge text-bg-danger">Deduction</span>';
+
+      const amountClass = row.kind === 'allowance' ? 'text-success' : 'text-danger';
+      const sign = row.kind === 'allowance' ? '+' : '-';
+
+      return `
+        <tr>
+          <td>${badge}</td>
+          <td>${escapeHtml(row.label)}</td>
+          <td class="text-end fw-semibold ${amountClass}">
+            ${sign}${formatKRW(row.amount)}
+          </td>
+          <td class="text-end">${row.count}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function renderInsights(rows) {
+    if (!rows || rows.length === 0) {
+      salaryInsightsSection.innerHTML = `
+        <div class="text-muted">No insights available yet.</div>
+      `;
+      return;
+    }
+
+    salaryInsightsSection.innerHTML = rows.map(item => `
+      <div class="alert alert-${escapeHtml(item.type)} mb-3">
+        <h6 class="mb-1">${escapeHtml(item.title)}</h6>
+        <div class="small">${escapeHtml(item.text)}</div>
+      </div>
+    `).join('');
+  }
+
+  async function loadSalaryAnalysis() {
+    hideAlert();
+
+    const params = new URLSearchParams({
+      year: yearFilter.value,
+      month: monthFilter.value
+    });
+
+    setAlert('secondary', 'Loading salary analysis...');
+
+    try {
+      const response = await fetch(`/api/salary-analysis?${params.toString()}`);
+      const data = await response.json();
+
+      if (!response.ok || data.ok === false) {
+        throw new Error(data.error || 'Failed to load salary analysis.');
+      }
+
+      hideAlert();
+
+      updateCards(data.summary || {});
+      updateWorkSummary(data.log_summary || {});
+
+      renderGrossNetChart(data.monthly_series || []);
+      renderCompositionChart(data.summary || {});
+      renderDeductionTrendChart(data.monthly_series || []);
+      renderOvertimeTrendChart(data.monthly_series || []);
+
+      renderAdjustmentTable(data.adjustments || []);
+      renderInsights(data.insights || []);
+
+    } catch (error) {
+      setAlert('danger', error.message || 'Something went wrong.');
+    }
+  }
+
+  applyBtn.addEventListener('click', loadSalaryAnalysis);
+
+  yearFilter.addEventListener('change', loadSalaryAnalysis);
+  monthFilter.addEventListener('change', loadSalaryAnalysis);
+
+  resetBtn.addEventListener('click', function () {
+    yearFilter.value = '{{ current_year }}';
+    monthFilter.value = '{{ current_month }}';
+    loadSalaryAnalysis();
+  });
+
+  loadSalaryAnalysis();
+});
+</script>
+{% endblock %}

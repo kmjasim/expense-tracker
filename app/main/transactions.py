@@ -228,86 +228,167 @@ def build_transaction_report_pdf(cur: str, rows, from_str: str, to_str: str):
 
     # ----- Cards section -----
     if cur == "BDT":
-        total_sent = 0.0
-        total_received = 0.0
-
-        for t in rows:
-            ttype = t.type.value if hasattr(t.type, "value") else str(t.type)
-            amt = float(t.amount)
-            recipient_label = (t.recipient_name or "Self")
-
-            # Card 1: all expenses/outflows except domestic transfers
-            if amt < 0 and ttype != "transfer_domestic":
-                total_sent += abs(amt)
-
-            # Card 2: international transfers received to self
-            if ttype == "transfer_international" and recipient_label == "Self" and amt > 0:
-                total_received += amt
-
-        # Card 1 – Sent (NO full-width colWidths here)
-        card1 = Table(
-            [[Paragraph("Total Expenses)", normal),
-            Paragraph(f"<font color='#dc3545'><b>{_fmt_amt(cur, total_sent)}</b></font>", normal)]]
+        total_sent_to_others = sum(
+            abs(float(t.amount or 0))
+            for t in rows
+            if _is_bdt_sent_to_other_recipient(t)
         )
+
+        total_received_self = sum(
+            float(t.amount or 0)
+            for t in rows
+            if _txn_type_value(t) == "transfer_international"
+            and _recipient_is_self(t.recipient_name)
+            and float(t.amount or 0) > 0
+        )
+
+        card1 = Table(
+            [[
+                Paragraph("Total Sent to Other Recipients", normal),
+                Paragraph(
+                    f"<font color='#dc3545'><b>{_fmt_amt(cur, total_sent_to_others)}</b></font>",
+                    normal
+                )
+            ]],
+            colWidths=[doc.width * 0.65, doc.width * 0.35],
+        )
+
         card1.setStyle(TableStyle([
             ("BOX", (0,0), (-1,-1), 0.8, colors.HexColor("#d1d5db")),
-            ("BACKGROUND", (0,0), (-1,-1), colors.HexColor("#f3f4f6")),
+            ("BACKGROUND", (0,0), (-1,-1), colors.HexColor("#f8fafc")),
             ("ALIGN", (1,0), (1,0), "RIGHT"),
-            ("TOPPADDING", (0,0), (-1,-1), 8),
-            ("BOTTOMPADDING", (0,0), (-1,-1), 8),
+            ("TOPPADDING", (0,0), (-1,-1), 9),
+            ("BOTTOMPADDING", (0,0), (-1,-1), 9),
+            ("LEFTPADDING", (0,0), (-1,-1), 9),
+            ("RIGHTPADDING", (0,0), (-1,-1), 9),
         ]))
 
-        # Card 2 – Received (NO full-width colWidths here)
         card2 = Table(
-            [[Paragraph("Total Received", normal),
-            Paragraph(f"<font color='#198754'><b>{_fmt_amt(cur, total_received)}</b></font>", normal)]]
+            [[
+                Paragraph("Received to Self", normal),
+                Paragraph(
+                    f"<font color='#198754'><b>{_fmt_amt(cur, total_received_self)}</b></font>",
+                    normal
+                )
+            ]],
+            colWidths=[doc.width * 0.65, doc.width * 0.35],
         )
+
         card2.setStyle(TableStyle([
             ("BOX", (0,0), (-1,-1), 0.8, colors.HexColor("#d1d5db")),
-            ("BACKGROUND", (0,0), (-1,-1), colors.HexColor("#f3f4f6")),
+            ("BACKGROUND", (0,0), (-1,-1), colors.HexColor("#f8fafc")),
             ("ALIGN", (1,0), (1,0), "RIGHT"),
-            ("TOPPADDING", (0,0), (-1,-1), 8),
-            ("BOTTOMPADDING", (0,0), (-1,-1), 8),
+            ("TOPPADDING", (0,0), (-1,-1), 9),
+            ("BOTTOMPADDING", (0,0), (-1,-1), 9),
+            ("LEFTPADDING", (0,0), (-1,-1), 9),
+            ("RIGHTPADDING", (0,0), (-1,-1), 9),
         ]))
 
-        # Outer row table controls final layout
-        cards_row = Table([[card1, card2]], colWidths=[doc.width/2, doc.width/2])
+        cards_row = Table(
+            [[card1], [card2]],
+            colWidths=[doc.width],
+        )
+
         cards_row.setStyle(TableStyle([
             ("VALIGN", (0,0), (-1,-1), "TOP"),
-            ("ALIGN", (0,0), (-1,-1), "CENTER"),
-            ("LEFTPADDING", (0,0), (-1,-1), 6),
-            ("RIGHTPADDING", (0,0), (-1,-1), 6),
+            ("BOTTOMPADDING", (0,0), (-1,-1), 5),
         ]))
 
         story.append(cards_row)
         story.append(Spacer(0, 12))
 
-
     else:
-        # KRW (or default): Income / Expense / Net (3 cards)
-        income = sum(float(t.amount) for t in rows if float(t.amount) > 0.0)
-        expense_raw = sum(float(t.amount) for t in rows if float(t.amount) < 0.0)  # negative
-        expense = abs(expense_raw)
+        # KRW: Income / Expense / Net
+        # Important:
+        # - Credit card settlement rows are shown in the table
+        # - But settlement amount is excluded from Expense and Net calculation
+
+        income = sum(
+            float(t.amount or 0)
+            for t in rows
+            if float(t.amount or 0) > 0
+            and t.type != TxnType.refund
+        )
+
+        expense = sum(
+            abs(float(t.amount or 0))
+            for t in rows
+            if float(t.amount or 0) < 0
+            and not _is_credit_card_settlement_row(t)
+        )
+
+        settlement_total = sum(
+            abs(float(t.amount or 0))
+            for t in rows
+            if float(t.amount or 0) < 0
+            and _is_credit_card_settlement_row(t)
+        )
+
         net = income - expense
 
         def _mini_card(title, value_html):
-            return Table([[Paragraph(title, normal), Paragraph(value_html, normal)]],
-                         colWidths=[doc.width/3*0.5, doc.width/3*0.5],
-                         style=TableStyle([
-                             ("BOX", (0,0), (-1,-1), 0.8, colors.HexColor("#d1d5db")),
-                             ("BACKGROUND", (0,0), (-1,-1), colors.HexColor("#f3f4f6")),
-                             ("ALIGN", (1,0), (1,0), "RIGHT"),
-                             ("TOPPADDING", (0,0), (-1,-1), 8),
-                             ("BOTTOMPADDING", (0,0), (-1,-1), 8),
-                         ]))
+            return Table(
+                [[Paragraph(title, normal), Paragraph(value_html, normal)]],
+                style=TableStyle([
+                    ("BOX", (0,0), (-1,-1), 0.8, colors.HexColor("#d1d5db")),
+                    ("BACKGROUND", (0,0), (-1,-1), colors.HexColor("#f8fafc")),
+                    ("ALIGN", (1,0), (1,0), "RIGHT"),
+                    ("TOPPADDING", (0,0), (-1,-1), 8),
+                    ("BOTTOMPADDING", (0,0), (-1,-1), 8),
+                    ("LEFTPADDING", (0,0), (-1,-1), 8),
+                    ("RIGHTPADDING", (0,0), (-1,-1), 8),
+                ])
+            )
 
-        income_card  = _mini_card("Income",  f"<font color='#198754'><b>{_fmt_amt(cur, income)}</b></font>")
-        expense_card = _mini_card("Expense", f"<font color='#dc3545'><b>{_fmt_amt(cur, expense)}</b></font>")
+        income_card = _mini_card(
+            "Income",
+            f"<font color='#198754'><b>{_fmt_amt(cur, income)}</b></font>"
+        )
+
+        expense_card = _mini_card(
+            "Expense",
+            f"<font color='#dc3545'><b>{_fmt_amt(cur, expense)}</b></font>"
+        )
+
         net_color = "#198754" if net >= 0 else "#dc3545"
-        net_card    = _mini_card("Net",     f"<font color='{net_color}'><b>{_fmt_amt(cur, net)}</b></font>")
+        net_card = _mini_card(
+            "Net",
+            f"<font color='{net_color}'><b>{_fmt_amt(cur, net)}</b></font>"
+        )
 
-        cards_row = Table([[income_card, expense_card, net_card]],
-                          colWidths=[doc.width/3, doc.width/3, doc.width/3])
+        settlement_card = _mini_card(
+            "Card Settlement",
+            f"<font color='#0d6efd'><b>{_fmt_amt(cur, settlement_total)}</b></font>"
+        )
+
+        cards = [income_card, expense_card, net_card, settlement_card]
+
+        # 2 cards per row
+        card_width = doc.width / 2
+
+        card_rows = []
+        for i in range(0, len(cards), 2):
+            row = cards[i:i + 2]
+
+            # If odd number of cards, add empty cell
+            if len(row) == 1:
+                row.append("")
+
+            card_rows.append(row)
+
+        cards_row = Table(
+            card_rows,
+            colWidths=[card_width, card_width],
+        )
+
+        cards_row.setStyle(TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 4),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ]))
+
         story.append(cards_row)
 
     story.append(Spacer(0, 12))
@@ -335,8 +416,17 @@ def build_transaction_report_pdf(cur: str, rows, from_str: str, to_str: str):
         label = _cat_or_recipient(cur, t)
         note_para = Paragraph(t.note or "—", styles["Muted"])
 
-        amt = float(t.amount)
-        color = "#198754" if amt > 0 else "#dc3545" if amt < 0 else "#0d6efd"
+        amt = float(t.amount or 0)
+
+        if cur == "KRW" and _is_credit_card_settlement_row(t):
+            color = "#0d6efd"  # settlement shown, but excluded from expense calculation
+        elif amt > 0:
+            color = "#198754"
+        elif amt < 0:
+            color = "#dc3545"
+        else:
+            color = "#6c757d"
+
         amt_html = f"<font color='{color}'><b>{_fmt_amt(cur, amt)}</b></font>"
         amt_para = Paragraph(amt_html, normal)
 
@@ -462,7 +552,49 @@ def _base_for_table(model, start, end, q, category_id, account_id):
 
 
 SETTLEMENT_PHRASE = "credit card settlement"  # lower-case match
+def _txn_type_value(row) -> str:
+    return row.type.value if hasattr(row.type, "value") else str(row.type)
 
+
+def _is_credit_card_settlement_row(row) -> bool:
+    note = (row.note or "").lower()
+
+    return (
+        "credit card settlement" in note
+        or ("settlement" in note and "card" in note)
+    )
+
+
+def _recipient_is_self(name) -> bool:
+    value = (name or "").strip().lower()
+    return value in ("self", "myself")
+
+
+def _has_real_recipient(name) -> bool:
+    return bool((name or "").strip())
+
+
+def _is_bdt_sent_to_other_recipient(row) -> bool:
+    """
+    BDT report rule:
+    Count money sent to other people only.
+    - Must have a real recipient name
+    - Recipient must not be Self/Myself
+    - Type should be expense or transfer
+    """
+    ttype = _txn_type_value(row)
+    recipient_name = row.recipient_name
+
+    if ttype not in ("expense", "transfer_domestic", "transfer_international"):
+        return False
+
+    if not _has_real_recipient(recipient_name):
+        return False
+
+    if _recipient_is_self(recipient_name):
+        return False
+
+    return True
 def _kpis(model, start, end, q, category_id, account_id):
     # Build same filtered set as table BUT do NOT exclude any types here.
     qset = (
@@ -528,73 +660,90 @@ def _kpis_bdt(start, end, q, category_id, account_id):
         .filter(
             TransactionBDT.user_id == current_user.id,
             TransactionBDT.is_deleted.is_(False),
-            TransactionBDT.date >= start, TransactionBDT.date < end,
+            TransactionBDT.date >= start,
+            TransactionBDT.date < end,
         )
     )
+
     if q:
         like = f"%{q.strip()}%"
         qset = qset.filter(
             func.lower(func.coalesce(TransactionBDT.note, "")).like(func.lower(like)) |
             func.lower(func.coalesce(TransactionBDT.recipient_name, "")).like(func.lower(like))
         )
+
     if category_id:
         qset = qset.filter(TransactionBDT.category_id == category_id)
+
     if account_id:
         qset = qset.filter(TransactionBDT.account_id == account_id)
 
     sq = qset.with_entities(
         TransactionBDT.amount.label("amount"),
         TransactionBDT.type.label("type"),
-        TransactionBDT.recipient_name.label("rcpt_name"),
+        TransactionBDT.recipient_name.label("recipient_name"),
     ).subquery()
 
-    rcpt_is_self      = (func.coalesce(sq.c.rcpt_name, "Self") == "Self")
-    has_recipient     = (func.coalesce(sq.c.rcpt_name, "") != "")
-    is_intl           = (sq.c.type == TxnType.transfer_international)
-    is_dom            = (sq.c.type == TxnType.transfer_domestic)
-    is_external_intl  = and_(is_intl, not_(rcpt_is_self))
-    dom_to_other      = and_(is_dom, has_recipient)   # domestic with recipient present
+    recipient_lc = func.lower(func.trim(func.coalesce(sq.c.recipient_name, "")))
 
-    # --- IN ---
-    # 1) normal positives (not refund, not domestic, not external intl)
-    normal_pos_in = case(
+    has_recipient = recipient_lc != ""
+    is_self = recipient_lc.in_(["self", "myself"])
+
+    is_sent_candidate = sq.c.type.in_([
+        TxnType.expense,
+        TxnType.transfer_domestic,
+        TxnType.transfer_international,
+    ])
+
+    sent_to_others_expr = case(
         (
             and_(
-                sq.c.amount > 0,
-                sq.c.type != TxnType.refund,
-                or_(
-                    not_(is_dom),                   # not domestic
-                    and_(is_external_intl, rcpt_is_self) # international but to self
-                )
+                is_sent_candidate,
+                has_recipient,
+                not_(is_self),
             ),
-            sq.c.amount
+            func.abs(sq.c.amount),
         ),
-        else_=0
+        else_=0,
     )
 
-    # 2) domestic to others should DEDUCT from IN (subtract |amount|)
-    dom_deduct = case((dom_to_other, func.abs(sq.c.amount)), else_=0)
-
-    inflow_expr = normal_pos_in - dom_deduct
-
-    # --- OUT ---
-    outflow_expr = case(
-        (is_external_intl, func.abs(sq.c.amount)),   # external intl counts fully to OUT
-        (dom_to_other,    func.abs(sq.c.amount)),    # domestic to others counts to OUT
-        (sq.c.amount < 0, -sq.c.amount),             # otherwise normal negatives
-        else_=0
+    received_self_expr = case(
+        (
+            and_(
+                sq.c.type == TxnType.transfer_international,
+                is_self,
+                sq.c.amount > 0,
+            ),
+            sq.c.amount,
+        ),
+        else_=0,
     )
 
-    i, o, n = db.session.query(
-        func.coalesce(func.sum(inflow_expr), 0),
-        func.coalesce(func.sum(outflow_expr), 0),
-        func.coalesce(func.sum(sq.c.amount), 0),
+    sent_to_others, received_self = db.session.query(
+        func.coalesce(func.sum(sent_to_others_expr), 0),
+        func.coalesce(func.sum(received_self_expr), 0),
     ).first()
 
+    sent_to_others = sent_to_others or 0
+    received_self = received_self or 0
+    net = received_self - sent_to_others
+
     fmt = lambda v: f"{v:,.0f} ৳"
+
     return {
-        "inflow": i, "outflow": o, "net": n,
-        "inflow_fmt": fmt(i), "outflow_fmt": fmt(o), "net_fmt": fmt(n),
+        # New clear BDT values
+        "sent_to_others": sent_to_others,
+        "sent_to_others_fmt": fmt(sent_to_others),
+        "received_self": received_self,
+        "received_self_fmt": fmt(received_self),
+
+        # Backward compatibility for your existing template
+        "inflow": received_self,
+        "outflow": sent_to_others,
+        "net": net,
+        "inflow_fmt": fmt(received_self),
+        "outflow_fmt": fmt(sent_to_others),
+        "net_fmt": fmt(net),
     }
 # ... after computing krw_from_str/to etc.
 from urllib.parse import urlencode
