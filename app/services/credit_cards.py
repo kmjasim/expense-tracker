@@ -54,10 +54,14 @@ def cc_totals_by_account(user_id: int, year: int, month: int):
         .filter(
             TransactionKRW.user_id == user_id,
             Account.user_id == user_id,
-            Account.is_active == True,
+            Account.is_active.is_(True),
             _is_credit_card_account(),
-            TransactionKRW.date >= start, TransactionKRW.date < end,
-            TransactionKRW.amount < 0,            # expenses only
+            TransactionKRW.date >= start,
+            TransactionKRW.date < end,
+            TransactionKRW.amount < 0,
+
+            # exclude deleted/voided transactions (but include pending, which may later become real)
+            TransactionKRW.is_deleted.is_(False),
         )
         .group_by(TransactionKRW.account_id)
         .all()
