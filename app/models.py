@@ -474,7 +474,25 @@ class SalaryAdjust(db.Model):
         db.Index("ix_salary_adjust_user_month", "user_id", "year", "month"),
     )
 
+class PaidLeaveBalance(db.Model):
+    __tablename__ = "paid_leave_balances"
 
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, index=True, nullable=False)
+
+    year = db.Column(db.Integer, nullable=False, index=True)
+
+    yearly_leave = db.Column(db.Integer, nullable=False, default=15)
+    carried_leave = db.Column(db.Integer, nullable=False, default=0)
+    used_leave = db.Column(db.Integer, nullable=False, default=0)
+    remaining_leave = db.Column(db.Integer, nullable=False, default=15)
+
+    created_at = db.Column(db.Date, nullable=False, default=date.today)
+    updated_at = db.Column(db.Date, nullable=False, default=date.today, onupdate=date.today)
+
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "year", name="uq_paid_leave_user_year"),
+    )
 # app/models_lotto.py (or paste into your existing app/models.py)
 
 

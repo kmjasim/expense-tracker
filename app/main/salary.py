@@ -5,7 +5,7 @@ from flask import render_template, request, redirect, url_for,jsonify
 from flask_login import login_required, current_user
 from sqlalchemy import func
 from ..extensions import db
-from ..models import SalarySettings, WorkLog, Holiday, SalaryAdjust
+from ..models import SalarySettings, WorkLog, Holiday, SalaryAdjust, PaidLeaveBalance
 from . import main
 from app.utils.helpers import get_page_title
 import calendar
@@ -18,9 +18,72 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 import os, tempfile, calendar
 
-PAID_LEAVE_YEARLY_LIMIT = 16
+
+def count_paid_leave_days_for_year(user_id: int, year: int) -> int:
+    start = date(year, 1, 1)
+    end = date(year + 1, 1, 1)
+
+    logs = (
+        WorkLog.query
+        .filter(
+            WorkLog.user_id == user_id,
+            WorkLog.work_date >= start,
+            WorkLog.work_date < end,
+            WorkLog.is_full_day_leave.is_(True),
+            WorkLog.leave_type == "paid",
+        )
+        .all()
+    )
+
+    count = 0
+
+    for log in logs:
+        d = log.work_date
+
+        if is_weekend(d) or is_holiday(user_id, d):
+            continue
+
+        count += 1
+
+    return count
 
 
+def get_or_create_paid_leave_balance(user_id: int, year: int) -> PaidLeaveBalance:
+    row = PaidLeaveBalance.query.filter_by(user_id=user_id, year=year).first()
+
+    if row:
+        return row
+
+    prev = PaidLeaveBalance.query.filter_by(user_id=user_id, year=year - 1).first()
+    carried = int(prev.remaining_leave or 0) if prev else 0
+
+    row = PaidLeaveBalance(
+        user_id=user_id,
+        year=year,
+        yearly_leave=15,
+        carried_leave=carried,
+        used_leave=0,
+        remaining_leave=15 + carried,
+    )
+
+    db.session.add(row)
+    db.session.commit()
+
+    return row
+
+
+def sync_paid_leave_balance(user_id: int, year: int) -> PaidLeaveBalance:
+    row = get_or_create_paid_leave_balance(user_id, year)
+
+    used = count_paid_leave_days_for_year(user_id, year)
+    row.used_leave = used
+    row.remaining_leave = max(
+        int(row.yearly_leave or 0) + int(row.carried_leave or 0) - used,
+        0
+    )
+
+    db.session.commit()
+    return row
 def is_paid_leave(log) -> bool:
     return (
         log
@@ -335,8 +398,12 @@ def calc_month_summary(user_id: int, year: int, month: int):
     # net = base + OT + allowance - (deductions + leave_deduction)
     gross= base_salary + weekend_holiday_pay + overtime_pay + allowance_total
     net = base_salary + weekend_holiday_pay + overtime_pay + allowance_total - (deduction_total + leave_deduction + short_hours_deduction)
-    paid_leave_used_year = count_paid_leave_days_for_year(user_id, year)
-    paid_leave_remaining_year = max(PAID_LEAVE_YEARLY_LIMIT - paid_leave_used_year, 0)
+    paid_leave_balance = sync_paid_leave_balance(user_id, year)
+    paid_leave_used_year = paid_leave_balance.used_leave
+    paid_leave_remaining_year = paid_leave_balance.remaining_leave
+    paid_leave_yearly_limit = paid_leave_balance.yearly_leave
+    paid_leave_carried = paid_leave_balance.carried_leave
+    paid_leave_total_available = paid_leave_balance.yearly_leave + paid_leave_balance.carried_leave
 
     # For your cards:
     return {
@@ -367,7 +434,9 @@ def calc_month_summary(user_id: int, year: int, month: int):
         "paid_leave_days": paid_leave_days,
         "paid_leave_used_year": paid_leave_used_year,
         "paid_leave_remaining_year": paid_leave_remaining_year,
-        "paid_leave_yearly_limit": PAID_LEAVE_YEARLY_LIMIT,
+        "paid_leave_yearly_limit": paid_leave_yearly_limit,
+        "paid_leave_carried": paid_leave_carried,
+        "paid_leave_total_available": paid_leave_total_available,
     }
 
 
@@ -422,7 +491,20 @@ def salary_page():
             .all()
     )
 
+    paid_leave_balance = sync_paid_leave_balance(_uid(), year)
 
+    paid_leave_logs = (
+        WorkLog.query
+        .filter(
+            WorkLog.user_id == _uid(),
+            WorkLog.work_date >= date(year, 1, 1),
+            WorkLog.work_date < date(year + 1, 1, 1),
+            WorkLog.is_full_day_leave.is_(True),
+            WorkLog.leave_type == "paid",
+        )
+        .order_by(WorkLog.work_date.asc())
+        .all()
+    )
     return render_template(
         "salary.html",
         page_title=get_page_title(),
@@ -464,6 +546,10 @@ def salary_page():
         paid_leave_used_year=summary["paid_leave_used_year"],
         paid_leave_remaining_year=summary["paid_leave_remaining_year"],
         paid_leave_yearly_limit=summary["paid_leave_yearly_limit"],
+        paid_leave_carried=summary["paid_leave_carried"],
+        paid_leave_total_available=summary["paid_leave_total_available"],
+        paid_leave_balance=paid_leave_balance,
+        paid_leave_logs=paid_leave_logs,
     )
 
 
@@ -1305,3 +1391,23 @@ def api_salary_analysis():
         "log_summary": log_summary,
         "insights": insights,
     })
+
+@main.route("/salary/paid-leave/update", methods=["POST"])
+@login_required
+def paid_leave_update():
+    year = int(request.form["year"])
+    yearly_leave = int(request.form.get("yearly_leave") or 0)
+    carried_leave = int(request.form.get("carried_leave") or 0)
+
+    row = get_or_create_paid_leave_balance(_uid(), year)
+
+    row.yearly_leave = max(yearly_leave, 0)
+    row.carried_leave = max(carried_leave, 0)
+
+    used = count_paid_leave_days_for_year(_uid(), year)
+    row.used_leave = used
+    row.remaining_leave = max(row.yearly_leave + row.carried_leave - used, 0)
+
+    db.session.commit()
+
+    return redirect(url_for("main.salary_page", year=year, month=request.form.get("month", date.today().month)))
