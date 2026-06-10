@@ -9,11 +9,23 @@
 {%- endmacro %}
 
 {% macro ball(n, extra_class="") -%}
-  <span class="lotto-ball {{ lotto_color_class(n) }} {{ extra_class }}">{{ n }}</span>
+  <span class="lotto-ball {{ lotto_color_class(n) }} {{ extra_class }}" title="Number {{ n }}">{{ n }}</span>
 {%- endmacro %}
 
 {% macro ball_list(nums) -%}
-  {%- for n in nums -%}
-    {{ ball(n) }}
-  {%- endfor -%}
+  <span class="lotto-ball-list" data-pick="{{ nums|join(', ') }}">
+    {%- for n in nums -%}
+      {{ ball(n) }}
+    {%- endfor -%}
+  </span>
+{%- endmacro %}
+
+{% macro empty_state(title="No data yet", text="Add draws first, then analysis will appear here.") -%}
+  <div class="lotto-empty-state">
+    <div class="lotto-empty-icon">⌁</div>
+    <div>
+      <div class="fw-semibold">{{ title }}</div>
+      <div class="small text-muted">{{ text }}</div>
+    </div>
+  </div>
 {%- endmacro %}

@@ -1,232 +1,895 @@
-{% extends "pay_shell.html" %}
+{% set page_slug = page_slug|default('transfers') %}
+{% set page_title = page_title|default('Transfers') %}
+{% extends "base.html" %}
 
-{% block left_panel %}
-  {% include "partials/_recipient_list.html" %}
+{% block header_actions %}
+  <a href="#recipient-section" class="btn btn-soft d-none d-md-inline-flex align-items-center gap-2">
+    <i class="bi bi-people"></i>
+    Recipients
+  </a>
+  <a href="{{ url_for('main.transfers_page') }}" class="btn btn-brand d-inline-flex align-items-center gap-2">
+    <i class="bi bi-arrow-left-right"></i>
+    New Transfer
+  </a>
 {% endblock %}
 
-{% block panel_content %}
-<div class="transfer-wrap container py-3">
-  <div class="transfer-card">
+{% block extra_css %}
+<style>
+  .transfers-page {
+    --tf-card: rgba(255, 255, 255, .88);
+    --tf-card-solid: #ffffff;
+    --tf-border: rgba(15, 23, 42, .09);
+    --tf-muted: #64748b;
+    --tf-text: #0f172a;
+    --tf-soft: #f8fafc;
+    --tf-brand: #0f766e;
+    --tf-brand-2: #2563eb;
+    --tf-shadow: 0 24px 70px rgba(15, 23, 42, .10);
+    --tf-radius: 28px;
+    color: var(--tf-text);
+    max-width: 1180px;
+    margin: 0 auto;
+  }
 
-    <!-- Tabs -->
-    <div class="tabbar">
-      <button class="tab-btn active" data-tab="local">Local</button>
-      <button class="tab-btn" data-tab="intl">International</button>
-    </div>
+  [data-bs-theme="dark"] .transfers-page {
+    --tf-card: rgba(15, 23, 42, .82);
+    --tf-card-solid: #111827;
+    --tf-border: rgba(148, 163, 184, .18);
+    --tf-muted: #94a3b8;
+    --tf-text: #e5edf7;
+    --tf-soft: rgba(30, 41, 59, .8);
+    --tf-shadow: 0 24px 70px rgba(0, 0, 0, .26);
+  }
 
-    <!-- ================= LOCAL TAB ================= -->
-    <section class="tab-panel show" id="tab-local">
-      <form action="{{ url_for('main.transfers_domestic') }}" method="post" class="vstack gap-3">
+  .transfers-page * {
+    box-sizing: border-box;
+  }
 
-        <!-- Payment Account -->
-        <div class="section-title">Payment Account</div>
-        <div class="account-rail">
-          <div class="rail" id="rail-local-from">
-            {% for a in krw_accounts + bdt_accounts if a.type != 'credit' %}
-            <div class="account-card"
-                 data-rail-group="local-from"
-                 data-account-id="{{ a.id }}"
-                 data-currency="{{ a.currency.value }}">
-              <div class="brand">{{ a.type.value|upper }}</div>
-              <div class="balance">{{ a.currency.value }} {{ '{:,.0f}'.format(a.initial_balance or 0) }}</div>
-              <div class="detail">{{ a.name }}</div>
+  .transfer-hero {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--tf-border);
+    border-radius: 32px;
+    padding: clamp(1.2rem, 2vw, 1.75rem);
+    background:
+      radial-gradient(circle at 12% 10%, rgba(20, 184, 166, .24), transparent 32%),
+      radial-gradient(circle at 88% 0%, rgba(37, 99, 235, .22), transparent 35%),
+      linear-gradient(135deg, rgba(255,255,255,.92), rgba(248,250,252,.82));
+    box-shadow: var(--tf-shadow);
+  }
+
+  [data-bs-theme="dark"] .transfer-hero {
+    background:
+      radial-gradient(circle at 12% 10%, rgba(20, 184, 166, .18), transparent 32%),
+      radial-gradient(circle at 88% 0%, rgba(96, 165, 250, .18), transparent 35%),
+      linear-gradient(135deg, rgba(15,23,42,.98), rgba(17,24,39,.88));
+  }
+
+  .transfer-hero::after {
+    content: "";
+    position: absolute;
+    inset: auto -10% -55% auto;
+    width: 420px;
+    height: 420px;
+    border-radius: 999px;
+    background: rgba(15, 118, 110, .08);
+    pointer-events: none;
+  }
+
+  .hero-eyebrow,
+  .mini-label,
+  .section-kicker {
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    font-size: .72rem;
+    font-weight: 800;
+    color: var(--tf-muted);
+  }
+
+  .hero-title {
+    font-size: clamp(1.8rem, 4vw, 3.25rem);
+    line-height: 1;
+    letter-spacing: -.05em;
+    margin: .4rem 0 .65rem;
+    font-weight: 900;
+  }
+
+  .hero-copy {
+    max-width: 670px;
+    color: var(--tf-muted);
+    margin: 0;
+    font-size: 1rem;
+  }
+
+  .hero-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .65rem;
+    margin-top: 1rem;
+  }
+
+  .hero-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    border: 1px solid var(--tf-border);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .68);
+    color: var(--tf-text);
+    padding: .52rem .78rem;
+    font-size: .86rem;
+    font-weight: 700;
+  }
+
+  [data-bs-theme="dark"] .hero-chip {
+    background: rgba(15, 23, 42, .68);
+  }
+
+  .transfer-layout-stack {
+    display: grid;
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+
+  .glass-card {
+    border: 1px solid var(--tf-border);
+    border-radius: var(--tf-radius);
+    background: var(--tf-card);
+    box-shadow: var(--tf-shadow);
+    backdrop-filter: blur(18px);
+  }
+
+  .transfer-card {
+    overflow: hidden;
+  }
+
+  .transfer-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.15rem 1.15rem .8rem;
+    border-bottom: 1px solid var(--tf-border);
+  }
+
+  .transfer-card-head h2,
+  .recipient-card-head h2 {
+    margin: 0;
+    font-size: clamp(1.15rem, 2vw, 1.45rem);
+    letter-spacing: -.03em;
+    font-weight: 850;
+  }
+
+  .transfer-card-head p,
+  .recipient-card-head p {
+    margin: .25rem 0 0;
+    color: var(--tf-muted);
+  }
+
+  .tabbar {
+    display: flex;
+    gap: .35rem;
+    border: 1px solid var(--tf-border);
+    border-radius: 999px;
+    padding: .32rem;
+    background: var(--tf-soft);
+    flex: 0 0 auto;
+  }
+
+  .tab-btn {
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--tf-muted);
+    font-weight: 800;
+    padding: .68rem 1rem;
+    line-height: 1;
+    transition: transform .16s ease, background .16s ease, color .16s ease, box-shadow .16s ease;
+  }
+
+  .tab-btn:hover {
+    transform: translateY(-1px);
+    color: var(--tf-text);
+  }
+
+  .tab-btn.active {
+    color: #fff;
+    background: linear-gradient(135deg, var(--tf-brand), var(--tf-brand-2));
+    box-shadow: 0 12px 26px rgba(15, 118, 110, .22);
+  }
+
+  .tab-panel {
+    display: none;
+    padding: 1.15rem;
+  }
+
+  .tab-panel.show {
+    display: block;
+  }
+
+  .form-flow {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .form-section {
+    position: relative;
+    border: 1px solid var(--tf-border);
+    border-radius: 24px;
+    background: rgba(248, 250, 252, .72);
+    padding: 1rem;
+  }
+
+  [data-bs-theme="dark"] .form-section {
+    background: rgba(15, 23, 42, .58);
+  }
+
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: .55rem;
+    margin-bottom: .85rem;
+    font-weight: 850;
+    letter-spacing: -.02em;
+  }
+
+  .section-title.small {
+    font-size: .95rem;
+    margin-bottom: .65rem;
+  }
+
+  .step-dot {
+    display: inline-grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 12px;
+    color: #fff;
+    background: linear-gradient(135deg, var(--tf-brand), var(--tf-brand-2));
+    box-shadow: 0 10px 18px rgba(37, 99, 235, .16);
+    font-size: .85rem;
+    font-weight: 900;
+    flex: 0 0 auto;
+  }
+
+  .account-rail {
+    position: relative;
+    overflow: hidden;
+    border-radius: 22px;
+    border: 1px solid var(--tf-border);
+    background: var(--tf-card-solid);
+    padding: .8rem .75rem 3rem;
+  }
+
+  .account-rail.small-rail {
+    padding-bottom: 2.75rem;
+  }
+
+  .rail {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(230px, 1fr);
+    gap: .75rem;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: thin;
+    padding-bottom: .2rem;
+  }
+
+  .account-card {
+    scroll-snap-align: start;
+    min-height: 132px;
+    border-radius: 20px;
+    padding: 1rem;
+    border: 1px solid rgba(255,255,255,.22);
+    background:
+      radial-gradient(circle at 100% 0%, rgba(255,255,255,.25), transparent 35%),
+      linear-gradient(135deg, #0f172a, #134e4a 58%, #2563eb);
+    color: white;
+    cursor: pointer;
+    box-shadow: 0 14px 35px rgba(15, 23, 42, .18);
+    transition: transform .16s ease, box-shadow .16s ease, outline-color .16s ease;
+    outline: 3px solid transparent;
+    outline-offset: 3px;
+  }
+
+  .account-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 18px 42px rgba(15, 23, 42, .22);
+  }
+
+  .account-card.active,
+  .account-card.selected,
+  .account-card.is-selected {
+    outline-color: rgba(20, 184, 166, .55);
+  }
+
+  .account-card .brand {
+    display: inline-flex;
+    border-radius: 999px;
+    padding: .28rem .55rem;
+    background: rgba(255,255,255,.17);
+    font-size: .7rem;
+    font-weight: 900;
+    letter-spacing: .08em;
+  }
+
+  .account-card .balance {
+    margin-top: .9rem;
+    font-size: 1.35rem;
+    font-weight: 900;
+    letter-spacing: -.03em;
+  }
+
+  .account-card .detail {
+    opacity: .82;
+    font-size: .9rem;
+    margin-top: .2rem;
+  }
+
+  .rail-controls {
+    position: absolute;
+    display: inline-flex;
+    gap: .4rem;
+    z-index: 2;
+  }
+
+  .rail-controls.bottom-right {
+    right: .75rem;
+    bottom: .72rem;
+  }
+
+  .rail-controls.top-right {
+    right: .75rem;
+    bottom: .65rem;
+  }
+
+  .rail-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    border: 1px solid var(--tf-border);
+    background: var(--tf-soft);
+    color: var(--tf-text);
+    font-size: 1.25rem;
+    line-height: 1;
+    transition: transform .15s ease, background .15s ease;
+  }
+
+  .rail-btn:hover {
+    transform: translateY(-1px);
+    background: rgba(20, 184, 166, .12);
+  }
+
+  .form-control,
+  .form-select {
+    min-height: 48px;
+    border-radius: 16px;
+    border-color: var(--tf-border);
+    background-color: var(--tf-card-solid);
+  }
+
+  .form-label {
+    font-weight: 800;
+    color: var(--tf-text);
+    font-size: .87rem;
+  }
+
+  .input-icon-wrap {
+    position: relative;
+  }
+
+  .input-icon-wrap > i {
+    position: absolute;
+    left: .9rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--tf-muted);
+    z-index: 2;
+  }
+
+  .input-icon-wrap .form-control,
+  .input-icon-wrap .form-select {
+    padding-left: 2.35rem;
+  }
+
+  .accordion-item {
+    border-radius: 22px !important;
+    border: 1px solid var(--tf-border);
+    overflow: hidden;
+    background: var(--tf-card-solid);
+  }
+
+  .accordion-button {
+    font-weight: 850;
+    background: var(--tf-card-solid);
+    color: var(--tf-text);
+  }
+
+  .accordion-button:not(.collapsed) {
+    color: var(--tf-text);
+    background: rgba(20, 184, 166, .10);
+    box-shadow: none;
+  }
+
+  .smart-toggle {
+    display: flex;
+    align-items: flex-start;
+    gap: .8rem;
+    padding: .95rem;
+    border-radius: 20px;
+    border: 1px dashed rgba(15, 118, 110, .35);
+    background: rgba(20, 184, 166, .08);
+  }
+
+  .smart-toggle .form-check-input {
+    width: 1.2rem;
+    height: 1.2rem;
+    margin-top: .18rem;
+  }
+
+  .smart-toggle label {
+    font-weight: 850;
+  }
+
+  .smart-toggle p {
+    margin: .12rem 0 0;
+    color: var(--tf-muted);
+    font-size: .88rem;
+  }
+
+  .actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: .7rem;
+    padding-top: .2rem;
+  }
+
+  .btn-brand,
+  .actions .btn-primary {
+    border: 0;
+    border-radius: 999px;
+    color: #fff;
+    font-weight: 850;
+    padding: .72rem 1.05rem;
+    background: linear-gradient(135deg, var(--tf-brand), var(--tf-brand-2));
+    box-shadow: 0 14px 28px rgba(37, 99, 235, .18);
+  }
+
+  .btn-soft,
+  .actions .btn-light {
+    border: 1px solid var(--tf-border);
+    border-radius: 999px;
+    background: var(--tf-soft);
+    color: var(--tf-text);
+    font-weight: 800;
+    padding: .72rem 1rem;
+  }
+
+  .recipient-stack {
+    overflow: hidden;
+  }
+
+  .recipient-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.15rem;
+    border-bottom: 1px solid var(--tf-border);
+  }
+
+  .recipient-body {
+    padding: .45rem;
+  }
+
+  .recipient-body > * {
+    margin-bottom: 0 !important;
+  }
+
+  .recipient-body .card,
+  .recipient-body .list-group,
+  .recipient-body table,
+  .recipient-body .table-responsive {
+    border-radius: 20px;
+  }
+
+  .recipient-body .card {
+    border: 0;
+    box-shadow: none;
+    background: transparent;
+  }
+
+  .empty-help {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    color: var(--tf-muted);
+    font-size: .86rem;
+    font-weight: 700;
+  }
+
+  @media (max-width: 767.98px) {
+    .transfer-hero,
+    .transfer-card-head,
+    .tab-panel,
+    .recipient-card-head {
+      padding: 1rem;
+    }
+
+    .transfer-card-head,
+    .recipient-card-head {
+      flex-direction: column;
+    }
+
+    .tabbar {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      border-radius: 18px;
+    }
+
+    .tab-btn {
+      width: 100%;
+      padding: .78rem .8rem;
+    }
+
+    .rail {
+      grid-auto-columns: minmax(205px, 84%);
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr;
+    }
+
+    .actions .btn {
+      width: 100%;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="transfers-page">
+  <section class="transfer-hero mb-3">
+    <div class="row g-3 align-items-end">
+      <div class="col-12 col-lg-8">
+        <div class="hero-eyebrow">Money movement</div>
+        <h1 class="hero-title">Transfer money without the messy layout.</h1>
+        <p class="hero-copy">
+          Choose an account, enter the amount, select a recipient, and save the transfer. The form stays first, and your recipient manager is now stacked neatly at the bottom.
+        </p>
+        <div class="hero-chip-row">
+          <span class="hero-chip"><i class="bi bi-bank"></i> Local transfers</span>
+          <span class="hero-chip"><i class="bi bi-globe2"></i> International remittance</span>
+          <span class="hero-chip"><i class="bi bi-person-check"></i> Self-transfer supported</span>
+        </div>
+      </div>
+      <div class="col-12 col-lg-4">
+        <div class="glass-card p-3 h-100">
+          <div class="mini-label mb-2">Layout update</div>
+          <div class="d-flex align-items-center gap-3">
+            <span class="step-dot"><i class="bi bi-arrow-down-up"></i></span>
+            <div>
+              <div class="fw-bold">Transfer form on top</div>
+              <div class="text-body-secondary small">Recipient list moved below the transfer section.</div>
             </div>
-            {% endfor %}
-          </div>
-          <div class="rail-controls bottom-right" aria-hidden="false">
-            <button type="button" class="rail-btn prev" data-rail="local-from" aria-label="Previous">‹</button>
-            <button type="button" class="rail-btn next" data-rail="local-from" aria-label="Next">›</button>
-          </div>
-          <input type="hidden" name="from_account_id" id="local-from-id">
-          <input type="hidden" name="currency" id="local-currency">
-        </div>
-
-        <!-- Local Meta -->
-        <div class="row g-2">
-          <div class="col-12 col-md-6">
-            <label class="form-label">Date</label>
-            <input type="date" name="date" class="form-control" value="{{ current_date }}" required>
-          </div>
-          <div class="col-12 col-md-6">
-            <label class="form-label">Amount</label>
-            <input type="number" step="0.01" name="amount" class="form-control" placeholder="0.00" required>
           </div>
         </div>
+      </div>
+    </div>
+  </section>
 
-        <div class="row g-2">
-          <div class="col-12">
-            <label class="form-label">Direction</label>
-            <select name="direction" class="form-select">
-              <option value="out">Send (Out)</option>
-              <option value="in">Receive (In)</option>
-            </select>
-          </div>
+  <div class="transfer-layout-stack">
+    <section class="transfer-card glass-card" id="transfer-section">
+      <div class="transfer-card-head">
+        <div>
+          <div class="section-kicker">Create transfer</div>
+          <h2>Transfer details</h2>
+          <p>Switch between local and international transfers from the same clean panel.</p>
         </div>
 
-        <!-- Optional internal destination -->
-        <div class="accordion" id="local-acc">
-          <div class="accordion-item">
-            <h2 class="accordion-header">
-              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#local-dest">
-                Transfer to my other account (optional)
-              </button>
-            </h2>
-            <div id="local-dest" class="accordion-collapse collapse">
-              <div class="accordion-body">
-                <div class="section-title small">Destination Account</div>
+        <div class="tabbar" role="tablist" aria-label="Transfer type">
+          <button type="button" class="tab-btn active" data-tab="local" role="tab" aria-controls="tab-local" aria-selected="true">
+            <i class="bi bi-house-door me-1"></i> Local
+          </button>
+          <button type="button" class="tab-btn" data-tab="intl" role="tab" aria-controls="tab-intl" aria-selected="false">
+            <i class="bi bi-send me-1"></i> International
+          </button>
+        </div>
+      </div>
 
-                <div class="account-rail small-rail">
-                  <div class="rail" id="rail-local-to">
-                    {% for a in krw_accounts + bdt_accounts if a.type != 'credit' %}
-                    <div class="account-card"
-                         data-rail-group="local-to"
-                         data-account-id="{{ a.id }}"
-                         data-currency="{{ a.currency.value }}">
-                      <div class="brand">{{ a.type.value|upper }}</div>
-                      <div class="balance">{{ a.currency.value }} {{ '{:,.0f}'.format(a.initial_balance or 0) }}</div>
-                      <div class="detail">{{ a.name }}</div>
-                    </div>
-                    {% endfor %}
-                  </div>
-                  <div class="rail-controls top-right">
-                    <button type="button" class="rail-btn prev" data-rail="local-to">‹</button>
-                    <button type="button" class="rail-btn next" data-rail="local-to">›</button>
-                  </div>
-                  <input type="hidden" name="to_account_id" id="local-to-id">
+      <!-- ================= LOCAL TAB ================= -->
+      <section class="tab-panel show" id="tab-local" role="tabpanel">
+        <form action="{{ url_for('main.transfers_domestic') }}" method="post" class="form-flow">
+          <div class="form-section">
+            <div class="section-title"><span class="step-dot">1</span> Payment Account</div>
+            <div class="account-rail">
+              <div class="rail" id="rail-local-from">
+                {% for a in krw_accounts + bdt_accounts if a.type != 'credit' %}
+                <div class="account-card"
+                     data-rail-group="local-from"
+                     data-account-id="{{ a.id }}"
+                     data-currency="{{ a.currency.value }}">
+                  <div class="brand">{{ a.type.value|upper }}</div>
+                  <div class="balance">{{ a.currency.value }} {{ '{:,.0f}'.format(a.initial_balance or 0) }}</div>
+                  <div class="detail">{{ a.name }}</div>
+                </div>
+                {% endfor %}
+              </div>
+              <div class="rail-controls bottom-right" aria-hidden="false">
+                <button type="button" class="rail-btn prev" data-rail="local-from" aria-label="Previous">‹</button>
+                <button type="button" class="rail-btn next" data-rail="local-from" aria-label="Next">›</button>
+              </div>
+              <input type="hidden" name="from_account_id" id="local-from-id">
+              <input type="hidden" name="currency" id="local-currency">
+            </div>
+          </div>
+
+          <div class="form-section">
+            <div class="section-title"><span class="step-dot">2</span> Amount & direction</div>
+            <div class="row g-3">
+              <div class="col-12 col-md-6">
+                <label class="form-label">Date</label>
+                <div class="input-icon-wrap">
+                  <i class="bi bi-calendar-event"></i>
+                  <input type="date" name="date" class="form-control" value="{{ current_date }}" required>
+                </div>
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label">Amount</label>
+                <div class="input-icon-wrap">
+                  <i class="bi bi-cash-stack"></i>
+                  <input type="number" step="0.01" name="amount" class="form-control" placeholder="0.00" required>
+                </div>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Direction</label>
+                <div class="input-icon-wrap">
+                  <i class="bi bi-arrow-left-right"></i>
+                  <select name="direction" class="form-select">
+                    <option value="out">Send (Out)</option>
+                    <option value="in">Receive (In)</option>
+                  </select>
                 </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- Local: Self toggle + Recipient (kept visible; only disabled by JS) -->
-        <div class="form-check mt-2">
-          <input class="form-check-input" type="checkbox" id="local-chk-self" name="local_recipient_is_self">
-          <label class="form-check-label" for="local-chk-self">Recipient is myself (local)</label>
-        </div>
+          <div class="form-section">
+            <div class="section-title"><span class="step-dot">3</span> Destination & recipient</div>
 
-        <div id="local-recipient-wrap">
-          <label class="form-label">Select Recipient</label>
-          <select name="recipient_id" class="form-select" id="local-recipient_id">
-            <option value="">— None —</option>
-            {% for r in recipients %}
-              <option value="{{ r.id }}">{{ r.name }}</option>
-            {% endfor %}
-          </select>
-          <input type="text" name="recipient_name" id="local-recipient_name" class="form-control mt-2" placeholder="Custom recipient name (optional)">
-        </div>
+            <div class="accordion mb-3" id="local-acc">
+              <div class="accordion-item">
+                <h2 class="accordion-header">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#local-dest">
+                    <i class="bi bi-wallet2 me-2"></i> Transfer to my other account optional
+                  </button>
+                </h2>
+                <div id="local-dest" class="accordion-collapse collapse">
+                  <div class="accordion-body">
+                    <div class="section-title small">Destination Account</div>
+                    <div class="account-rail small-rail">
+                      <div class="rail" id="rail-local-to">
+                        {% for a in krw_accounts + bdt_accounts if a.type != 'credit' %}
+                        <div class="account-card"
+                             data-rail-group="local-to"
+                             data-account-id="{{ a.id }}"
+                             data-currency="{{ a.currency.value }}">
+                          <div class="brand">{{ a.type.value|upper }}</div>
+                          <div class="balance">{{ a.currency.value }} {{ '{:,.0f}'.format(a.initial_balance or 0) }}</div>
+                          <div class="detail">{{ a.name }}</div>
+                        </div>
+                        {% endfor %}
+                      </div>
+                      <div class="rail-controls top-right">
+                        <button type="button" class="rail-btn prev" data-rail="local-to">‹</button>
+                        <button type="button" class="rail-btn next" data-rail="local-to">›</button>
+                      </div>
+                      <input type="hidden" name="to_account_id" id="local-to-id">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-        <div>
-          <label class="form-label">Note</label>
-          <input type="text" name="note" class="form-control" placeholder="Optional">
-        </div>
+            <div class="smart-toggle mb-3">
+              <input class="form-check-input" type="checkbox" id="local-chk-self" name="local_recipient_is_self">
+              <div>
+                <label class="form-check-label" for="local-chk-self">Recipient is myself local</label>
+                <p>Use this when moving money between your own accounts.</p>
+              </div>
+            </div>
 
-        <div class="actions">
-          <a href="{{ url_for('main.transfers_page') }}" class="btn btn-light">Cancel</a>
-          <button class="btn btn-primary">Send Money</button>
-        </div>
-      </form>
+            <div id="local-recipient-wrap">
+              <div class="row g-3">
+                <div class="col-12 col-md-6">
+                  <label class="form-label">Select Recipient</label>
+                  <div class="input-icon-wrap">
+                    <i class="bi bi-person"></i>
+                    <select name="recipient_id" class="form-select" id="local-recipient_id">
+                      <option value="">— None —</option>
+                      {% for r in recipients %}
+                        <option value="{{ r.id }}">{{ r.name }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                </div>
+                <div class="col-12 col-md-6">
+                  <label class="form-label">Custom recipient</label>
+                  <div class="input-icon-wrap">
+                    <i class="bi bi-pencil-square"></i>
+                    <input type="text" name="recipient_name" id="local-recipient_name" class="form-control" placeholder="Custom recipient name optional">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <div class="section-title"><span class="step-dot">4</span> Note & save</div>
+            <label class="form-label">Note</label>
+            <div class="input-icon-wrap">
+              <i class="bi bi-chat-left-text"></i>
+              <input type="text" name="note" class="form-control" placeholder="Optional note">
+            </div>
+          </div>
+
+          <div class="actions">
+            <a href="{{ url_for('main.transfers_page') }}" class="btn btn-light">Cancel</a>
+            <button class="btn btn-primary"><i class="bi bi-check2-circle me-1"></i> Save Local Transfer</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- ================= INTERNATIONAL TAB ================= -->
+      <section class="tab-panel" id="tab-intl" role="tabpanel">
+        <form action="{{ url_for('main.transfers_international') }}" method="post" class="form-flow">
+          <div class="form-section">
+            <div class="section-title"><span class="step-dot">1</span> KRW Source Account</div>
+            <div class="account-rail">
+              <div class="rail" id="rail-intl-from">
+                {% for a in krw_accounts if a.type != 'credit' %}
+                <div class="account-card"
+                     data-rail-group="intl-from"
+                     data-account-id="{{ a.id }}"
+                     data-currency="KRW">
+                  <div class="brand">{{ a.type.value|upper }}</div>
+                  <div class="balance">₩ {{ '{:,.0f}'.format(a.initial_balance or 0) }}</div>
+                  <div class="detail">{{ a.name }}</div>
+                </div>
+                {% endfor %}
+              </div>
+              <div class="rail-controls bottom-right">
+                <button type="button" class="rail-btn prev" data-rail="intl-from">‹</button>
+                <button type="button" class="rail-btn next" data-rail="intl-from">›</button>
+              </div>
+              <input type="hidden" name="from_account_id" id="intl-from-id">
+            </div>
+          </div>
+
+          <div class="form-section">
+            <div class="section-title"><span class="step-dot">2</span> Remittance details</div>
+            <div class="row g-3">
+              <div class="col-12 col-md-6">
+                <label class="form-label">Date</label>
+                <div class="input-icon-wrap">
+                  <i class="bi bi-calendar-event"></i>
+                  <input type="date" name="date" class="form-control" value="{{ current_date }}" required>
+                </div>
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label">Amount Sent KRW</label>
+                <div class="input-icon-wrap">
+                  <i class="bi bi-currency-won"></i>
+                  <input type="number" step="0.01" name="amount_sent_krw" class="form-control" placeholder="0" required>
+                </div>
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label">Amount Received BDT</label>
+                <div class="input-icon-wrap">
+                  <i class="bi bi-cash"></i>
+                  <input type="number" step="0.01" name="amount_received_bdt" class="form-control" placeholder="0" required>
+                </div>
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label">Service</label>
+                <div class="input-icon-wrap">
+                  <i class="bi bi-building"></i>
+                  <input type="text" name="service_name" class="form-control" placeholder="Wise / bKash / Nagad">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <div class="section-title"><span class="step-dot">3</span> Receiver</div>
+            <div class="smart-toggle mb-3">
+              <input class="form-check-input" type="checkbox" id="chk-self" name="recipient_is_self">
+              <div>
+                <label class="form-check-label" for="chk-self">Recipient is myself</label>
+                <p>When checked, choose one of your BDT receiving accounts below.</p>
+              </div>
+            </div>
+
+            <div id="self-bdt-wrap" class="d-none mb-3">
+              <div class="section-title small">My BDT Receiving Account</div>
+              <div class="account-rail small-rail">
+                <div class="rail" id="rail-intl-to">
+                  {% for a in bdt_accounts if a.type != 'credit' %}
+                  <div class="account-card"
+                       data-rail-group="intl-to"
+                       data-account-id="{{ a.id }}"
+                       data-currency="{{ a.currency.value }}">
+                    <div class="brand">{{ a.type.value|upper }}</div>
+                    <div class="balance">৳ {{ '{:,.0f}'.format(a.initial_balance or 0) }}</div>
+                    <div class="detail">{{ a.name }}</div>
+                  </div>
+                  {% endfor %}
+                </div>
+                <div class="rail-controls top-right">
+                  <button type="button" class="rail-btn prev" data-rail="intl-to">‹</button>
+                  <button type="button" class="rail-btn next" data-rail="intl-to">›</button>
+                </div>
+                <input type="hidden" name="to_account_id_bdt" id="intl-to-id">
+              </div>
+            </div>
+
+            <div id="recipient-wrap">
+              <div class="row g-3">
+                <div class="col-12 col-md-6">
+                  <label class="form-label">Recipient</label>
+                  <div class="input-icon-wrap">
+                    <i class="bi bi-person"></i>
+                    <select name="recipient_id" class="form-select" id="recipient_id">
+                      <option value="">— None —</option>
+                      {% for r in recipients %}
+                        <option value="{{ r.id }}">{{ r.name }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                </div>
+                <div class="col-12 col-md-6">
+                  <label class="form-label">Custom recipient</label>
+                  <div class="input-icon-wrap">
+                    <i class="bi bi-pencil-square"></i>
+                    <input type="text" name="recipient_name" id="recipient_name" class="form-control" placeholder="Custom recipient name optional">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <div class="section-title"><span class="step-dot">4</span> Note & save</div>
+            <label class="form-label">Note</label>
+            <div class="input-icon-wrap">
+              <i class="bi bi-chat-left-text"></i>
+              <input type="text" name="note" class="form-control" placeholder="Optional note">
+            </div>
+          </div>
+
+          <div class="actions">
+            <a href="{{ url_for('main.transfers_page') }}" class="btn btn-light">Cancel</a>
+            <button class="btn btn-primary"><i class="bi bi-check2-circle me-1"></i> Save International Transfer</button>
+          </div>
+        </form>
+      </section>
     </section>
 
-    <!-- ================= INTERNATIONAL TAB ================= -->
-    <section class="tab-panel" id="tab-intl">
-      <form action="{{ url_for('main.transfers_international') }}" method="post" class="vstack gap-3">
-
-        <!-- KRW Source -->
-        <div class="section-title">KRW Source Account</div>
-        <div class="account-rail">
-          <div class="rail" id="rail-intl-from">
-            {% for a in krw_accounts if a.type != 'credit' %}
-            <div class="account-card"
-                 data-rail-group="intl-from"
-                 data-account-id="{{ a.id }}"
-                 data-currency="KRW">
-              <div class="brand">{{ a.type.value|upper }}</div>
-              <div class="balance">₩ {{ '{:,.0f}'.format(a.initial_balance or 0) }}</div>
-              <div class="detail">{{ a.name }}</div>
-            </div>
-            {% endfor %}
-          </div>
-          <div class="rail-controls bottom-right">
-            <button type="button" class="rail-btn prev" data-rail="intl-from">‹</button>
-            <button type="button" class="rail-btn next" data-rail="intl-from">›</button>
-          </div>
-          <input type="hidden" name="from_account_id" id="intl-from-id">
-        </div>
-
-        <div class="row g-2">
-          <div class="col-12 col-md-6">
-            <label class="form-label">Date</label>
-            <input type="date" name="date" class="form-control" value="{{ current_date }}" required>
-          </div>
-          <div class="col-12 col-md-6">
-            <label class="form-label">Amount Sent (KRW)</label>
-            <input type="number" step="0.01" name="amount_sent_krw" class="form-control" required>
-          </div>
-        </div>
-
-        <div class="row g-2">
-          <div class="col-12 col-md-6">
-            <label class="form-label">Amount Received (BDT)</label>
-            <input type="number" step="0.01" name="amount_received_bdt" class="form-control" required>
-          </div>
-          <div class="col-12 col-md-6">
-            <label class="form-label">Service</label>
-            <input type="text" name="service_name" class="form-control" placeholder="Wise / bKash / Nagad">
-          </div>
-        </div>
-
-        <div class="form-check mt-2">
-          <input class="form-check-input" type="checkbox" id="chk-self" name="recipient_is_self">
-          <label class="form-check-label" for="chk-self">Recipient is myself</label>
-        </div>
-
-        <!-- Self BDT destination slider -->
-        <div id="self-bdt-wrap" class="d-none">
-          <div class="section-title small">My BDT Receiving Account</div>
-          <div class="account-rail small-rail">
-            <div class="rail" id="rail-intl-to">
-              {% for a in bdt_accounts if a.type != 'credit' %}
-              <div class="account-card"
-                   data-rail-group="intl-to"
-                   data-account-id="{{ a.id }}"
-                   data-currency="{{ a.currency.value }}">
-                <div class="brand">{{ a.type.value|upper }}</div>
-                <div class="balance">৳ {{ '{:,.0f}'.format(a.initial_balance or 0) }}</div>
-                <div class="detail">{{ a.name }}</div>
-              </div>
-              {% endfor %}
-            </div>
-            <div class="rail-controls top-right">
-              <button type="button" class="rail-btn prev" data-rail="intl-to">‹</button>
-              <button type="button" class="rail-btn next" data-rail="intl-to">›</button>
-            </div>
-            <input type="hidden" name="to_account_id_bdt" id="intl-to-id">
-          </div>
-        </div>
-
-        <!-- Recipient (intl) — kept visible; will be disabled by JS -->
-        <div id="recipient-wrap">
-          <label class="form-label">Recipient</label>
-          <select name="recipient_id" class="form-select" id="recipient_id">
-            <option value="">— None —</option>
-            {% for r in recipients %}
-              <option value="{{ r.id }}">{{ r.name }}</option>
-            {% endfor %}
-          </select>
-          <input type="text" name="recipient_name" id="recipient_name" class="form-control mt-2" placeholder="Custom recipient name (optional)">
-        </div>
-
+    <section class="recipient-stack glass-card" id="recipient-section">
+      <div class="recipient-card-head">
         <div>
-          <label class="form-label">Note</label>
-          <input type="text" name="note" class="form-control" placeholder="Optional">
+          <div class="section-kicker">Recipient manager</div>
+          <h2>Recipients</h2>
+          <p>Add, search, or manage people and accounts after the transfer form.</p>
         </div>
-
-        <div class="actions">
-          <a href="{{ url_for('main.transfers_page') }}" class="btn btn-light">Cancel</a>
-          <button class="btn btn-primary">Send Money</button>
-        </div>
-      </form>
+        <span class="empty-help"><i class="bi bi-arrow-up-circle"></i> Transfer section stays above</span>
+      </div>
+      <div class="recipient-body">
+        {% include "partials/_recipient_list.html" %}
+      </div>
     </section>
   </div>
 </div>

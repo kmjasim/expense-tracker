@@ -1,278 +1,691 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container-fluid py-3">
+<style>
+  .salary-analysis-page {
+    --sa-bg: #f5f7fb;
+    --sa-card: rgba(255, 255, 255, .86);
+    --sa-border: rgba(15, 23, 42, .08);
+    --sa-ink: #0f172a;
+    --sa-muted: #64748b;
+    --sa-primary: #2563eb;
+    --sa-success: #16a34a;
+    --sa-danger: #dc2626;
+    --sa-warning: #d97706;
+    --sa-soft-primary: rgba(37, 99, 235, .10);
+    --sa-soft-success: rgba(22, 163, 74, .10);
+    --sa-soft-danger: rgba(220, 38, 38, .10);
+    --sa-radius: 1.25rem;
+    color: var(--sa-ink);
+  }
 
-  <!-- Header -->
-  <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
-    <div>
-      <h2 class="mb-1">Salary Analysis</h2>
-      <p class="text-muted mb-0">
-        Analyze gross salary, net salary, overtime, deductions, allowances, and work patterns.
-      </p>
-    </div>
+  .salary-analysis-page .sa-shell {
+    background:
+      radial-gradient(circle at top left, rgba(59, 130, 246, .14), transparent 34rem),
+      radial-gradient(circle at top right, rgba(34, 197, 94, .12), transparent 28rem),
+      linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
+    border-radius: 1.75rem;
+    padding: 1rem;
+  }
 
-    <div class="d-flex flex-wrap gap-2">
-      <button type="button" class="btn btn-outline-secondary btn-sm" id="resetBtn">
-        <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
-      </button>
-      <button type="button" class="btn btn-primary btn-sm" id="applyBtn">
-        <i class="bi bi-funnel me-1"></i> Apply
-      </button>
-    </div>
-  </div>
+  .salary-analysis-page .sa-hero {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, .28);
+    border-radius: 1.75rem;
+    background:
+      linear-gradient(135deg, rgba(15, 23, 42, .96), rgba(30, 64, 175, .94)),
+      radial-gradient(circle at 80% 20%, rgba(96, 165, 250, .55), transparent 17rem);
+    color: #fff;
+    box-shadow: 0 1.5rem 4rem rgba(15, 23, 42, .16);
+  }
 
-  <!-- Filters -->
-  <div class="card shadow-sm border-0 mb-4">
-    <div class="card-body">
-      <div class="row g-3 align-items-end">
-        <div class="col-12 col-md-4 col-lg-3">
-          <label class="form-label">Year</label>
-          <select id="yearFilter" class="form-select">
-            {% for y in range(current_year - 4, current_year + 2) %}
-              <option value="{{ y }}" {% if y == current_year %}selected{% endif %}>
-                {{ y }}
-              </option>
-            {% endfor %}
-          </select>
-        </div>
+  .salary-analysis-page .sa-hero::before,
+  .salary-analysis-page .sa-hero::after {
+    content: "";
+    position: absolute;
+    border-radius: 999px;
+    pointer-events: none;
+  }
 
-        <div class="col-12 col-md-4 col-lg-3">
-          <label class="form-label">Month</label>
-          <select id="monthFilter" class="form-select">
-            <option value="">Whole Year</option>
-            {% for m in range(1, 13) %}
-              <option value="{{ m }}" {% if m == current_month %}selected{% endif %}>
-                {{ "%02d"|format(m) }}
-              </option>
-            {% endfor %}
-          </select>
-        </div>
+  .salary-analysis-page .sa-hero::before {
+    width: 18rem;
+    height: 18rem;
+    right: -5rem;
+    top: -8rem;
+    background: rgba(96, 165, 250, .26);
+  }
 
-        <div class="col-12 col-md-4 col-lg-6">
-          <div class="small text-muted">
-            Choose one month for detailed analysis, or choose Whole Year for yearly totals.
+  .salary-analysis-page .sa-hero::after {
+    width: 14rem;
+    height: 14rem;
+    left: 46%;
+    bottom: -9rem;
+    background: rgba(34, 197, 94, .18);
+  }
+
+  .salary-analysis-page .sa-hero-content {
+    position: relative;
+    z-index: 1;
+    padding: 1.35rem;
+  }
+
+  .salary-analysis-page .sa-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    padding: .4rem .7rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .12);
+    color: rgba(255, 255, 255, .82);
+    font-size: .78rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+  }
+
+  .salary-analysis-page .sa-hero h2 {
+    font-size: clamp(1.7rem, 3vw, 2.75rem);
+    font-weight: 850;
+    letter-spacing: -.04em;
+  }
+
+  .salary-analysis-page .sa-hero p {
+    max-width: 46rem;
+    color: rgba(255, 255, 255, .72);
+  }
+
+  .salary-analysis-page .sa-filter-panel {
+    position: relative;
+    z-index: 1;
+    border-radius: 1.35rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, .12);
+    border: 1px solid rgba(255, 255, 255, .18);
+    backdrop-filter: blur(12px);
+  }
+
+  .salary-analysis-page .sa-filter-panel .form-label {
+    color: rgba(255, 255, 255, .75);
+    font-weight: 700;
+    font-size: .78rem;
+  }
+
+  .salary-analysis-page .sa-filter-panel .form-select {
+    border: 0;
+    min-height: 2.65rem;
+    border-radius: .95rem;
+    font-weight: 700;
+    background-color: rgba(255, 255, 255, .94);
+  }
+
+  .salary-analysis-page .sa-btn-soft {
+    border-color: rgba(255, 255, 255, .24);
+    color: #fff;
+    background: rgba(255, 255, 255, .10);
+  }
+
+  .salary-analysis-page .sa-btn-soft:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, .18);
+  }
+
+  .salary-analysis-page .sa-card {
+    border: 1px solid var(--sa-border);
+    border-radius: var(--sa-radius);
+    background: var(--sa-card);
+    box-shadow: 0 1rem 2.5rem rgba(15, 23, 42, .06);
+    overflow: hidden;
+  }
+
+  .salary-analysis-page .sa-card-header {
+    padding: 1.1rem 1.15rem 0;
+    background: transparent;
+    border: 0;
+  }
+
+  .salary-analysis-page .sa-card-title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 850;
+    letter-spacing: -.02em;
+  }
+
+  .salary-analysis-page .sa-card-subtitle {
+    margin-top: .2rem;
+    color: var(--sa-muted);
+    font-size: .82rem;
+  }
+
+  .salary-analysis-page .sa-kpi-card {
+    position: relative;
+    min-height: 10.25rem;
+    transition: transform .18s ease, box-shadow .18s ease;
+  }
+
+  .salary-analysis-page .sa-kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 1.35rem 3rem rgba(15, 23, 42, .10);
+  }
+
+  .salary-analysis-page .sa-kpi-card::after {
+    content: "";
+    position: absolute;
+    inset: auto 1rem 0 1rem;
+    height: .26rem;
+    border-radius: 999px 999px 0 0;
+    background: var(--kpi-accent, var(--sa-primary));
+    opacity: .75;
+  }
+
+  .salary-analysis-page .sa-kpi-icon {
+    width: 2.6rem;
+    height: 2.6rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 1rem;
+    background: var(--kpi-soft, var(--sa-soft-primary));
+    color: var(--kpi-accent, var(--sa-primary));
+    font-size: 1.15rem;
+  }
+
+  .salary-analysis-page .sa-kpi-label {
+    color: var(--sa-muted);
+    font-size: .82rem;
+    font-weight: 750;
+    text-transform: uppercase;
+    letter-spacing: .035em;
+  }
+
+  .salary-analysis-page .sa-kpi-value {
+    margin: .55rem 0 0;
+    font-size: clamp(1.35rem, 2.2vw, 1.8rem);
+    font-weight: 900;
+    letter-spacing: -.04em;
+    color: var(--kpi-accent, var(--sa-ink));
+  }
+
+  .salary-analysis-page .sa-kpi-note {
+    color: var(--sa-muted);
+    font-size: .78rem;
+  }
+
+  .salary-analysis-page .sa-metric {
+    padding: 1rem;
+    border: 1px solid var(--sa-border);
+    border-radius: 1.1rem;
+    background: #fff;
+    height: 100%;
+  }
+
+  .salary-analysis-page .sa-metric-label {
+    color: var(--sa-muted);
+    font-size: .78rem;
+    font-weight: 750;
+  }
+
+  .salary-analysis-page .sa-metric-value {
+    margin-top: .25rem;
+    font-size: 1.15rem;
+    font-weight: 850;
+    letter-spacing: -.02em;
+  }
+
+  .salary-analysis-page .sa-metric-note {
+    color: var(--sa-muted);
+    font-size: .78rem;
+  }
+
+  .salary-analysis-page .sa-chart-wrap {
+    position: relative;
+    height: 340px;
+  }
+
+  .salary-analysis-page .sa-chart-wrap.sm {
+    height: 310px;
+  }
+
+  .salary-analysis-page .sa-table {
+    --bs-table-bg: transparent;
+    margin-bottom: 0;
+  }
+
+  .salary-analysis-page .sa-table thead th {
+    color: var(--sa-muted);
+    font-size: .74rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    border-bottom: 1px solid var(--sa-border);
+  }
+
+  .salary-analysis-page .sa-table tbody td {
+    padding: .85rem .65rem;
+    border-bottom: 1px solid rgba(15, 23, 42, .055);
+  }
+
+  .salary-analysis-page .sa-work-box {
+    border: 1px solid var(--sa-border);
+    border-radius: 1.05rem;
+    padding: .9rem;
+    background: linear-gradient(180deg, #fff, #f8fafc);
+  }
+
+  .salary-analysis-page .sa-work-label {
+    color: var(--sa-muted);
+    font-size: .76rem;
+    font-weight: 750;
+  }
+
+  .salary-analysis-page .sa-work-value {
+    margin-top: .2rem;
+    font-size: 1.1rem;
+    font-weight: 850;
+  }
+
+  .salary-analysis-page .sa-insights .alert {
+    border: 0;
+    border-radius: 1rem;
+    box-shadow: inset 0 0 0 1px rgba(15, 23, 42, .055);
+  }
+
+  .salary-analysis-page .sa-alert {
+    border: 0;
+    border-radius: 1rem;
+    box-shadow: 0 1rem 2rem rgba(15, 23, 42, .07);
+  }
+
+  .salary-analysis-page .sa-empty {
+    padding: 2.2rem 1rem;
+    text-align: center;
+    color: var(--sa-muted);
+  }
+
+  @media (max-width: 767.98px) {
+    .salary-analysis-page .sa-shell {
+      padding: .55rem;
+      border-radius: 1.15rem;
+    }
+
+    .salary-analysis-page .sa-hero,
+    .salary-analysis-page .sa-card {
+      border-radius: 1.1rem;
+    }
+
+    .salary-analysis-page .sa-hero-content {
+      padding: 1rem;
+    }
+
+    .salary-analysis-page .sa-chart-wrap,
+    .salary-analysis-page .sa-chart-wrap.sm {
+      height: 280px;
+    }
+
+    .salary-analysis-page .sa-filter-panel {
+      padding: .8rem;
+    }
+  }
+</style>
+
+<div class="salary-analysis-page">
+  <div class="sa-shell">
+
+    <!-- Hero + Filters -->
+    <section class="sa-hero mb-4">
+      <div class="sa-hero-content">
+        <div class="row g-4 align-items-end">
+          <div class="col-12 col-xl-7">
+            <div class="sa-eyebrow mb-3">
+              <i class="bi bi-graph-up-arrow"></i>
+              Salary intelligence
+            </div>
+            <h2 class="mb-2">Salary Analysis</h2>
+            <p class="mb-0">
+              Track gross pay, net salary, overtime, deductions, allowances, leave impact, and monthly work patterns in one clear view.
+            </p>
           </div>
-        </div>
-      </div>
-    </div>
-  </div>
 
-  <div id="salaryAnalysisAlert" class="alert d-none mb-4"></div>
+          <div class="col-12 col-xl-5">
+            <div class="sa-filter-panel">
+              <div class="row g-2 align-items-end">
+                <div class="col-6">
+                  <label class="form-label">Year</label>
+                  <select id="yearFilter" class="form-select">
+                    {% for y in range(current_year - 4, current_year + 2) %}
+                      <option value="{{ y }}" {% if y == current_year %}selected{% endif %}>
+                        {{ y }}
+                      </option>
+                    {% endfor %}
+                  </select>
+                </div>
 
-  <!-- Summary Cards -->
-  <div class="row g-3 mb-4">
-    <div class="col-12 col-sm-6 col-xl-3">
-      <div class="card shadow-sm border-0 h-100">
-        <div class="card-body">
-          <p class="text-muted mb-1">Gross Salary</p>
-          <h4 class="mb-0 text-primary" id="grossCard">-</h4>
-        </div>
-      </div>
-    </div>
+                <div class="col-6">
+                  <label class="form-label">Month</label>
+                  <select id="monthFilter" class="form-select">
+                    <option value="">Whole Year</option>
+                    {% for m in range(1, 13) %}
+                      <option value="{{ m }}" {% if m == current_month %}selected{% endif %}>
+                        {{ "%02d"|format(m) }}
+                      </option>
+                    {% endfor %}
+                  </select>
+                </div>
 
-    <div class="col-12 col-sm-6 col-xl-3">
-      <div class="card shadow-sm border-0 h-100">
-        <div class="card-body">
-          <p class="text-muted mb-1">Net Salary</p>
-          <h4 class="mb-0 text-success" id="netCard">-</h4>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-12 col-sm-6 col-xl-3">
-      <div class="card shadow-sm border-0 h-100">
-        <div class="card-body">
-          <p class="text-muted mb-1">Total Additions</p>
-          <h4 class="mb-0 text-success" id="additionsCard">-</h4>
-          <small class="text-muted">OT + Weekend/Holiday + Allowance</small>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-12 col-sm-6 col-xl-3">
-      <div class="card shadow-sm border-0 h-100">
-        <div class="card-body">
-          <p class="text-muted mb-1">Total Deductions</p>
-          <h4 class="mb-0 text-danger" id="deductionsCard">-</h4>
-          <small class="text-muted">Insurance/tax + leave/short hours</small>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Detailed Cards -->
-  <div class="row g-3 mb-4">
-    <div class="col-12 col-md-6 col-xl-3">
-      <div class="card shadow-sm border-0 h-100">
-        <div class="card-body">
-          <p class="text-muted mb-1">Base Salary</p>
-          <h5 class="mb-0" id="baseSalaryCard">-</h5>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-12 col-md-6 col-xl-3">
-      <div class="card shadow-sm border-0 h-100">
-        <div class="card-body">
-          <p class="text-muted mb-1">Overtime</p>
-          <h5 class="mb-0 text-success" id="overtimePayCard">-</h5>
-          <small class="text-muted" id="overtimeHoursText">-</small>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-12 col-md-6 col-xl-3">
-      <div class="card shadow-sm border-0 h-100">
-        <div class="card-body">
-          <p class="text-muted mb-1">Weekend / Holiday Work</p>
-          <h5 class="mb-0 text-success" id="weekendHolidayPayCard">-</h5>
-          <small class="text-muted" id="weekendHolidayText">-</small>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-12 col-md-6 col-xl-3">
-      <div class="card shadow-sm border-0 h-100">
-        <div class="card-body">
-          <p class="text-muted mb-1">Leave / Short Deduction</p>
-          <h5 class="mb-0 text-danger" id="leaveDeductionCard">-</h5>
-          <small class="text-muted" id="leavePenaltyText">-</small>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Charts -->
-  <div class="row g-3 mb-4">
-    <div class="col-12 col-xl-8">
-      <div class="card shadow-sm border-0 h-100">
-        <div class="card-header bg-white border-0 pb-0">
-          <h5 class="mb-0">Gross vs Net Trend</h5>
-        </div>
-        <div class="card-body">
-          <div style="height: 340px;">
-            <canvas id="grossNetChart"></canvas>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-12 col-xl-4">
-      <div class="card shadow-sm border-0 h-100">
-        <div class="card-header bg-white border-0 pb-0">
-          <h5 class="mb-0">Salary Composition</h5>
-        </div>
-        <div class="card-body">
-          <div style="height: 340px;">
-            <canvas id="salaryCompositionChart"></canvas>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- More Charts -->
-  <div class="row g-3 mb-4">
-    <div class="col-12 col-xl-6">
-      <div class="card shadow-sm border-0 h-100">
-        <div class="card-header bg-white border-0 pb-0">
-          <h5 class="mb-0">Monthly Deductions</h5>
-        </div>
-        <div class="card-body">
-          <div style="height: 320px;">
-            <canvas id="deductionTrendChart"></canvas>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-12 col-xl-6">
-      <div class="card shadow-sm border-0 h-100">
-        <div class="card-header bg-white border-0 pb-0">
-          <h5 class="mb-0">Monthly Overtime Pay</h5>
-        </div>
-        <div class="card-body">
-          <div style="height: 320px;">
-            <canvas id="overtimeTrendChart"></canvas>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Tables + Insights -->
-  <div class="row g-3">
-    <div class="col-12 col-xl-6">
-      <div class="card shadow-sm border-0 h-100">
-        <div class="card-header bg-white border-0 pb-0">
-          <h5 class="mb-0">Allowances & Deductions Breakdown</h5>
-        </div>
-        <div class="card-body">
-          <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-              <thead>
-                <tr>
-                  <th>Type</th>
-                  <th>Label</th>
-                  <th class="text-end">Amount</th>
-                  <th class="text-end">Count</th>
-                </tr>
-              </thead>
-              <tbody id="adjustmentTable">
-                <tr>
-                  <td colspan="4" class="text-center text-muted py-4">
-                    No data loaded yet.
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-12 col-xl-6">
-      <div class="card shadow-sm border-0 h-100">
-        <div class="card-header bg-white border-0 pb-0">
-          <h5 class="mb-0">Work Summary & Insights</h5>
-        </div>
-        <div class="card-body">
-          <div class="row g-2 mb-3">
-            <div class="col-6">
-              <div class="border rounded-3 p-2">
-                <div class="text-muted small">Worked Days</div>
-                <div class="fw-bold" id="workedDaysText">-</div>
+                <div class="col-12">
+                  <div class="d-flex flex-column flex-sm-row gap-2 mt-2">
+                    <button type="button" class="btn btn-light fw-semibold flex-fill" id="applyBtn">
+                      <i class="bi bi-funnel me-1"></i> Apply
+                    </button>
+                    <button type="button" class="btn sa-btn-soft fw-semibold flex-fill" id="resetBtn">
+                      <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
+                    </button>
+                  </div>
+                  <div class="small mt-3" style="color: rgba(255,255,255,.68);">
+                    Pick one month for detailed analysis, or choose Whole Year for yearly totals.
+                  </div>
+                </div>
               </div>
             </div>
-            <div class="col-6">
-              <div class="border rounded-3 p-2">
-                <div class="text-muted small">Worked Hours</div>
-                <div class="fw-bold" id="workedHoursText">-</div>
+          </div>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2 mt-4">
+          <span class="badge rounded-pill text-bg-light px-3 py-2">
+            <i class="bi bi-calendar3 me-1"></i>
+            <span id="periodLabel">Loading period...</span>
+          </span>
+          <span class="badge rounded-pill px-3 py-2" style="background: rgba(255,255,255,.14); color: #fff;">
+            <i class="bi bi-wallet2 me-1"></i>
+            Net rate: <span id="netRateText">-</span>
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <div id="salaryAnalysisAlert" class="alert sa-alert d-none mb-4"></div>
+
+    <!-- Summary Cards -->
+    <div class="row g-3 mb-4">
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card sa-card sa-kpi-card h-100" style="--kpi-accent:#2563eb;--kpi-soft:rgba(37,99,235,.10);">
+          <div class="card-body p-3">
+            <div class="d-flex justify-content-between align-items-start gap-3">
+              <div>
+                <div class="sa-kpi-label">Gross Salary</div>
+                <h4 class="sa-kpi-value" id="grossCard">-</h4>
+                <div class="sa-kpi-note">Before deductions</div>
               </div>
-            </div>
-            <div class="col-6">
-              <div class="border rounded-3 p-2">
-                <div class="text-muted small">Regular Hours</div>
-                <div class="fw-bold" id="regularHoursText">-</div>
-              </div>
-            </div>
-            <div class="col-6">
-              <div class="border rounded-3 p-2">
-                <div class="text-muted small">Logged Leave Days</div>
-                <div class="fw-bold" id="loggedLeaveDaysText">-</div>
+              <div class="sa-kpi-icon">
+                <i class="bi bi-cash-stack"></i>
               </div>
             </div>
           </div>
+        </div>
+      </div>
 
-          <div id="salaryInsightsSection">
-            <div class="text-muted">Insights will appear here.</div>
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card sa-card sa-kpi-card h-100" style="--kpi-accent:#16a34a;--kpi-soft:rgba(22,163,74,.10);">
+          <div class="card-body p-3">
+            <div class="d-flex justify-content-between align-items-start gap-3">
+              <div>
+                <div class="sa-kpi-label">Net Salary</div>
+                <h4 class="sa-kpi-value" id="netCard">-</h4>
+                <div class="sa-kpi-note">Estimated take-home</div>
+              </div>
+              <div class="sa-kpi-icon">
+                <i class="bi bi-piggy-bank"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card sa-card sa-kpi-card h-100" style="--kpi-accent:#059669;--kpi-soft:rgba(5,150,105,.10);">
+          <div class="card-body p-3">
+            <div class="d-flex justify-content-between align-items-start gap-3">
+              <div>
+                <div class="sa-kpi-label">Total Additions</div>
+                <h4 class="sa-kpi-value" id="additionsCard">-</h4>
+                <div class="sa-kpi-note">OT + weekend + allowance</div>
+              </div>
+              <div class="sa-kpi-icon">
+                <i class="bi bi-plus-circle"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card sa-card sa-kpi-card h-100" style="--kpi-accent:#dc2626;--kpi-soft:rgba(220,38,38,.10);">
+          <div class="card-body p-3">
+            <div class="d-flex justify-content-between align-items-start gap-3">
+              <div>
+                <div class="sa-kpi-label">Total Deductions</div>
+                <h4 class="sa-kpi-value" id="deductionsCard">-</h4>
+                <div class="sa-kpi-note">Tax, insurance, leave</div>
+              </div>
+              <div class="sa-kpi-icon">
+                <i class="bi bi-dash-circle"></i>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
 
+    <!-- Detailed Cards -->
+    <div class="card sa-card mb-4">
+      <div class="sa-card-header">
+        <div class="d-flex flex-column flex-md-row justify-content-between gap-2">
+          <div>
+            <h5 class="sa-card-title">Pay Details</h5>
+            <div class="sa-card-subtitle">Breakdown of base pay, overtime, holiday/weekend work, and leave impact.</div>
+          </div>
+          <span class="badge rounded-pill text-bg-light align-self-md-start px-3 py-2">
+            <i class="bi bi-info-circle me-1"></i>
+            Auto-calculated
+          </span>
+        </div>
+      </div>
+
+      <div class="card-body p-3">
+        <div class="row g-3">
+          <div class="col-12 col-md-6 col-xl-3">
+            <div class="sa-metric">
+              <div class="d-flex align-items-center justify-content-between gap-2">
+                <div class="sa-metric-label">Base Salary</div>
+                <i class="bi bi-bank text-primary"></i>
+              </div>
+              <div class="sa-metric-value" id="baseSalaryCard">-</div>
+              <div class="sa-metric-note">Fixed monthly base</div>
+            </div>
+          </div>
+
+          <div class="col-12 col-md-6 col-xl-3">
+            <div class="sa-metric">
+              <div class="d-flex align-items-center justify-content-between gap-2">
+                <div class="sa-metric-label">Overtime</div>
+                <i class="bi bi-clock-history text-success"></i>
+              </div>
+              <div class="sa-metric-value text-success" id="overtimePayCard">-</div>
+              <div class="sa-metric-note" id="overtimeHoursText">-</div>
+            </div>
+          </div>
+
+          <div class="col-12 col-md-6 col-xl-3">
+            <div class="sa-metric">
+              <div class="d-flex align-items-center justify-content-between gap-2">
+                <div class="sa-metric-label">Weekend / Holiday</div>
+                <i class="bi bi-calendar-heart text-success"></i>
+              </div>
+              <div class="sa-metric-value text-success" id="weekendHolidayPayCard">-</div>
+              <div class="sa-metric-note" id="weekendHolidayText">-</div>
+            </div>
+          </div>
+
+          <div class="col-12 col-md-6 col-xl-3">
+            <div class="sa-metric">
+              <div class="d-flex align-items-center justify-content-between gap-2">
+                <div class="sa-metric-label">Leave / Short Deduction</div>
+                <i class="bi bi-calendar-x text-danger"></i>
+              </div>
+              <div class="sa-metric-value text-danger" id="leaveDeductionCard">-</div>
+              <div class="sa-metric-note" id="leavePenaltyText">-</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Charts -->
+    <div class="row g-3 mb-4">
+      <div class="col-12 col-xl-8">
+        <div class="card sa-card h-100">
+          <div class="sa-card-header">
+            <div class="d-flex flex-column flex-sm-row justify-content-between gap-2">
+              <div>
+                <h5 class="sa-card-title">Gross vs Net Trend</h5>
+                <div class="sa-card-subtitle">Compare earned salary against estimated take-home salary.</div>
+              </div>
+              <span class="badge rounded-pill text-bg-primary align-self-sm-start px-3 py-2">Trend</span>
+            </div>
+          </div>
+          <div class="card-body p-3">
+            <div class="sa-chart-wrap">
+              <canvas id="grossNetChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-xl-4">
+        <div class="card sa-card h-100">
+          <div class="sa-card-header">
+            <h5 class="sa-card-title">Salary Composition</h5>
+            <div class="sa-card-subtitle">What builds up your gross salary and what reduces it.</div>
+          </div>
+          <div class="card-body p-3">
+            <div class="sa-chart-wrap">
+              <canvas id="salaryCompositionChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- More Charts -->
+    <div class="row g-3 mb-4">
+      <div class="col-12 col-xl-6">
+        <div class="card sa-card h-100">
+          <div class="sa-card-header">
+            <h5 class="sa-card-title">Monthly Deductions</h5>
+            <div class="sa-card-subtitle">Insurance, tax, leave deduction, and other reductions.</div>
+          </div>
+          <div class="card-body p-3">
+            <div class="sa-chart-wrap sm">
+              <canvas id="deductionTrendChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-xl-6">
+        <div class="card sa-card h-100">
+          <div class="sa-card-header">
+            <h5 class="sa-card-title">Monthly Overtime Pay</h5>
+            <div class="sa-card-subtitle">How much extra income came from overtime work.</div>
+          </div>
+          <div class="card-body p-3">
+            <div class="sa-chart-wrap sm">
+              <canvas id="overtimeTrendChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tables + Insights -->
+    <div class="row g-3">
+      <div class="col-12 col-xl-6">
+        <div class="card sa-card h-100">
+          <div class="sa-card-header">
+            <h5 class="sa-card-title">Allowances & Deductions</h5>
+            <div class="sa-card-subtitle">Manual adjustment breakdown grouped by label.</div>
+          </div>
+          <div class="card-body p-3">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle sa-table">
+                <thead>
+                  <tr>
+                    <th>Type</th>
+                    <th>Label</th>
+                    <th class="text-end">Amount</th>
+                    <th class="text-end">Count</th>
+                  </tr>
+                </thead>
+                <tbody id="adjustmentTable">
+                  <tr>
+                    <td colspan="4" class="sa-empty">
+                      <i class="bi bi-hourglass-split d-block fs-3 mb-2"></i>
+                      No data loaded yet.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-xl-6">
+        <div class="card sa-card h-100">
+          <div class="sa-card-header">
+            <h5 class="sa-card-title">Work Summary & Insights</h5>
+            <div class="sa-card-subtitle">Quick work totals plus helpful automatic notes.</div>
+          </div>
+
+          <div class="card-body p-3">
+            <div class="row g-2 mb-3">
+              <div class="col-6">
+                <div class="sa-work-box">
+                  <div class="sa-work-label">Worked Days</div>
+                  <div class="sa-work-value" id="workedDaysText">-</div>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="sa-work-box">
+                  <div class="sa-work-label">Worked Hours</div>
+                  <div class="sa-work-value" id="workedHoursText">-</div>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="sa-work-box">
+                  <div class="sa-work-label">Regular Hours</div>
+                  <div class="sa-work-value" id="regularHoursText">-</div>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="sa-work-box">
+                  <div class="sa-work-label">Logged Leave Days</div>
+                  <div class="sa-work-value" id="loggedLeaveDaysText">-</div>
+                </div>
+              </div>
+            </div>
+
+            <div id="salaryInsightsSection" class="sa-insights">
+              <div class="sa-empty">
+                <i class="bi bi-lightbulb d-block fs-3 mb-2"></i>
+                Insights will appear here.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
 </div>
 {% endblock %}
 
@@ -287,6 +700,9 @@ document.addEventListener('DOMContentLoaded', function () {
   const applyBtn = document.getElementById('applyBtn');
   const resetBtn = document.getElementById('resetBtn');
   const salaryAnalysisAlert = document.getElementById('salaryAnalysisAlert');
+
+  const periodLabel = document.getElementById('periodLabel');
+  const netRateText = document.getElementById('netRateText');
 
   const grossCard = document.getElementById('grossCard');
   const netCard = document.getElementById('netCard');
@@ -314,10 +730,28 @@ document.addEventListener('DOMContentLoaded', function () {
   let deductionTrendChart = null;
   let overtimeTrendChart = null;
 
+  const palette = {
+    blue: 'rgba(37, 99, 235, 1)',
+    blueSoft: 'rgba(37, 99, 235, .15)',
+    green: 'rgba(22, 163, 74, 1)',
+    greenSoft: 'rgba(22, 163, 74, .16)',
+    red: 'rgba(220, 38, 38, 1)',
+    redSoft: 'rgba(220, 38, 38, .16)',
+    amber: 'rgba(217, 119, 6, 1)',
+    amberSoft: 'rgba(217, 119, 6, .18)',
+    slate: 'rgba(100, 116, 139, 1)',
+    slateSoft: 'rgba(100, 116, 139, .15)'
+  };
+
   function formatKRW(value) {
     return '₩' + Number(value || 0).toLocaleString(undefined, {
       maximumFractionDigits: 0
     });
+  }
+
+  function formatHours(value) {
+    const number = Number(value || 0);
+    return `${number.toLocaleString(undefined, { maximumFractionDigits: 2 })}h`;
   }
 
   function escapeHtml(value) {
@@ -330,7 +764,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function setAlert(type, message) {
-    salaryAnalysisAlert.className = `alert alert-${type} mb-4`;
+    salaryAnalysisAlert.className = `alert alert-${type} sa-alert mb-4`;
     salaryAnalysisAlert.textContent = message;
     salaryAnalysisAlert.classList.remove('d-none');
   }
@@ -340,48 +774,115 @@ document.addEventListener('DOMContentLoaded', function () {
     salaryAnalysisAlert.textContent = '';
   }
 
+  function setLoadingState(isLoading) {
+    applyBtn.disabled = isLoading;
+    resetBtn.disabled = isLoading;
+
+    applyBtn.innerHTML = isLoading
+      ? '<span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span> Loading'
+      : '<i class="bi bi-funnel me-1"></i> Apply';
+  }
+
   function destroyChart(chart) {
     if (chart) {
       chart.destroy();
     }
   }
 
+  function updatePeriodLabel() {
+    const year = yearFilter.value;
+    const month = monthFilter.value;
+    periodLabel.textContent = month ? `${year}-${String(month).padStart(2, '0')}` : `${year} · Whole Year`;
+  }
+
   function updateCards(summary) {
+    const gross = Number(summary.gross || 0);
+    const net = Number(summary.net || 0);
     const additions =
       Number(summary.overtime_pay || 0) +
       Number(summary.weekend_holiday_pay || 0) +
       Number(summary.allowance_total || 0);
 
-    grossCard.textContent = formatKRW(summary.gross);
-    netCard.textContent = formatKRW(summary.net);
+    const netRate = gross > 0 ? (net / gross) * 100 : 0;
+
+    grossCard.textContent = formatKRW(gross);
+    netCard.textContent = formatKRW(net);
     additionsCard.textContent = formatKRW(additions);
     deductionsCard.textContent = formatKRW(summary.total_deductions);
+
+    netRateText.textContent = gross > 0 ? `${netRate.toFixed(1)}%` : '-';
 
     baseSalaryCard.textContent = formatKRW(summary.base_salary);
 
     overtimePayCard.textContent = formatKRW(summary.overtime_pay);
-    overtimeHoursText.textContent = `${summary.overtime_hours || 0} hours`;
+    overtimeHoursText.textContent = `${formatHours(summary.overtime_hours)} overtime`;
 
     weekendHolidayPayCard.textContent = formatKRW(summary.weekend_holiday_pay);
     weekendHolidayText.textContent =
-      `${summary.weekend_holiday_days || 0} days · ${summary.weekend_holiday_hours || 0} hours`;
+      `${summary.weekend_holiday_days || 0} days · ${formatHours(summary.weekend_holiday_hours)}`;
 
     leaveDeductionCard.textContent = formatKRW(summary.leave_deduction);
     leavePenaltyText.textContent =
-      `Leave days: ${summary.leave_days || 0} · Penalty days: ${summary.penalty_days || 0} · Short: ${summary.short_hours || 0}h`;
+      `Leave: ${summary.leave_days || 0}d · Penalty: ${summary.penalty_days || 0}d · Short: ${formatHours(summary.short_hours)}`;
   }
 
   function updateWorkSummary(logSummary) {
     workedDaysText.textContent = logSummary.worked_days || 0;
-    workedHoursText.textContent = `${logSummary.worked_hours || 0}h`;
-    regularHoursText.textContent = `${logSummary.regular_hours || 0}h`;
+    workedHoursText.textContent = formatHours(logSummary.worked_hours);
+    regularHoursText.textContent = formatHours(logSummary.regular_hours);
     loggedLeaveDaysText.textContent = logSummary.leave_days_logged || 0;
+  }
+
+  function baseChartOptions() {
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: 'index',
+        intersect: false
+      },
+      plugins: {
+        legend: {
+          labels: {
+            usePointStyle: true,
+            boxWidth: 8
+          }
+        },
+        tooltip: {
+          backgroundColor: 'rgba(15, 23, 42, .92)',
+          padding: 12,
+          cornerRadius: 12,
+          callbacks: {
+            label: function (context) {
+              return `${context.dataset.label || context.label}: ${formatKRW(context.raw || 0)}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: {
+            display: false
+          }
+        },
+        y: {
+          beginAtZero: true,
+          ticks: {
+            callback: function (value) {
+              return formatKRW(value);
+            }
+          }
+        }
+      }
+    };
   }
 
   function renderGrossNetChart(series) {
     destroyChart(grossNetChart);
 
-    grossNetChart = new Chart(document.getElementById('grossNetChart'), {
+    const ctx = document.getElementById('grossNetChart');
+
+    grossNetChart = new Chart(ctx, {
       type: 'line',
       data: {
         labels: series.map(row => row.label),
@@ -389,42 +890,26 @@ document.addEventListener('DOMContentLoaded', function () {
           {
             label: 'Gross',
             data: series.map(row => row.gross),
-            tension: 0.3
+            tension: 0.35,
+            fill: true,
+            borderColor: palette.blue,
+            backgroundColor: palette.blueSoft,
+            pointRadius: 3,
+            pointHoverRadius: 5
           },
           {
             label: 'Net',
             data: series.map(row => row.net),
-            tension: 0.3
+            tension: 0.35,
+            fill: true,
+            borderColor: palette.green,
+            backgroundColor: palette.greenSoft,
+            pointRadius: 3,
+            pointHoverRadius: 5
           }
         ]
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: {
-          mode: 'index',
-          intersect: false
-        },
-        plugins: {
-          tooltip: {
-            callbacks: {
-              label: function (context) {
-                return `${context.dataset.label}: ${formatKRW(context.raw || 0)}`;
-              }
-            }
-          }
-        },
-        scales: {
-          y: {
-            beginAtZero: true,
-            ticks: {
-              callback: function (value) {
-                return formatKRW(value);
-              }
-            }
-          }
-        }
-      }
+      options: baseChartOptions()
     });
   }
 
@@ -442,14 +927,35 @@ document.addEventListener('DOMContentLoaded', function () {
             summary.weekend_holiday_pay || 0,
             summary.allowance_total || 0,
             summary.total_deductions || 0
-          ]
+          ],
+          backgroundColor: [
+            palette.blue,
+            palette.green,
+            palette.amber,
+            palette.slate,
+            palette.red
+          ],
+          borderWidth: 0,
+          hoverOffset: 8
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        cutout: '66%',
         plugins: {
+          legend: {
+            position: 'bottom',
+            labels: {
+              usePointStyle: true,
+              boxWidth: 8,
+              padding: 14
+            }
+          },
           tooltip: {
+            backgroundColor: 'rgba(15, 23, 42, .92)',
+            padding: 12,
+            cornerRadius: 12,
             callbacks: {
               label: function (context) {
                 return `${context.label}: ${formatKRW(context.raw || 0)}`;
@@ -470,35 +976,14 @@ document.addEventListener('DOMContentLoaded', function () {
         labels: series.map(row => row.label),
         datasets: [{
           label: 'Deductions',
-          data: series.map(row => row.deductions)
+          data: series.map(row => row.deductions),
+          backgroundColor: palette.redSoft,
+          borderColor: palette.red,
+          borderWidth: 1,
+          borderRadius: 10
         }]
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            display: false
-          },
-          tooltip: {
-            callbacks: {
-              label: function (context) {
-                return formatKRW(context.raw || 0);
-              }
-            }
-          }
-        },
-        scales: {
-          y: {
-            beginAtZero: true,
-            ticks: {
-              callback: function (value) {
-                return formatKRW(value);
-              }
-            }
-          }
-        }
-      }
+      options: baseChartOptions()
     });
   }
 
@@ -511,35 +996,14 @@ document.addEventListener('DOMContentLoaded', function () {
         labels: series.map(row => row.label),
         datasets: [{
           label: 'Overtime Pay',
-          data: series.map(row => row.overtime_pay)
+          data: series.map(row => row.overtime_pay),
+          backgroundColor: palette.greenSoft,
+          borderColor: palette.green,
+          borderWidth: 1,
+          borderRadius: 10
         }]
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            display: false
-          },
-          tooltip: {
-            callbacks: {
-              label: function (context) {
-                return formatKRW(context.raw || 0);
-              }
-            }
-          }
-        },
-        scales: {
-          y: {
-            beginAtZero: true,
-            ticks: {
-              callback: function (value) {
-                return formatKRW(value);
-              }
-            }
-          }
-        }
-      }
+      options: baseChartOptions()
     });
   }
 
@@ -547,7 +1011,8 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!rows || rows.length === 0) {
       adjustmentTable.innerHTML = `
         <tr>
-          <td colspan="4" class="text-center text-muted py-4">
+          <td colspan="4" class="sa-empty">
+            <i class="bi bi-inbox d-block fs-3 mb-2"></i>
             No allowance or deduction data found.
           </td>
         </tr>
@@ -557,8 +1022,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     adjustmentTable.innerHTML = rows.map(row => {
       const badge = row.kind === 'allowance'
-        ? '<span class="badge text-bg-success">Allowance</span>'
-        : '<span class="badge text-bg-danger">Deduction</span>';
+        ? '<span class="badge rounded-pill text-bg-success">Allowance</span>'
+        : '<span class="badge rounded-pill text-bg-danger">Deduction</span>';
 
       const amountClass = row.kind === 'allowance' ? 'text-success' : 'text-danger';
       const sign = row.kind === 'allowance' ? '+' : '-';
@@ -566,8 +1031,8 @@ document.addEventListener('DOMContentLoaded', function () {
       return `
         <tr>
           <td>${badge}</td>
-          <td>${escapeHtml(row.label)}</td>
-          <td class="text-end fw-semibold ${amountClass}">
+          <td class="fw-semibold">${escapeHtml(row.label)}</td>
+          <td class="text-end fw-bold ${amountClass}">
             ${sign}${formatKRW(row.amount)}
           </td>
           <td class="text-end">${row.count}</td>
@@ -576,24 +1041,39 @@ document.addEventListener('DOMContentLoaded', function () {
     }).join('');
   }
 
+  function normalizeAlertType(type) {
+    const allowed = ['primary', 'secondary', 'success', 'danger', 'warning', 'info', 'light', 'dark'];
+    return allowed.includes(type) ? type : 'info';
+  }
+
   function renderInsights(rows) {
     if (!rows || rows.length === 0) {
       salaryInsightsSection.innerHTML = `
-        <div class="text-muted">No insights available yet.</div>
+        <div class="sa-empty">
+          <i class="bi bi-lightbulb d-block fs-3 mb-2"></i>
+          No insights available yet.
+        </div>
       `;
       return;
     }
 
     salaryInsightsSection.innerHTML = rows.map(item => `
-      <div class="alert alert-${escapeHtml(item.type)} mb-3">
-        <h6 class="mb-1">${escapeHtml(item.title)}</h6>
-        <div class="small">${escapeHtml(item.text)}</div>
+      <div class="alert alert-${normalizeAlertType(item.type)} mb-3">
+        <div class="d-flex gap-2">
+          <i class="bi bi-stars mt-1"></i>
+          <div>
+            <h6 class="mb-1 fw-bold">${escapeHtml(item.title)}</h6>
+            <div class="small">${escapeHtml(item.text)}</div>
+          </div>
+        </div>
       </div>
     `).join('');
   }
 
   async function loadSalaryAnalysis() {
     hideAlert();
+    updatePeriodLabel();
+    setLoadingState(true);
 
     const params = new URLSearchParams({
       year: yearFilter.value,
@@ -625,6 +1105,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     } catch (error) {
       setAlert('danger', error.message || 'Something went wrong.');
+    } finally {
+      setLoadingState(false);
     }
   }
 
@@ -639,6 +1121,7 @@ document.addEventListener('DOMContentLoaded', function () {
     loadSalaryAnalysis();
   });
 
+  updatePeriodLabel();
   loadSalaryAnalysis();
 });
 </script>

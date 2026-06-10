@@ -1,300 +1,890 @@
 {% extends "base.html" %}
 {% block content %}
+{% from "partials/_lotto_macros.html" import ball, ball_list, empty_state %}
 
-<div class="container-fluid">
+<style>
+  :root {
+    --lotto-bg: #f6f8fc;
+    --lotto-card: rgba(255, 255, 255, 0.92);
+    --lotto-border: rgba(15, 23, 42, 0.08);
+    --lotto-text: #0f172a;
+    --lotto-muted: #64748b;
+    --lotto-soft: #eef2ff;
+    --lotto-primary: #4f46e5;
+    --lotto-primary-dark: #3730a3;
+    --lotto-success: #16a34a;
+    --lotto-danger: #dc2626;
+    --lotto-warning: #f59e0b;
+    --lotto-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+  }
 
-  <div class="d-flex align-items-center justify-content-between mb-3">
-    <h3 class="mb-0">Lotto Analyzer</h3>
-  </div>
-{% from "partials/_lotto_macros.html" import ball, ball_list %}
+  .lotto-page {
+    background:
+      radial-gradient(circle at top left, rgba(79, 70, 229, 0.14), transparent 32rem),
+      radial-gradient(circle at top right, rgba(14, 165, 233, 0.12), transparent 30rem),
+      var(--lotto-bg);
+    margin: -1rem;
+    padding: 1rem;
+    min-height: calc(100vh - 70px);
+  }
 
+  .lotto-shell {
+    max-width: 1500px;
+    margin: 0 auto;
+  }
 
-  {% if message is not none %}
-    <div class="alert {% if ok %}alert-success{% else %}alert-danger{% endif %} py-2">
-      {{ message }}
-    </div>
-  {% endif %}
-<div class="card mb-3">
-  <div class="card-header">
-    <strong>Smart Generator</strong>
-  </div>
+  .lotto-hero {
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 28px;
+    background:
+      linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(49, 46, 129, 0.94)),
+      radial-gradient(circle at 20% 20%, rgba(255,255,255,0.22), transparent 18rem);
+    color: #fff;
+    box-shadow: var(--lotto-shadow);
+    overflow: hidden;
+    position: relative;
+  }
 
-  <div class="card-body">
-    <form method="post" class="row g-2 align-items-end">
-      <input type="hidden" name="action" value="generate">
+  .lotto-hero::after {
+    content: "";
+    position: absolute;
+    inset: auto -5rem -7rem auto;
+    width: 18rem;
+    height: 18rem;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+  }
 
-      <div class="col-md-3">
-        <label class="form-label small text-muted">Window</label>
-        <select name="gen_window" class="form-select form-select-sm">
-          {% for w in [20, 50, 100, 200, 500] %}
-            <option value="{{ w }}">{{ w }} draws</option>
-          {% endfor %}
-        </select>
-      </div>
+  .lotto-hero-content {
+    position: relative;
+    z-index: 1;
+    padding: 1.4rem;
+  }
 
-      <div class="col-md-3">
-        <label class="form-label small text-muted">How many sets</label>
-        <select name="gen_count" class="form-select form-select-sm">
-          {% for c in [1,2,3,4,5] %}
-            <option value="{{ c }}">{{ c }} set{{ 's' if c>1 else '' }}</option>
-          {% endfor %}
-        </select>
-      </div>
+  .lotto-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    border: 1px solid rgba(255,255,255,.18);
+    background: rgba(255,255,255,.1);
+    color: rgba(255,255,255,.88);
+    border-radius: 999px;
+    padding: .38rem .7rem;
+    font-size: .8rem;
+    backdrop-filter: blur(14px);
+  }
 
-      <div class="col-md-3">
-        <button class="btn btn-primary btn-sm" type="submit" name="action" value="generate">
-          Generate
-        </button>
+  .lotto-card {
+    border: 1px solid var(--lotto-border);
+    border-radius: 22px;
+    background: var(--lotto-card);
+    box-shadow: var(--lotto-shadow);
+    overflow: hidden;
+  }
 
-      </div>
-    </form>
+  .lotto-card-header {
+    padding: 1rem 1.1rem .25rem;
+  }
 
-    {% if generated_picks %}
-      <hr>
-      <div class="d-flex flex-column gap-2">
-        {% for p in generated_picks %}
-          <div class="border rounded p-2 d-flex justify-content-between align-items-center flex-wrap">
-            <div>
-              {{ ball_list(p.numbers) }}
-            </div>
+  .lotto-card-body {
+    padding: 1.1rem;
+  }
 
-            <div class="text-muted small">
-              Score: <strong>{{ p.score }}</strong> |
-              Sum: {{ p.explain.sum }} |
-              O/E: {{ p.explain.odd_even }} |
-              L/H: {{ p.explain.low_high }} |
-              PairSynergy: {{ p.explain.synergy }}
-            </div>
-          </div>
-        {% endfor %}
+  .lotto-kpi {
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 18px;
+    padding: .95rem;
+    background: rgba(255,255,255,0.08);
+    backdrop-filter: blur(10px);
+    height: 100%;
+  }
+
+  .lotto-kpi-label {
+    color: rgba(255,255,255,0.68);
+    font-size: .75rem;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+  }
+
+  .lotto-kpi-value {
+    font-size: 1.45rem;
+    font-weight: 800;
+    line-height: 1.1;
+    margin-top: .35rem;
+  }
+
+  .lotto-action-btn {
+    border-radius: 14px;
+    padding: .7rem .95rem;
+    font-weight: 700;
+  }
+
+  .lotto-section-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .lotto-section-title h5,
+  .lotto-section-title h6 {
+    margin: 0;
+    color: var(--lotto-text);
+    font-weight: 800;
+  }
+
+  .lotto-subtitle {
+    color: var(--lotto-muted);
+    font-size: .85rem;
+    margin-top: .2rem;
+  }
+
+  .lotto-ball-list {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: .36rem;
+    align-items: center;
+  }
+
+  .lotto-ball {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: .86rem;
+    font-weight: 800;
+    box-shadow: inset 0 -4px 10px rgba(0,0,0,.15), 0 5px 14px rgba(15,23,42,.12);
+    margin: 0 .08rem;
+    border: 2px solid rgba(255,255,255,.75);
+  }
+
+  .lotto-1 { background: linear-gradient(135deg, #facc15, #f59e0b); color: #1f2937; }
+  .lotto-2 { background: linear-gradient(135deg, #60a5fa, #2563eb); }
+  .lotto-3 { background: linear-gradient(135deg, #fb7185, #dc2626); }
+  .lotto-4 { background: linear-gradient(135deg, #94a3b8, #475569); }
+  .lotto-5 { background: linear-gradient(135deg, #34d399, #059669); }
+  .lotto-bonus { outline: 3px solid rgba(79,70,229,.18); }
+
+  .lotto-number-chip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    border: 1px solid var(--lotto-border);
+    border-radius: 16px;
+    padding: .65rem .75rem;
+    background: #fff;
+  }
+
+  .lotto-count-badge {
+    min-width: 42px;
+    border-radius: 999px;
+    background: var(--lotto-soft);
+    color: var(--lotto-primary-dark);
+    font-size: .78rem;
+    font-weight: 800;
+    text-align: center;
+    padding: .25rem .45rem;
+  }
+
+  .lotto-generated-card {
+    border: 1px solid var(--lotto-border);
+    border-radius: 18px;
+    background: #fff;
+    padding: .95rem;
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+
+  .lotto-generated-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px rgba(15,23,42,.08);
+  }
+
+  .lotto-mini-stat {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    border-radius: 999px;
+    background: #f8fafc;
+    border: 1px solid var(--lotto-border);
+    padding: .28rem .55rem;
+    font-size: .78rem;
+    color: #475569;
+    white-space: nowrap;
+  }
+
+  .lotto-distribution-row {
+    display: grid;
+    grid-template-columns: 72px 1fr 52px;
+    gap: .65rem;
+    align-items: center;
+    margin-bottom: .65rem;
+  }
+
+  .lotto-progress {
+    height: 9px;
+    background: #e2e8f0;
+    border-radius: 999px;
+    overflow: hidden;
+  }
+
+  .lotto-progress > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--lotto-primary), #0ea5e9);
+  }
+
+  .lotto-pair-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .7rem;
+  }
+
+  .lotto-pair-item {
+    border: 1px solid var(--lotto-border);
+    border-radius: 16px;
+    padding: .72rem;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+  }
+
+  .lotto-rank {
+    width: 30px;
+    height: 30px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #f1f5f9;
+    color: #334155;
+    font-size: .78rem;
+    font-weight: 800;
+  }
+
+  .lotto-table thead th {
+    color: #475569;
+    font-size: .78rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    white-space: nowrap;
+  }
+
+  .lotto-table tbody td {
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+
+  .lotto-table tbody tr:hover {
+    background: #f8fafc;
+  }
+
+  .lotto-empty-state {
+    border: 1px dashed rgba(100,116,139,.35);
+    border-radius: 18px;
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    gap: .8rem;
+    background: #f8fafc;
+  }
+
+  .lotto-empty-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--lotto-soft);
+    color: var(--lotto-primary-dark);
+    font-weight: 900;
+  }
+
+  .lotto-tabs .nav-link {
+    border: 1px solid var(--lotto-border);
+    color: #475569;
+    border-radius: 999px;
+    padding: .45rem .8rem;
+    font-weight: 700;
+    background: rgba(255,255,255,.7);
+  }
+
+  .lotto-tabs .nav-link.active {
+    color: #fff;
+    background: var(--lotto-primary);
+    border-color: var(--lotto-primary);
+  }
+
+  .lotto-mobile-hint {
+    display: none;
+  }
+
+  @media (max-width: 991.98px) {
+    .lotto-page { margin: -.75rem; padding: .75rem; }
+    .lotto-hero-content { padding: 1rem; }
+    .lotto-pair-list { grid-template-columns: 1fr; }
+    .lotto-ball { width: 32px; height: 32px; font-size: .8rem; }
+    .lotto-mobile-hint { display: block; }
+  }
+
+  @media (max-width: 575.98px) {
+    .lotto-hero { border-radius: 22px; }
+    .lotto-card { border-radius: 18px; }
+    .lotto-generated-card { padding: .8rem; }
+    .lotto-table tbody td { font-size: .86rem; }
+  }
+</style>
+
+<div class="lotto-page">
+  <div class="lotto-shell">
+
+    {% if message is not none %}
+      <div class="alert {% if ok %}alert-success{% else %}alert-danger{% endif %} border-0 shadow-sm rounded-4 mb-3">
+        <div class="d-flex align-items-center justify-content-between gap-3">
+          <div>{{ message }}</div>
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
       </div>
     {% endif %}
-  </div>
-</div>
-  <div class="card mb-4">
-    <div class="card-header">
-      <strong>Add Draw</strong>
-    </div>
-    <div class="card-body">
-      <form method="POST" class="row g-2">
-        <div class="col-md-2">
-          <label class="form-label">Round No</label>
-          <input type="number" name="round_no" class="form-control" required>
-        </div>
 
-        <div class="col-md-3">
-          <label class="form-label">Draw Date</label>
-          <input type="date" name="draw_date" class="form-control" required>
-        </div>
-
-        <div class="col-md-5">
-          <label class="form-label">Numbers (6)</label>
-          <input type="text" name="numbers" class="form-control" placeholder="e.g. 3, 11, 18, 27, 33, 41" required>
-          <div class="form-text">Comma or space separated is fine.</div>
-        </div>
-
-        <div class="col-md-2">
-          <label class="form-label">Bonus</label>
-          <input type="number" name="bonus" class="form-control" required>
-        </div>
-
-        <div class="col-12">
-          <button class="btn btn-primary">
-            Save Draw
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-<div class="card mb-3">
-  <div class="card-header d-flex align-items-center justify-content-between">
-    <strong>Quick Analysis</strong>
-
-    <form method="get" class="d-flex gap-2 align-items-center">
-      <label class="small text-muted mb-0">Window</label>
-      <select name="window" class="form-select form-select-sm" style="width: 120px;">
-        {% for w in [10, 20, 50, 100, 200, 500, 1205] %}
-          <option value="{{ w }}" {% if w == selected_window %}selected{% endif %}>
-            Last {{ w }}
-          </option>
-        {% endfor %}
-      </select>
-      <button class="btn btn-sm btn-primary" type="submit">Apply</button>
-    </form>
-  </div>
-
-  <div class="card-body">
-    <div class="row g-3">
-
-      <div class="col-md-6">
-        <div class="border rounded p-3 h-100">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <strong>Hot Numbers</strong>
-            <span class="text-muted small">Top 10</span>
+    <!-- Hero / Summary -->
+    <section class="lotto-hero mb-4">
+      <div class="lotto-hero-content">
+        <div class="row g-3 align-items-center">
+          <div class="col-12 col-xl-5">
+            <div class="lotto-pill mb-3">Korea Lotto 6/45 Analyzer</div>
+            <h2 class="fw-black mb-2" style="font-weight: 900;">Lotto Dashboard</h2>
+            <p class="mb-0" style="color: rgba(255,255,255,.72); max-width: 640px;">
+              Generate smarter picks, compare hot/cold numbers, check distributions, and review recent draw patterns from one clean page.
+            </p>
           </div>
 
-          {% for item in hot_numbers %}
-            {{ ball(item.num) }}
-            <span class="text-primary small me-2">({{ item.cnt }})</span>
-          {% endfor %}
-
-        </div>
-      </div>
-
-      <div class="col-md-6">
-        <div class="border rounded p-3 h-100">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <strong>Cold Numbers</strong>
-            <span class="text-muted small">Bottom 10</span>
-          </div>
-
-          {% for item in cold_numbers %}
-            {{ ball(item.num) }}
-            <span class="text-primary small me-2">({{ item.cnt }})</span>
-          {% endfor %}
-
-        </div>
-      </div>
-
-      <div class="col-12">
-        <div class="border rounded p-3">
-          <strong>Distribution (Window)</strong>
-          <div class="row mt-2 g-3">
-            <div class="col-md-6">
-              <div class="small text-muted mb-1">Odd/Even</div>
-              <div class="d-flex gap-2 flex-wrap">
-                {% for k, v in odd_even_dist.items() %}
-                  <span class="badge text-bg-light border">
-                    {{ k }}: <strong>{{ v }}</strong>
-                  </span>
-                {% endfor %}
+          <div class="col-12 col-xl-7">
+            <div class="row g-2">
+              <div class="col-6 col-md-3">
+                <div class="lotto-kpi">
+                  <div class="lotto-kpi-label">Saved Draws</div>
+                  <div class="lotto-kpi-value">{{ total_draws|default(0) }}</div>
+                </div>
               </div>
-            </div>
-
-            <div class="col-md-6">
-              <div class="small text-muted mb-1">Low/High</div>
-              <div class="d-flex gap-2 flex-wrap">
-                {% for k, v in low_high_dist.items() %}
-                  <span class="badge text-bg-light border">
-                    {{ k }}: <strong>{{ v }}</strong>
-                  </span>
-                {% endfor %}
+              <div class="col-6 col-md-3">
+                <div class="lotto-kpi">
+                  <div class="lotto-kpi-label">Latest Round</div>
+                  <div class="lotto-kpi-value">
+                    {% if latest_draw %}{{ latest_draw.round_no }}{% else %}-{% endif %}
+                  </div>
+                </div>
+              </div>
+              <div class="col-6 col-md-3">
+                <div class="lotto-kpi">
+                  <div class="lotto-kpi-label">Window</div>
+                  <div class="lotto-kpi-value">{{ analysis_draw_count|default(0) }}</div>
+                </div>
+              </div>
+              <div class="col-6 col-md-3">
+                <div class="lotto-kpi">
+                  <div class="lotto-kpi-label">Top Pair</div>
+                  <div class="lotto-kpi-value">
+                    {% if top_pairs %}{{ top_pairs[0].a }}-{{ top_pairs[0].b }}{% else %}-{% endif %}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-      <div class="col-12">
-  <div class="border rounded p-3">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <strong>Top Pairs (Window)</strong>
-      <span class="text-muted small">Top 20</span>
-    </div>
+    </section>
 
-    {% if top_pairs %}
-      <div class="table-responsive">
-        <table class="table table-sm table-striped mb-0 align-middle">
-          <thead class="table-light">
-            <tr>
-              <th style="width: 80px;">Rank</th>
-              <th>Pair</th>
-              <th style="width: 120px;">Count</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for p in top_pairs %}
-              <tr>
-                <td>{{ loop.index }}</td>
-                <td>
-                  {{ ball(p.a) }}
-                  {{ ball(p.b) }}
-                </td>
+    <!-- Fast Navigation -->
+    <ul class="nav lotto-tabs gap-2 mb-4" id="lottoTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="generator-tab" data-bs-toggle="tab" data-bs-target="#generator-pane" type="button" role="tab">Generator</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="analysis-tab" data-bs-toggle="tab" data-bs-target="#analysis-pane" type="button" role="tab">Analysis</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="draws-tab" data-bs-toggle="tab" data-bs-target="#draws-pane" type="button" role="tab">Recent Draws</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="add-tab" data-bs-toggle="tab" data-bs-target="#add-pane" type="button" role="tab">Add Draw</button>
+      </li>
+    </ul>
 
-                <td><strong>{{ p.cnt }}</strong></td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+    <div class="tab-content" id="lottoTabsContent">
+
+      <!-- Generator -->
+      <div class="tab-pane fade show active" id="generator-pane" role="tabpanel" aria-labelledby="generator-tab" tabindex="0">
+        <div class="row g-3 mb-4">
+          <div class="col-12 col-xl-4">
+            <div class="lotto-card h-100">
+              <div class="lotto-card-header">
+                <div class="lotto-section-title">
+                  <div>
+                    <h5>Smart Generator</h5>
+                    <div class="lotto-subtitle">Create pick sets using your saved draw history.</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="lotto-card-body">
+                <form method="post" class="d-grid gap-3">
+                  <input type="hidden" name="action" value="generate">
+
+                  <div>
+                    <label class="form-label small text-muted fw-semibold">Analysis Window</label>
+                    <select name="gen_window" class="form-select form-select-lg rounded-4">
+                      {% for w in [20, 50, 100, 200, 500, 1205] %}
+                        <option value="{{ w }}" {% if w == gen_window_selected|default(100) %}selected{% endif %}>Last {{ w }} draws</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label class="form-label small text-muted fw-semibold">How Many Sets</label>
+                    <select name="gen_count" class="form-select form-select-lg rounded-4">
+                      {% for c in [1,2,3,4,5,10] %}
+                        <option value="{{ c }}" {% if c == gen_count_selected|default(1) %}selected{% endif %}>{{ c }} set{{ 's' if c > 1 else '' }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+
+                  <button class="btn btn-primary lotto-action-btn w-100" type="submit" name="action" value="generate">
+                    Generate Smart Picks
+                  </button>
+                </form>
+
+                <div class="alert alert-light border rounded-4 mt-3 mb-0 small text-muted">
+                  This is for analysis and fun only. Lotto results are random, so no system can guarantee winning numbers.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12 col-xl-8">
+            <div class="lotto-card h-100">
+              <div class="lotto-card-header">
+                <div class="lotto-section-title">
+                  <div>
+                    <h5>Generated Picks</h5>
+                    <div class="lotto-subtitle">Copy one set or compare score, sum, odd/even, low/high, and pair synergy.</div>
+                  </div>
+                  {% if generated_picks %}
+                    <button type="button" class="btn btn-sm btn-outline-primary rounded-pill" id="copyAllPicksBtn">Copy All</button>
+                  {% endif %}
+                </div>
+              </div>
+
+              <div class="lotto-card-body">
+                {% if generated_picks %}
+                  <div class="d-grid gap-3" id="generatedPicksArea">
+                    {% for p in generated_picks %}
+                      <div class="lotto-generated-card" data-pick="{{ p.numbers|join(', ') }}">
+                        <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
+                          <div>
+                            <div class="small text-muted fw-semibold mb-2">Set {{ loop.index }}</div>
+                            {{ ball_list(p.numbers) }}
+                          </div>
+                          <button type="button" class="btn btn-sm btn-light border rounded-pill copy-pick-btn">Copy</button>
+                        </div>
+
+                        <div class="d-flex flex-wrap gap-2 mt-3">
+                          <span class="lotto-mini-stat">Score <strong>{{ p.score }}</strong></span>
+                          <span class="lotto-mini-stat">Sum <strong>{{ p.explain.sum }}</strong></span>
+                          <span class="lotto-mini-stat">O/E <strong>{{ p.explain.odd_even }}</strong></span>
+                          <span class="lotto-mini-stat">L/H <strong>{{ p.explain.low_high }}</strong></span>
+                          <span class="lotto-mini-stat">Synergy <strong>{{ p.explain.synergy }}</strong></span>
+                        </div>
+                      </div>
+                    {% endfor %}
+                  </div>
+                {% else %}
+                  {{ empty_state("No generated picks yet", "Choose a window and generate your first smart pick set.") }}
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-    {% else %}
-      <div class="text-muted">No data</div>
-    {% endif %}
-  </div>
-</div>
 
+      <!-- Analysis -->
+      <div class="tab-pane fade" id="analysis-pane" role="tabpanel" aria-labelledby="analysis-tab" tabindex="0">
+        <div class="lotto-card mb-4">
+          <div class="lotto-card-header">
+            <div class="lotto-section-title">
+              <div>
+                <h5>Quick Analysis</h5>
+                <div class="lotto-subtitle">Based on the latest {{ analysis_draw_count|default(0) }} draw{{ 's' if analysis_draw_count|default(0) != 1 else '' }}.</div>
+              </div>
+
+              <form method="get" class="d-flex gap-2 align-items-center flex-wrap">
+                <label class="small text-muted mb-0 fw-semibold">Window</label>
+                <select name="window" class="form-select form-select-sm rounded-pill" style="width: 135px;">
+                  {% for w in [10, 20, 50, 100, 200, 500, 1205] %}
+                    <option value="{{ w }}" {% if w == selected_window %}selected{% endif %}>Last {{ w }}</option>
+                  {% endfor %}
+                </select>
+                <button class="btn btn-sm btn-primary rounded-pill" type="submit">Apply</button>
+              </form>
+            </div>
+          </div>
+
+          <div class="lotto-card-body">
+            <div class="row g-3">
+              <div class="col-12 col-xl-6">
+                <div class="lotto-card shadow-none h-100">
+                  <div class="lotto-card-body">
+                    <div class="lotto-section-title mb-3">
+                      <div>
+                        <h6>Hot Numbers</h6>
+                        <div class="lotto-subtitle">Most frequent main numbers.</div>
+                      </div>
+                      <span class="badge text-bg-light border rounded-pill">Top 10</span>
+                    </div>
+
+                    {% if hot_numbers %}
+                      <div class="row g-2">
+                        {% for item in hot_numbers %}
+                          <div class="col-6 col-md-4 col-xxl-3">
+                            <div class="lotto-number-chip">
+                              {{ ball(item.num) }}
+                              <span class="lotto-count-badge">{{ item.cnt }}x</span>
+                            </div>
+                          </div>
+                        {% endfor %}
+                      </div>
+                    {% else %}
+                      {{ empty_state() }}
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-12 col-xl-6">
+                <div class="lotto-card shadow-none h-100">
+                  <div class="lotto-card-body">
+                    <div class="lotto-section-title mb-3">
+                      <div>
+                        <h6>Cold Numbers</h6>
+                        <div class="lotto-subtitle">Least frequent main numbers.</div>
+                      </div>
+                      <span class="badge text-bg-light border rounded-pill">Bottom 10</span>
+                    </div>
+
+                    {% if cold_numbers %}
+                      <div class="row g-2">
+                        {% for item in cold_numbers %}
+                          <div class="col-6 col-md-4 col-xxl-3">
+                            <div class="lotto-number-chip">
+                              {{ ball(item.num) }}
+                              <span class="lotto-count-badge">{{ item.cnt }}x</span>
+                            </div>
+                          </div>
+                        {% endfor %}
+                      </div>
+                    {% else %}
+                      {{ empty_state() }}
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-12 col-xl-5">
+                <div class="lotto-card shadow-none h-100">
+                  <div class="lotto-card-body">
+                    <div class="lotto-section-title mb-3">
+                      <div>
+                        <h6>Distribution</h6>
+                        <div class="lotto-subtitle">Odd/even and low/high pattern count.</div>
+                      </div>
+                    </div>
+
+                    <div class="row g-3">
+                      <div class="col-12 col-md-6 col-xl-12">
+                        <div class="fw-semibold small text-muted mb-2">Odd / Even</div>
+                        {% if odd_even_dist %}
+                          {% for k, v in odd_even_dist.items() %}
+                            {% set pct = ((v / analysis_draw_count) * 100) if analysis_draw_count else 0 %}
+                            <div class="lotto-distribution-row">
+                              <span class="fw-bold">{{ k }}</span>
+                              <div class="lotto-progress"><span style="width: {{ pct }}%;"></span></div>
+                              <span class="text-end small text-muted">{{ v }}</span>
+                            </div>
+                          {% endfor %}
+                        {% else %}
+                          {{ empty_state() }}
+                        {% endif %}
+                      </div>
+
+                      <div class="col-12 col-md-6 col-xl-12">
+                        <div class="fw-semibold small text-muted mb-2">Low / High</div>
+                        {% if low_high_dist %}
+                          {% for k, v in low_high_dist.items() %}
+                            {% set pct = ((v / analysis_draw_count) * 100) if analysis_draw_count else 0 %}
+                            <div class="lotto-distribution-row">
+                              <span class="fw-bold">{{ k }}</span>
+                              <div class="lotto-progress"><span style="width: {{ pct }}%;"></span></div>
+                              <span class="text-end small text-muted">{{ v }}</span>
+                            </div>
+                          {% endfor %}
+                        {% else %}
+                          {{ empty_state() }}
+                        {% endif %}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-12 col-xl-7">
+                <div class="lotto-card shadow-none h-100">
+                  <div class="lotto-card-body">
+                    <div class="lotto-section-title mb-3">
+                      <div>
+                        <h6>Top Pairs</h6>
+                        <div class="lotto-subtitle">Pairs that appeared together most often.</div>
+                      </div>
+                      <span class="badge text-bg-light border rounded-pill">Top 20</span>
+                    </div>
+
+                    {% if top_pairs %}
+                      <div class="lotto-pair-list">
+                        {% for p in top_pairs %}
+                          <div class="lotto-pair-item">
+                            <div class="d-flex align-items-center gap-2">
+                              <span class="lotto-rank">{{ loop.index }}</span>
+                              <div>{{ ball(p.a) }} {{ ball(p.b) }}</div>
+                            </div>
+                            <span class="lotto-count-badge">{{ p.cnt }}x</span>
+                          </div>
+                        {% endfor %}
+                      </div>
+                    {% else %}
+                      {{ empty_state() }}
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Draws -->
+      <div class="tab-pane fade" id="draws-pane" role="tabpanel" aria-labelledby="draws-tab" tabindex="0">
+        <div class="lotto-card mb-4">
+          <div class="lotto-card-header">
+            <div class="lotto-section-title">
+              <div>
+                <h5>Recent Draws</h5>
+                <div class="lotto-subtitle">Latest 30 saved draws with detailed stats.</div>
+              </div>
+              <div class="d-flex gap-2 flex-wrap">
+                <input type="search" id="drawSearchInput" class="form-control form-control-sm rounded-pill" style="min-width: 230px;" placeholder="Search round, date, numbers...">
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" id="clearDrawSearchBtn">Clear</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="lotto-card-body pt-2">
+            <div class="lotto-mobile-hint small text-muted mb-2">Tip: swipe the table left/right on mobile.</div>
+            {% if draws %}
+              <div class="table-responsive">
+                <table class="table lotto-table align-middle mb-0" id="recentDrawsTable">
+                  <thead>
+                    <tr>
+                      <th>Round</th>
+                      <th>Date</th>
+                      <th>Numbers</th>
+                      <th>Bonus</th>
+                      <th>Sum</th>
+                      <th>Odd/Even</th>
+                      <th>Low/High</th>
+                      <th>Consecutive</th>
+                      <th>Max Run</th>
+                      <th>Span</th>
+                      <th>Avg Gap</th>
+                      <th>Repeat</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for draw, stats in draws %}
+                      {% set nums = numbers_map.get(draw.id, []) %}
+                      <tr data-search="{{ draw.round_no }} {{ draw.draw_date }} {{ nums|join(' ') }} {{ bonus_map.get(draw.id) or '' }}">
+                        <td><span class="fw-bold">#{{ draw.round_no }}</span></td>
+                        <td>{{ draw.draw_date }}</td>
+                        <td>{{ ball_list(nums) }}</td>
+                        <td>
+                          {% if bonus_map.get(draw.id) %}
+                            {{ ball(bonus_map.get(draw.id), "lotto-bonus") }}
+                          {% else %}
+                            <span class="text-muted">-</span>
+                          {% endif %}
+                        </td>
+                        <td>{{ stats.sum_total if stats else "-" }}</td>
+                        <td>{% if stats %}{{ stats.odd_count }}/{{ stats.even_count }}{% else %}-{% endif %}</td>
+                        <td>{% if stats %}{{ stats.low_count }}/{{ stats.high_count }}{% else %}-{% endif %}</td>
+                        <td>{{ stats.consecutive_pairs_count if stats else "-" }}</td>
+                        <td>{{ stats.max_consecutive_run if stats else "-" }}</td>
+                        <td>{{ stats.range_span if stats else "-" }}</td>
+                        <td>{% if stats %}{{ "%.2f"|format(stats.avg_gap) }}{% else %}-{% endif %}</td>
+                        <td>{{ stats.repeat_from_prev1 if stats and stats.repeat_from_prev1 is not none else "-" }}</td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+              <div class="small text-muted mt-3" id="drawSearchStatus"></div>
+            {% else %}
+              {{ empty_state("No recent draws", "Use the Add Draw tab to save your first draw.") }}
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Add Draw -->
+      <div class="tab-pane fade" id="add-pane" role="tabpanel" aria-labelledby="add-tab" tabindex="0">
+        <div class="lotto-card mb-4">
+          <div class="lotto-card-header">
+            <div class="lotto-section-title">
+              <div>
+                <h5>Add Draw</h5>
+                <div class="lotto-subtitle">Save a new draw manually. Numbers can be comma or space separated.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="lotto-card-body">
+            <form method="POST" class="row g-3" id="addDrawForm">
+              <div class="col-12 col-md-2">
+                <label class="form-label small text-muted fw-semibold">Round No</label>
+                <input type="number" name="round_no" class="form-control form-control-lg rounded-4" min="1" required>
+              </div>
+
+              <div class="col-12 col-md-3">
+                <label class="form-label small text-muted fw-semibold">Draw Date</label>
+                <input type="date" name="draw_date" class="form-control form-control-lg rounded-4" required>
+              </div>
+
+              <div class="col-12 col-md-5">
+                <label class="form-label small text-muted fw-semibold">Numbers (6)</label>
+                <input type="text" name="numbers" id="numbersInput" class="form-control form-control-lg rounded-4" placeholder="3, 11, 18, 27, 33, 41" required>
+                <div class="form-text">Use 6 unique numbers between 1 and 45.</div>
+              </div>
+
+              <div class="col-12 col-md-2">
+                <label class="form-label small text-muted fw-semibold">Bonus</label>
+                <input type="number" name="bonus" class="form-control form-control-lg rounded-4" min="1" max="45" required>
+              </div>
+
+              <div class="col-12">
+                <div class="d-flex gap-2 flex-wrap">
+                  <button class="btn btn-primary lotto-action-btn" type="submit">Save Draw</button>
+                  <button class="btn btn-light border lotto-action-btn" type="reset">Reset</button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
 
     </div>
   </div>
 </div>
 
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const copyText = async (text) => {
+      if (!text) return;
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (error) {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        textarea.remove();
+      }
+    };
 
+    document.querySelectorAll('.copy-pick-btn').forEach((button) => {
+      button.addEventListener('click', async function () {
+        const card = this.closest('[data-pick]');
+        await copyText(card ? card.dataset.pick : '');
+        const oldText = this.textContent;
+        this.textContent = 'Copied';
+        setTimeout(() => { this.textContent = oldText; }, 1100);
+      });
+    });
 
-  <div class="card">
-    <div class="card-header">
-      <strong>Recent Draws</strong>
-    </div>
+    const copyAllButton = document.getElementById('copyAllPicksBtn');
+    if (copyAllButton) {
+      copyAllButton.addEventListener('click', async function () {
+        const allPicks = Array.from(document.querySelectorAll('#generatedPicksArea [data-pick]'))
+          .map((item, index) => `Set ${index + 1}: ${item.dataset.pick}`)
+          .join('\n');
+        await copyText(allPicks);
+        const oldText = this.textContent;
+        this.textContent = 'Copied All';
+        setTimeout(() => { this.textContent = oldText; }, 1100);
+      });
+    }
 
-    <div class="table-responsive">
-      <table class="table table-sm table-striped mb-0 align-middle">
-        <thead class="table-light">
-          <tr>
-            <th>Round</th>
-            <th>Date</th>
-            <th>Numbers</th>
-            <th>Bonus</th>
-            <th>Sum</th>
-            <th>Odd/Even</th>
-            <th>Low/High</th>
-            <th>Consecutive</th>
-            <th>Max Run</th>
-            <th>Span</th>
-            <th>Avg Gap</th>
-            <th>Repeat (Prev1)</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for draw, stats in draws %}
-            <tr>
-              <td>{{ draw.round_no }}</td>
-              <td>{{ draw.draw_date }}</td>
-              <td>
-              {{ ball_list(numbers_map.get(draw.id, [])) }}
+    const searchInput = document.getElementById('drawSearchInput');
+    const clearSearchButton = document.getElementById('clearDrawSearchBtn');
+    const table = document.getElementById('recentDrawsTable');
+    const status = document.getElementById('drawSearchStatus');
 
-              </td>
-              <td>
-              {% if bonus_map.get(draw.id) %}
-                {{ ball(bonus_map.get(draw.id), "lotto-bonus") }}
-              {% endif %}
+    const filterDraws = () => {
+      if (!searchInput || !table) return;
+      const query = searchInput.value.trim().toLowerCase();
+      const rows = Array.from(table.querySelectorAll('tbody tr'));
+      let visibleCount = 0;
 
-              </td>
+      rows.forEach((row) => {
+        const haystack = (row.dataset.search || row.textContent || '').toLowerCase();
+        const isVisible = haystack.includes(query);
+        row.style.display = isVisible ? '' : 'none';
+        if (isVisible) visibleCount += 1;
+      });
 
-              <td>{{ stats.sum_total if stats else "-" }}</td>
-              <td>
-                {% if stats %}
-                  {{ stats.odd_count }}/{{ stats.even_count }}
-                {% else %}-{% endif %}
-              </td>
-              <td>
-                {% if stats %}
-                  {{ stats.low_count }}/{{ stats.high_count }}
-                {% else %}-{% endif %}
-              </td>
-              <td>{{ stats.consecutive_pairs_count if stats else "-" }}</td>
-              <td>{{ stats.max_consecutive_run if stats else "-" }}</td>
-              <td>{{ stats.range_span if stats else "-" }}</td>
-              <td>
-                {% if stats %}
-                  {{ "%.2f"|format(stats.avg_gap) }}
-                {% else %}-{% endif %}
-              </td>
-              <td>{{ stats.repeat_from_prev1 if stats and stats.repeat_from_prev1 is not none else "-" }}</td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
+      if (status) {
+        status.textContent = query ? `${visibleCount} draw(s) found.` : '';
+      }
+    };
 
-</div>
+    if (searchInput) {
+      searchInput.addEventListener('input', filterDraws);
+    }
+
+    if (clearSearchButton && searchInput) {
+      clearSearchButton.addEventListener('click', function () {
+        searchInput.value = '';
+        filterDraws();
+        searchInput.focus();
+      });
+    }
+
+    const numbersInput = document.getElementById('numbersInput');
+    if (numbersInput) {
+      numbersInput.addEventListener('blur', function () {
+        const values = this.value
+          .split(/[\s,]+/)
+          .map((value) => value.trim())
+          .filter(Boolean);
+        this.value = values.join(', ');
+      });
+    }
+  });
+</script>
 
 {% endblock %}

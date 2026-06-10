@@ -1,170 +1,767 @@
-{% extends "pay_shell.html" %}
+{% extends "base.html" %}
 {% set page_slug = "recurring" %}
-{% block content %}
+{% set page_title = "Recurring Rules" %}
 
+{% block extra_css %}
+<style>
+  .recurring-page {
+    --recurring-bg: #f5f7fb;
+    --recurring-card: rgba(255, 255, 255, .92);
+    --recurring-border: rgba(15, 23, 42, .09);
+    --recurring-muted: #64748b;
+    --recurring-ink: #0f172a;
+    --recurring-primary: #4f46e5;
+    --recurring-primary-soft: rgba(79, 70, 229, .11);
+    --recurring-success-soft: rgba(16, 185, 129, .12);
+    --recurring-danger-soft: rgba(239, 68, 68, .12);
+    --recurring-warning-soft: rgba(245, 158, 11, .14);
+    color: var(--recurring-ink);
+  }
 
-<div class="accordion mb-4" id="recurringAccordion">
-  <form action="{{ url_for('main.recurring_create') }}" method="post">
+  .recurring-page .glass-card,
+  .recurring-page .stat-card,
+  .recurring-page .rules-card {
+    border: 1px solid var(--recurring-border);
+    background: var(--recurring-card);
+    box-shadow: 0 18px 45px rgba(15, 23, 42, .08);
+    border-radius: 24px;
+  }
 
-    <!-- Transaction Details -->
-    <div class="accordion-item">
-      <h2 class="accordion-header" id="headingDetails">
-        <button class="accordion-button" type="button" data-bs-toggle="collapse"
-                data-bs-target="#collapseDetails" aria-expanded="true">
-          <i class="bi bi-cash me-2"></i> Transaction Details
-        </button>
-      </h2>
-      <div id="collapseDetails" class="accordion-collapse collapse show"
-           data-bs-parent="#recurringAccordion">
-        <div class="accordion-body row g-3">
-          <div class="col-md-4">
-            <label class="form-label">Account</label>
-            <select name="account_id" class="form-select" required>
-              {% for a in accounts %}
-              <option value="{{ a.id }}">{{ a.name }} ({{ a.currency.value }})</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="col-md-3">
-            <label class="form-label">Type</label>
-            <select name="type" class="form-select">
-              <option value="expense">Expense</option>
-              <option value="income">Income</option>
-              <option value="fee">Fee</option>
-            </select>
-          </div>
-          <div class="col-md-3">
-            <label class="form-label">Amount</label>
-            <input type="number" step="0.01" min="0.01" name="amount" class="form-control" required>
-          </div>
-          <div class="col-md-5">
-            <label class="form-label">Category</label>
-            <select name="category_id" class="form-select">
-              <option value="">Uncategorized</option>
-              {% for c in categories %}
-              <option value="{{ c.id }}">{{ c.path }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="col-md-7">
-            <label class="form-label">Note</label>
-            <input type="text" name="note" class="form-control" placeholder="(optional)">
-          </div>
-        </div>
-      </div>
-    </div>
+  .recurring-hero {
+    position: relative;
+    overflow: hidden;
+    border-radius: 28px;
+    padding: clamp(1.25rem, 3vw, 2rem);
+    background:
+      radial-gradient(circle at top right, rgba(99, 102, 241, .35), transparent 34%),
+      radial-gradient(circle at bottom left, rgba(14, 165, 233, .24), transparent 28%),
+      linear-gradient(135deg, #111827 0%, #1e1b4b 48%, #312e81 100%);
+    color: #fff;
+    box-shadow: 0 24px 60px rgba(30, 27, 75, .28);
+  }
 
-    <!-- Schedule -->
-    <div class="accordion-item">
-      <h2 class="accordion-header" id="headingSchedule">
-        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                data-bs-target="#collapseSchedule" aria-expanded="false">
-          <i class="bi bi-calendar-event me-2"></i> Schedule
-        </button>
-      </h2>
-      <div id="collapseSchedule" class="accordion-collapse collapse"
-           data-bs-parent="#recurringAccordion">
-        <div class="accordion-body row g-3">
-          <div class="col-md-3">
-            <label class="form-label">Frequency</label>
-            <select name="frequency" class="form-select">
-              <option value="monthly">Monthly</option>
-              <option value="weekly">Weekly</option>
-              <option value="daily">Daily</option>
-            </select>
-          </div>
-          <div class="col-md-2">
-            <label class="form-label">Every</label>
-            <input type="number" name="every_n" class="form-control" value="1" min="1">
-          </div>
-          <div class="col-md-3">
-            <label class="form-label">Start date</label>
-            <input type="date" name="start_date" class="form-control" required>
-          </div>
-          <div class="col-md-3">
-            <label class="form-label">End date</label>
-            <input type="date" name="end_date" class="form-control">
-          </div>
-        </div>
-      </div>
-    </div>
+  .recurring-hero::after {
+    content: "";
+    position: absolute;
+    inset: auto -6rem -8rem auto;
+    width: 18rem;
+    height: 18rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .1);
+  }
 
-    <!-- Advanced Scheduling -->
-    <div class="accordion-item">
-      <h2 class="accordion-header" id="headingAdvanced">
-        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                data-bs-target="#collapseAdvanced" aria-expanded="false">
-          <i class="bi bi-sliders me-2"></i> Advanced Scheduling
-        </button>
-      </h2>
-      <div id="collapseAdvanced" class="accordion-collapse collapse"
-           data-bs-parent="#recurringAccordion">
-        <div class="accordion-body row g-3">
-          <div class="col-md-3">
-            <label class="form-label">Weekday (0–6)</label>
-            <input type="number" name="weekday" class="form-control" min="0" max="6" placeholder="weekly">
-          </div>
-          <div class="col-md-3">
-            <label class="form-label">Day of month</label>
-            <input type="number" name="day_of_month" class="form-control" min="1" max="31" placeholder="monthly">
-          </div>
-        </div>
-      </div>
-    </div>
+  .recurring-hero > * {
+    position: relative;
+    z-index: 1;
+  }
 
-    <!-- Submit -->
-    <div class="mt-3">
-      <button class="btn btn-primary">
-        <i class="bi bi-check2-circle me-1"></i> Create
-      </button>
-    </div>
-  </form>
-</div>
+  .hero-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .45rem .75rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .13);
+    border: 1px solid rgba(255, 255, 255, .18);
+    color: rgba(255, 255, 255, .88);
+    font-size: .85rem;
+    font-weight: 700;
+  }
 
-<!-- Run Now -->
-<form action="{{ url_for('main.recurring_run_now') }}" method="post" class="mb-3">
-  <button class="btn btn-outline-secondary">
+  .hero-title {
+    font-size: clamp(1.75rem, 4vw, 3rem);
+    line-height: 1.05;
+    letter-spacing: -.04em;
+    font-weight: 850;
+    max-width: 760px;
+  }
+
+  .hero-copy {
+    color: rgba(255, 255, 255, .74);
+    max-width: 680px;
+    font-size: 1rem;
+  }
+
+  .hero-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    min-height: 44px;
+    padding-inline: 1rem;
+    border-radius: 14px;
+    font-weight: 750;
+  }
+
+  .hero-action.btn-light {
+    color: #111827;
+    box-shadow: 0 12px 25px rgba(15, 23, 42, .16);
+  }
+
+  .hero-action.btn-outline-light {
+    border-color: rgba(255, 255, 255, .25);
+    color: rgba(255, 255, 255, .92);
+    background: rgba(255, 255, 255, .08);
+  }
+
+  .stat-card {
+    padding: 1.1rem;
+    min-height: 122px;
+  }
+
+  .stat-card .stat-icon {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    border-radius: 16px;
+    color: var(--recurring-primary);
+    background: var(--recurring-primary-soft);
+    font-size: 1.15rem;
+  }
+
+  .stat-card .stat-label {
+    color: var(--recurring-muted);
+    font-size: .82rem;
+    font-weight: 750;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+  }
+
+  .stat-card .stat-value {
+    font-size: 1.85rem;
+    font-weight: 850;
+    letter-spacing: -.03em;
+  }
+
+  .builder-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(280px, .85fr);
+    gap: 1rem;
+  }
+
+  .form-panel {
+    padding: clamp(1rem, 2vw, 1.4rem);
+  }
+
+  .panel-title {
+    display: flex;
+    align-items: center;
+    gap: .7rem;
+    margin-bottom: 1.15rem;
+  }
+
+  .panel-title .panel-icon {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    border-radius: 16px;
+    background: var(--recurring-primary-soft);
+    color: var(--recurring-primary);
+    font-size: 1.2rem;
+  }
+
+  .section-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    padding: .45rem .7rem;
+    border-radius: 999px;
+    color: #334155;
+    background: #f1f5f9;
+    font-size: .82rem;
+    font-weight: 800;
+    margin: .4rem 0 .9rem;
+  }
+
+  .recurring-page .form-label {
+    color: #334155;
+    font-size: .84rem;
+    font-weight: 750;
+    margin-bottom: .4rem;
+  }
+
+  .recurring-page .form-control,
+  .recurring-page .form-select {
+    min-height: 46px;
+    border-radius: 14px;
+    border-color: #dbe3ef;
+    background-color: #fff;
+  }
+
+  .recurring-page .form-control:focus,
+  .recurring-page .form-select:focus {
+    border-color: rgba(79, 70, 229, .55);
+    box-shadow: 0 0 0 .22rem rgba(79, 70, 229, .12);
+  }
+
+  .advanced-panel {
+    border: 1px dashed rgba(100, 116, 139, .35);
+    background: #f8fafc;
+    border-radius: 20px;
+    padding: 1rem;
+  }
+
+  .helper-card {
+    padding: 1.15rem;
+    height: 100%;
+  }
+
+  .helper-step {
+    display: flex;
+    gap: .8rem;
+    padding: .8rem 0;
+    border-bottom: 1px solid rgba(15, 23, 42, .08);
+  }
+
+  .helper-step:last-child {
+    border-bottom: 0;
+  }
+
+  .helper-number {
+    flex: 0 0 32px;
+    width: 32px;
+    height: 32px;
+    display: grid;
+    place-items: center;
+    border-radius: 12px;
+    background: #eef2ff;
+    color: #4338ca;
+    font-weight: 850;
+  }
+
+  .helper-step p {
+    color: var(--recurring-muted);
+    margin: .15rem 0 0;
+    font-size: .9rem;
+  }
+
+  .rules-card {
+    overflow: hidden;
+  }
+
+  .rules-header {
+    padding: 1rem 1.15rem;
+    border-bottom: 1px solid var(--recurring-border);
+    background: linear-gradient(180deg, rgba(248, 250, 252, .92), rgba(255, 255, 255, .92));
+  }
+
+  .rules-table {
+    margin: 0;
+  }
+
+  .rules-table thead th {
+    color: #64748b;
+    background: #f8fafc;
+    border-bottom: 1px solid var(--recurring-border);
+    font-size: .75rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: .9rem 1rem;
+  }
+
+  .rules-table tbody td {
+    padding: 1rem;
+    vertical-align: middle;
+    border-color: rgba(15, 23, 42, .07);
+  }
+
+  .rule-name {
+    font-weight: 820;
+    color: #0f172a;
+  }
+
+  .rule-subtext {
+    color: var(--recurring-muted);
+    font-size: .85rem;
+  }
+
+  .soft-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .4rem .65rem;
+    border-radius: 999px;
+    font-size: .78rem;
+    font-weight: 850;
+    white-space: nowrap;
+  }
+
+  .badge-expense { background: var(--recurring-danger-soft); color: #b91c1c; }
+  .badge-income { background: var(--recurring-success-soft); color: #047857; }
+  .badge-fee { background: var(--recurring-warning-soft); color: #b45309; }
+  .badge-enabled { background: var(--recurring-success-soft); color: #047857; }
+  .badge-disabled { background: #eef2f7; color: #64748b; }
+  .badge-frequency { background: #eef2ff; color: #4338ca; }
+
+  .mobile-rule-card {
+    border: 1px solid var(--recurring-border);
+    border-radius: 20px;
+    padding: 1rem;
+    background: #fff;
+    box-shadow: 0 14px 32px rgba(15, 23, 42, .06);
+  }
+
+  .empty-state {
+    padding: 3rem 1rem;
+    text-align: center;
+    color: var(--recurring-muted);
+  }
+
+  .empty-state .empty-icon {
+    width: 64px;
+    height: 64px;
+    margin-inline: auto;
+    display: grid;
+    place-items: center;
+    border-radius: 22px;
+    background: #eef2ff;
+    color: #4f46e5;
+    font-size: 1.65rem;
+  }
+
+  .btn-brand {
+    --bs-btn-bg: #4f46e5;
+    --bs-btn-border-color: #4f46e5;
+    --bs-btn-hover-bg: #4338ca;
+    --bs-btn-hover-border-color: #4338ca;
+    --bs-btn-color: #fff;
+    --bs-btn-hover-color: #fff;
+    border-radius: 14px;
+    font-weight: 800;
+    min-height: 44px;
+  }
+
+  .btn-soft {
+    border: 1px solid var(--recurring-border);
+    background: #fff;
+    color: #334155;
+    border-radius: 14px;
+    font-weight: 750;
+    min-height: 42px;
+  }
+
+  .btn-soft:hover {
+    border-color: rgba(79, 70, 229, .35);
+    color: #4338ca;
+    background: #f8fafc;
+  }
+
+  @media (max-width: 991.98px) {
+    .builder-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 767.98px) {
+    .recurring-hero {
+      border-radius: 22px;
+    }
+
+    .hero-action {
+      width: 100%;
+    }
+
+    .stat-card {
+      min-height: auto;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block header_actions %}
+<form action="{{ url_for('main.recurring_run_now') }}" method="post" class="d-none d-md-inline-flex m-0">
+  <button class="btn btn-soft">
     <i class="bi bi-play-circle me-1"></i> Run Due Now
   </button>
 </form>
+{% endblock %}
 
+{% block content %}
+{% set stats = namespace(total=0, enabled=0, disabled=0, monthly=0, weekly=0, daily=0) %}
+{% for r in rules %}
+  {% set stats.total = stats.total + 1 %}
+  {% if r.is_enabled %}
+    {% set stats.enabled = stats.enabled + 1 %}
+  {% else %}
+    {% set stats.disabled = stats.disabled + 1 %}
+  {% endif %}
+  {% if r.frequency.value == 'monthly' %}
+    {% set stats.monthly = stats.monthly + 1 %}
+  {% elif r.frequency.value == 'weekly' %}
+    {% set stats.weekly = stats.weekly + 1 %}
+  {% elif r.frequency.value == 'daily' %}
+    {% set stats.daily = stats.daily + 1 %}
+  {% endif %}
+{% endfor %}
 
-<div class="table-responsive">
-<table class="table table-sm align-middle table-bordered table-striped">
-  <thead class="table-dark">
-    <tr>
-      <th>#</th><th>Account</th><th>Type</th><th>Amount</th>
-      <th>Freq</th><th>Every</th><th>Next run</th><th>Enabled</th><th>Actions</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for r in rules %}
-    <tr>
-      <td>{{ r.id }}</td>
-      <td>{{ r.account.name }}</td>
-      <td>{{ r.type.value }}</td>
-      <td>{{ "{:,.2f}".format(r.amount) }}</td>
-      <td>{{ r.frequency.value }}</td>
-      <td>{{ r.every_n }}</td>
-      <td>{{ r.next_run.isoformat() }}</td>
-      <td>{{ "Yes" if r.is_enabled else "No" }}</td>
-      <td class="d-flex gap-2">
-        <form action="{{ url_for('main.recurring_toggle', rid=r.id) }}" method="post">
-          <button class="btn btn-sm {{ 'btn-warning' if r.is_enabled else 'btn-success' }}">
-            {{ 'Disable' if r.is_enabled else 'Enable' }}
+<div class="recurring-page">
+  <section class="recurring-hero mb-4">
+    <div class="row g-4 align-items-end">
+      <div class="col-12 col-xl-8">
+        <span class="hero-kicker mb-3">
+          <i class="bi bi-arrow-repeat"></i>
+          Recurring automation
+        </span>
+        <h1 class="hero-title mb-3">Create rules for rent, salary, fees, bills, and repeat expenses.</h1>
+        <p class="hero-copy mb-0">
+          Set the account, amount, category, and schedule once. Then your tracker can post due transactions without you rebuilding the same payment every month.
+        </p>
+      </div>
+      <div class="col-12 col-xl-auto ms-xl-auto">
+        <div class="d-flex flex-column flex-sm-row gap-2">
+          <a href="#createRecurringRule" class="btn btn-light hero-action">
+            <i class="bi bi-plus-lg"></i> New Rule
+          </a>
+          <form action="{{ url_for('main.recurring_run_now') }}" method="post" class="m-0">
+            <button class="btn btn-outline-light hero-action">
+              <i class="bi bi-play-circle"></i> Run Due Now
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="row g-3 mb-4">
+    <div class="col-6 col-xl-3">
+      <div class="stat-card h-100">
+        <div class="d-flex align-items-start justify-content-between gap-3">
+          <div>
+            <div class="stat-label">Total rules</div>
+            <div class="stat-value">{{ stats.total }}</div>
+          </div>
+          <div class="stat-icon"><i class="bi bi-layers"></i></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-xl-3">
+      <div class="stat-card h-100">
+        <div class="d-flex align-items-start justify-content-between gap-3">
+          <div>
+            <div class="stat-label">Enabled</div>
+            <div class="stat-value">{{ stats.enabled }}</div>
+          </div>
+          <div class="stat-icon"><i class="bi bi-check2-circle"></i></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-xl-3">
+      <div class="stat-card h-100">
+        <div class="d-flex align-items-start justify-content-between gap-3">
+          <div>
+            <div class="stat-label">Monthly</div>
+            <div class="stat-value">{{ stats.monthly }}</div>
+          </div>
+          <div class="stat-icon"><i class="bi bi-calendar3"></i></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-xl-3">
+      <div class="stat-card h-100">
+        <div class="d-flex align-items-start justify-content-between gap-3">
+          <div>
+            <div class="stat-label">Disabled</div>
+            <div class="stat-value">{{ stats.disabled }}</div>
+          </div>
+          <div class="stat-icon"><i class="bi bi-pause-circle"></i></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="builder-grid mb-4" id="createRecurringRule">
+    <div class="glass-card form-panel">
+      <div class="panel-title">
+        <span class="panel-icon"><i class="bi bi-magic"></i></span>
+        <div>
+          <h2 class="h4 mb-1 fw-bold">Create recurring rule</h2>
+          <p class="text-muted mb-0 small">Everything your backend already expects, just arranged in a cleaner flow.</p>
+        </div>
+      </div>
+
+      <form action="{{ url_for('main.recurring_create') }}" method="post" class="row g-3">
+        <div class="col-12">
+          <span class="section-chip"><i class="bi bi-wallet2"></i> Transaction details</span>
+        </div>
+
+        <div class="col-12 col-lg-5">
+          <label class="form-label">Account</label>
+          <select name="account_id" class="form-select" required>
+            {% for a in accounts %}
+              <option value="{{ a.id }}">{{ a.name }} ({{ a.currency.value }})</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-6 col-lg-3">
+          <label class="form-label">Type</label>
+          <select name="type" class="form-select">
+            <option value="expense">Expense</option>
+            <option value="income">Income</option>
+            <option value="fee">Fee</option>
+          </select>
+        </div>
+
+        <div class="col-6 col-lg-4">
+          <label class="form-label">Amount</label>
+          <input type="number" step="0.01" min="0.01" name="amount" class="form-control" placeholder="0.00" required>
+        </div>
+
+        <div class="col-12 col-lg-5">
+          <label class="form-label">Category</label>
+          <select name="category_id" class="form-select">
+            <option value="">Uncategorized</option>
+            {% for c in categories %}
+              <option value="{{ c.id }}">{{ c.path }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-12 col-lg-7">
+          <label class="form-label">Note</label>
+          <input type="text" name="note" class="form-control" placeholder="Example: rent, salary, phone bill">
+        </div>
+
+        <div class="col-12 pt-2">
+          <span class="section-chip"><i class="bi bi-calendar-event"></i> Schedule</span>
+        </div>
+
+        <div class="col-12 col-sm-6 col-xl-3">
+          <label class="form-label">Frequency</label>
+          <select name="frequency" class="form-select">
+            <option value="monthly">Monthly</option>
+            <option value="weekly">Weekly</option>
+            <option value="daily">Daily</option>
+          </select>
+        </div>
+
+        <div class="col-12 col-sm-6 col-xl-2">
+          <label class="form-label">Every</label>
+          <input type="number" name="every_n" class="form-control" value="1" min="1">
+        </div>
+
+        <div class="col-12 col-sm-6 col-xl-3">
+          <label class="form-label">Start date</label>
+          <input type="date" name="start_date" class="form-control" required>
+        </div>
+
+        <div class="col-12 col-sm-6 col-xl-3">
+          <label class="form-label">End date</label>
+          <input type="date" name="end_date" class="form-control">
+        </div>
+
+        <div class="col-12">
+          <div class="advanced-panel">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+              <span class="section-chip m-0"><i class="bi bi-sliders"></i> Advanced scheduling</span>
+              <span class="text-muted small">Optional</span>
+            </div>
+            <div class="row g-3">
+              <div class="col-12 col-md-6">
+                <label class="form-label">Weekday</label>
+                <input type="number" name="weekday" class="form-control" min="0" max="6" placeholder="0–6, for weekly rules">
+                <div class="form-text">Use this when you want weekly rules to run on a specific weekday.</div>
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label">Day of month</label>
+                <input type="number" name="day_of_month" class="form-control" min="1" max="31" placeholder="1–31, for monthly rules">
+                <div class="form-text">Use this for rent, salary, bills, or card payments on a fixed date.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12 d-flex flex-column flex-sm-row justify-content-end gap-2 pt-2">
+          <button type="reset" class="btn btn-soft">
+            <i class="bi bi-arrow-counterclockwise me-1"></i> Clear
           </button>
-        </form>
-        <form action="{{ url_for('main.recurring_delete', rid=r.id) }}" method="post"
-              onsubmit="return confirm('Delete rule {{ r.id }}?');">
-          <button class="btn btn-sm btn-danger">Delete</button>
-        </form>
-      </td>
-    </tr>
-    {% else %}
-    <tr><td colspan="9" class="text-muted">No recurring rules yet.</td></tr>
-    {% endfor %}
-  </tbody>
-</table>
-</div>
+          <button class="btn btn-brand px-4">
+            <i class="bi bi-check2-circle me-1"></i> Create Rule
+          </button>
+        </div>
+      </form>
+    </div>
 
+    <aside class="glass-card helper-card">
+      <div class="panel-title mb-2">
+        <span class="panel-icon"><i class="bi bi-lightning-charge"></i></span>
+        <div>
+          <h3 class="h5 mb-1 fw-bold">Best use</h3>
+          <p class="text-muted mb-0 small">A few rules make the app feel automatic.</p>
+        </div>
+      </div>
+
+      <div class="helper-step">
+        <span class="helper-number">1</span>
+        <div>
+          <strong>Monthly bills</strong>
+          <p>Use monthly + day of month for rent, phone, insurance, subscriptions, and card fees.</p>
+        </div>
+      </div>
+      <div class="helper-step">
+        <span class="helper-number">2</span>
+        <div>
+          <strong>Salary/income</strong>
+          <p>Choose income type so the dashboard cashflow stays clean.</p>
+        </div>
+      </div>
+      <div class="helper-step">
+        <span class="helper-number">3</span>
+        <div>
+          <strong>Run due now</strong>
+          <p>Use it after creating rules or after a server restart to post anything that is due.</p>
+        </div>
+      </div>
+    </aside>
+  </section>
+
+  <section class="rules-card">
+    <div class="rules-header d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+      <div>
+        <h2 class="h4 fw-bold mb-1">Recurring rules</h2>
+        <p class="text-muted mb-0 small">Toggle or delete rules without opening another screen.</p>
+      </div>
+      <form action="{{ url_for('main.recurring_run_now') }}" method="post" class="m-0 d-md-none">
+        <button class="btn btn-soft w-100">
+          <i class="bi bi-play-circle me-1"></i> Run Due Now
+        </button>
+      </form>
+    </div>
+
+    <div class="d-none d-lg-block table-responsive">
+      <table class="table rules-table align-middle">
+        <thead>
+          <tr>
+            <th>Rule</th>
+            <th>Type</th>
+            <th>Amount</th>
+            <th>Schedule</th>
+            <th>Next run</th>
+            <th>Status</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in rules %}
+            {% set rule_type = r.type.value %}
+            <tr>
+              <td>
+                <div class="rule-name">{{ r.account.name }}</div>
+                <div class="rule-subtext">#{{ r.id }}{% if r.note %} · {{ r.note }}{% endif %}</div>
+              </td>
+              <td>
+                <span class="soft-badge badge-{{ rule_type }}">
+                  {% if rule_type == 'income' %}<i class="bi bi-arrow-down-left"></i>{% elif rule_type == 'fee' %}<i class="bi bi-receipt"></i>{% else %}<i class="bi bi-arrow-up-right"></i>{% endif %}
+                  {{ rule_type|capitalize }}
+                </span>
+              </td>
+              <td>
+                <strong>{{ "{:,.2f}".format(r.amount) }}</strong>
+                <div class="rule-subtext">{{ r.account.currency.value }}</div>
+              </td>
+              <td>
+                <span class="soft-badge badge-frequency">
+                  <i class="bi bi-arrow-repeat"></i>
+                  Every {{ r.every_n }} {{ r.frequency.value }}
+                </span>
+              </td>
+              <td>
+                <strong>{{ r.next_run.strftime('%b %d, %Y') if r.next_run else 'Not scheduled' }}</strong>
+                {% if r.next_run %}<div class="rule-subtext">{{ r.next_run.isoformat() }}</div>{% endif %}
+              </td>
+              <td>
+                <span class="soft-badge {{ 'badge-enabled' if r.is_enabled else 'badge-disabled' }}">
+                  <i class="bi {{ 'bi-check-circle' if r.is_enabled else 'bi-pause-circle' }}"></i>
+                  {{ 'Enabled' if r.is_enabled else 'Disabled' }}
+                </span>
+              </td>
+              <td>
+                <div class="d-flex justify-content-end gap-2">
+                  <form action="{{ url_for('main.recurring_toggle', rid=r.id) }}" method="post" class="m-0">
+                    <button class="btn btn-sm btn-soft">
+                      <i class="bi {{ 'bi-pause' if r.is_enabled else 'bi-play' }} me-1"></i>
+                      {{ 'Disable' if r.is_enabled else 'Enable' }}
+                    </button>
+                  </form>
+                  <form action="{{ url_for('main.recurring_delete', rid=r.id) }}" method="post" class="m-0"
+                        onsubmit="return confirm('Delete rule {{ r.id }}?');">
+                    <button class="btn btn-sm btn-outline-danger rounded-3">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="7">
+                <div class="empty-state">
+                  <div class="empty-icon mb-3"><i class="bi bi-calendar-plus"></i></div>
+                  <h3 class="h5 fw-bold text-dark">No recurring rules yet</h3>
+                  <p class="mb-0">Create your first automatic salary, rent, or bill rule above.</p>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="d-lg-none p-3">
+      <div class="vstack gap-3">
+        {% for r in rules %}
+          {% set rule_type = r.type.value %}
+          <article class="mobile-rule-card">
+            <div class="d-flex align-items-start justify-content-between gap-3 mb-3">
+              <div>
+                <div class="rule-name">{{ r.account.name }}</div>
+                <div class="rule-subtext">#{{ r.id }}{% if r.note %} · {{ r.note }}{% endif %}</div>
+              </div>
+              <span class="soft-badge {{ 'badge-enabled' if r.is_enabled else 'badge-disabled' }}">
+                {{ 'On' if r.is_enabled else 'Off' }}
+              </span>
+            </div>
+
+            <div class="row g-2 mb-3">
+              <div class="col-6">
+                <div class="rule-subtext">Amount</div>
+                <strong>{{ "{:,.2f}".format(r.amount) }} {{ r.account.currency.value }}</strong>
+              </div>
+              <div class="col-6">
+                <div class="rule-subtext">Next run</div>
+                <strong>{{ r.next_run.strftime('%b %d') if r.next_run else '—' }}</strong>
+              </div>
+              <div class="col-12">
+                <span class="soft-badge badge-{{ rule_type }} me-1">{{ rule_type|capitalize }}</span>
+                <span class="soft-badge badge-frequency">Every {{ r.every_n }} {{ r.frequency.value }}</span>
+              </div>
+            </div>
+
+            <div class="d-flex gap-2">
+              <form action="{{ url_for('main.recurring_toggle', rid=r.id) }}" method="post" class="flex-fill m-0">
+                <button class="btn btn-soft btn-sm w-100">
+                  {{ 'Disable' if r.is_enabled else 'Enable' }}
+                </button>
+              </form>
+              <form action="{{ url_for('main.recurring_delete', rid=r.id) }}" method="post" class="m-0"
+                    onsubmit="return confirm('Delete rule {{ r.id }}?');">
+                <button class="btn btn-outline-danger btn-sm rounded-3">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </form>
+            </div>
+          </article>
+        {% else %}
+          <div class="empty-state">
+            <div class="empty-icon mb-3"><i class="bi bi-calendar-plus"></i></div>
+            <h3 class="h5 fw-bold text-dark">No recurring rules yet</h3>
+            <p class="mb-0">Create your first automatic salary, rent, or bill rule above.</p>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+</div>
 {% endblock %}

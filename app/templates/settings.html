@@ -1,130 +1,644 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <div>
-    <h4 class="mb-0">Salary Settings</h4>
-    <div class="text-muted small">
-      These values control salary calculation and defaults in daily entry.
-    </div>
-  </div>
-</div>
+{% set current_base = settings.base_salary if settings else 2096270 %}
+{% set current_hourly = settings.hourly_rate if settings else 10030 %}
+{% set current_hours = settings.hours_per_day if settings else 8 %}
+{% set current_ot = settings.overtime_multiplier if settings else 1.5 %}
+{% set current_lunch = settings.default_lunch_minutes if settings else 0 %}
+{% set current_effective = settings.effective_from if settings else today %}
 
-<div class="row g-3">
-  <div class="col-lg-9">
-    <div class="card shadow-sm">
-      <div class="card-body">
-        <h6 class="mb-3">Main Settings</h6>
+<style>
+  .salary-settings-page {
+    --salary-primary: #4f46e5;
+    --salary-primary-2: #06b6d4;
+    --salary-soft: rgba(79, 70, 229, .08);
+    --salary-soft-2: rgba(6, 182, 212, .10);
+    --salary-border: rgba(15, 23, 42, .08);
+    --salary-text: #0f172a;
+    --salary-muted: #64748b;
+    --salary-card: rgba(255, 255, 255, .92);
+  }
 
-        <form method="post" action="{{ url_for('main.salary_settings_page') }}" class="row g-2">
-          <div class="col-md-4">
-  <label class="form-label small">Effective From (month)</label>
-  <input type="date" class="form-control form-control-sm" name="effective_from"
-         value="{{ (settings.effective_from.isoformat() if settings else today.isoformat()) }}" required>
-  <div class="form-text small text-muted">We’ll use the 1st day of that month automatically.</div>
-</div>
+  .salary-settings-page .salary-hero {
+    position: relative;
+    overflow: hidden;
+    border-radius: 28px;
+    padding: 1.5rem;
+    color: #fff;
+    background:
+      radial-gradient(circle at 12% 15%, rgba(255, 255, 255, .26), transparent 28%),
+      radial-gradient(circle at 88% 20%, rgba(34, 211, 238, .34), transparent 30%),
+      linear-gradient(135deg, #312e81 0%, #4f46e5 48%, #0891b2 100%);
+    box-shadow: 0 22px 50px rgba(49, 46, 129, .22);
+  }
 
-          {% if csrf_token is defined %}
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          {% endif %}
-          
-          <div class="col-md-6">
-            <label class="form-label small">Base Monthly Salary (KRW)</label>
-            <input type="number" class="form-control form-control-sm" name="base_salary"
-                   value="{{ settings.base_salary|int if settings else 2096270 }}" min="0" required>
-            <div class="form-text small text-muted">Your fixed monthly salary.</div>
+  .salary-settings-page .salary-hero::after {
+    content: "";
+    position: absolute;
+    width: 220px;
+    height: 220px;
+    right: -70px;
+    bottom: -100px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .14);
+  }
+
+  .salary-settings-page .salary-hero-content {
+    position: relative;
+    z-index: 2;
+  }
+
+  .salary-settings-page .salary-hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    padding: .45rem .75rem;
+    border: 1px solid rgba(255, 255, 255, .26);
+    border-radius: 999px;
+    color: rgba(255, 255, 255, .9);
+    background: rgba(255, 255, 255, .12);
+    backdrop-filter: blur(8px);
+    font-size: .78rem;
+    font-weight: 700;
+  }
+
+  .salary-settings-page .salary-hero h2 {
+    font-size: clamp(1.45rem, 3vw, 2.3rem);
+    font-weight: 800;
+    letter-spacing: -.04em;
+  }
+
+  .salary-settings-page .year-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    border-radius: 18px;
+    padding: .7rem .9rem;
+    background: rgba(255, 255, 255, .15);
+    border: 1px solid rgba(255, 255, 255, .20);
+    color: #fff;
+  }
+
+  .salary-settings-page .stat-card,
+  .salary-settings-page .settings-card,
+  .salary-settings-page .rules-card,
+  .salary-settings-page .history-card {
+    border: 1px solid var(--salary-border);
+    border-radius: 24px;
+    background: var(--salary-card);
+    box-shadow: 0 16px 35px rgba(15, 23, 42, .06);
+  }
+
+  .salary-settings-page .stat-card {
+    padding: 1rem;
+    height: 100%;
+  }
+
+  .salary-settings-page .stat-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--salary-soft);
+    color: var(--salary-primary);
+    font-size: 1.05rem;
+  }
+
+  .salary-settings-page .stat-label {
+    color: var(--salary-muted);
+    font-size: .78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+
+  .salary-settings-page .stat-value {
+    color: var(--salary-text);
+    font-weight: 850;
+    font-size: 1.2rem;
+    letter-spacing: -.02em;
+  }
+
+  .salary-settings-page .section-title {
+    color: var(--salary-text);
+    font-weight: 850;
+    letter-spacing: -.025em;
+  }
+
+  .salary-settings-page .section-subtitle {
+    color: var(--salary-muted);
+    font-size: .9rem;
+  }
+
+  .salary-settings-page .setting-input-group {
+    position: relative;
+    height: 100%;
+    padding: 1rem;
+    border: 1px solid var(--salary-border);
+    border-radius: 20px;
+    background: linear-gradient(180deg, #fff, rgba(248, 250, 252, .92));
+    transition: .18s ease;
+  }
+
+  .salary-settings-page .setting-input-group:focus-within {
+    border-color: rgba(79, 70, 229, .35);
+    box-shadow: 0 0 0 .22rem rgba(79, 70, 229, .10);
+    transform: translateY(-1px);
+  }
+
+  .salary-settings-page .setting-label {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin-bottom: .55rem;
+    color: #334155;
+    font-size: .82rem;
+    font-weight: 800;
+  }
+
+  .salary-settings-page .setting-label i {
+    color: var(--salary-primary);
+  }
+
+  .salary-settings-page .form-control,
+  .salary-settings-page .form-select {
+    min-height: 42px;
+    border-radius: 14px;
+    border-color: rgba(15, 23, 42, .12);
+  }
+
+  .salary-settings-page .form-control:focus,
+  .salary-settings-page .form-select:focus {
+    border-color: rgba(79, 70, 229, .38);
+    box-shadow: 0 0 0 .2rem rgba(79, 70, 229, .10);
+  }
+
+  .salary-settings-page .form-text {
+    color: var(--salary-muted);
+  }
+
+  .salary-settings-page .save-btn {
+    border: 0;
+    border-radius: 16px;
+    padding: .75rem 1.15rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--salary-primary), var(--salary-primary-2));
+    box-shadow: 0 14px 28px rgba(79, 70, 229, .22);
+  }
+
+  .salary-settings-page .rule-item {
+    display: flex;
+    gap: .75rem;
+    padding: .75rem 0;
+    border-bottom: 1px dashed rgba(15, 23, 42, .10);
+  }
+
+  .salary-settings-page .rule-item:last-child {
+    border-bottom: 0;
+  }
+
+  .salary-settings-page .rule-dot {
+    flex: 0 0 auto;
+    width: 28px;
+    height: 28px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--salary-primary);
+    background: var(--salary-soft);
+  }
+
+  .salary-settings-page .history-table {
+    margin-bottom: 0;
+  }
+
+  .salary-settings-page .history-table thead th {
+    background: #f8fafc;
+    color: #64748b;
+    font-size: .76rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    border-bottom: 1px solid var(--salary-border);
+    padding: .85rem .75rem;
+    white-space: nowrap;
+  }
+
+  .salary-settings-page .history-table tbody td {
+    padding: .85rem .75rem;
+    border-color: rgba(15, 23, 42, .06);
+    vertical-align: middle;
+  }
+
+  .salary-settings-page .current-row {
+    background: linear-gradient(90deg, rgba(79, 70, 229, .08), rgba(6, 182, 212, .06));
+  }
+
+  .salary-settings-page .current-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .28rem .55rem;
+    border-radius: 999px;
+    color: #4338ca;
+    background: rgba(79, 70, 229, .10);
+    font-size: .72rem;
+    font-weight: 800;
+  }
+
+  .salary-settings-page .mobile-history-card {
+    display: none;
+    padding: 1rem;
+    border: 1px solid var(--salary-border);
+    border-radius: 20px;
+    background: #fff;
+  }
+
+  .salary-settings-page .mobile-history-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .75rem;
+    margin-top: .85rem;
+  }
+
+  .salary-settings-page .mini-label {
+    color: var(--salary-muted);
+    font-size: .73rem;
+    font-weight: 700;
+  }
+
+  .salary-settings-page .mini-value {
+    color: var(--salary-text);
+    font-weight: 800;
+  }
+
+  @media (max-width: 767.98px) {
+    .salary-settings-page .salary-hero {
+      border-radius: 22px;
+      padding: 1.15rem;
+    }
+
+    .salary-settings-page .desktop-history {
+      display: none;
+    }
+
+    .salary-settings-page .mobile-history-card {
+      display: block;
+    }
+  }
+</style>
+
+<div class="salary-settings-page">
+
+  <!-- Hero -->
+  <div class="salary-hero mb-3">
+    <div class="salary-hero-content">
+      <div class="row g-3 align-items-center">
+        <div class="col-lg-8">
+          <div class="salary-hero-badge mb-3">
+            <i class="bi bi-sliders"></i>
+            Salary calculation controls
           </div>
-
-          <div class="col-md-6">
-            <label class="form-label small">Hourly Rate (KRW / hour)</label>
-            <input type="number" step="0.01" class="form-control form-control-sm" name="hourly_rate"
-                   value="{{ settings.hourly_rate if settings else 10030 }}" min="0" required>
-            <div class="form-text small text-muted">Used for OT and leave deductions.</div>
+          <h2 class="mb-2">Salary Settings</h2>
+          <p class="mb-0 opacity-75">
+            Update your base salary, hourly rate, lunch default, overtime multiplier, and effective month from one clean place.
+          </p>
+        </div>
+        <div class="col-lg-4 text-lg-end">
+          <div class="year-pill">
+            <i class="bi bi-calendar2-check"></i>
+            <div class="text-start">
+              <div class="small opacity-75">Current effective month</div>
+              <div class="fw-bold">{{ current_effective.strftime("%Y-%m-01") }}</div>
+            </div>
           </div>
-
-          <div class="col-md-4">
-            <label class="form-label small">Hours Per Day</label>
-            <input type="number" step="0.01" class="form-control form-control-sm" name="hours_per_day"
-                   value="{{ settings.hours_per_day if settings else 8 }}" min="0" required>
-            <div class="form-text small text-muted">Regular hours cap per weekday (usually 8).</div>
-          </div>
-
-          <div class="col-md-4">
-            <label class="form-label small">OT Multiplier</label>
-            <input type="number" step="0.01" class="form-control form-control-sm" name="overtime_multiplier"
-                   value="{{ settings.overtime_multiplier if settings else 1.5 }}" min="0" required>
-            <div class="form-text small text-muted">Example: 1.5</div>
-          </div>
-
-          <div class="col-md-4">
-            <label class="form-label small">Default Lunch (minutes)</label>
-            <input type="number" class="form-control form-control-sm" name="default_lunch_minutes"
-                   value="{{ settings.default_lunch_minutes if settings else 0 }}" min="0">
-            <div class="form-text small text-muted">Default for daily entry (you can change each day).</div>
-          </div>
-
-          <div class="col-12 d-flex justify-content-end mt-2">
-            <button class="btn btn-sm btn-primary">
-              Save Settings
-            </button>
-          </div>
-        </form>
-
+        </div>
       </div>
     </div>
   </div>
 
-  <div class="col-lg-3">
-    <div class="card shadow-sm">
-      <div class="card-body">
-        <h6 class="mb-2">Your Rules (Reference)</h6>
-        <ul class="small text-muted mb-0">
-          <li>Week: Monday → Sunday</li>
-          <li>Workdays: Monday → Friday</li>
-          <li>Weekend/Holiday work = overtime</li>
-          <li>Weekday overtime = hours above {{ settings.hours_per_day if settings else 8 }}h</li>
-          <li>Leave penalty applies only full-day leaves</li>
-          <li>Weekly leave deduction = leave days + 1 penalty day (per week with any leave)</li>
-          <li>Long leave skips weekends + holidays</li>
-        </ul>
+  <!-- Summary -->
+  <div class="row g-3 mb-3">
+    <div class="col-6 col-xl-3">
+      <div class="stat-card">
+        <div class="d-flex justify-content-between align-items-start gap-3">
+          <div>
+            <div class="stat-label mb-1">Base Salary</div>
+            <div class="stat-value">₩{{ "{:,}".format(current_base|int) }}</div>
+          </div>
+          <div class="stat-icon"><i class="bi bi-cash-stack"></i></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-6 col-xl-3">
+      <div class="stat-card">
+        <div class="d-flex justify-content-between align-items-start gap-3">
+          <div>
+            <div class="stat-label mb-1">Hourly Rate</div>
+            <div class="stat-value">₩{{ "{:,}".format(current_hourly|int) }}</div>
+          </div>
+          <div class="stat-icon"><i class="bi bi-clock-history"></i></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-6 col-xl-3">
+      <div class="stat-card">
+        <div class="d-flex justify-content-between align-items-start gap-3">
+          <div>
+            <div class="stat-label mb-1">Hours / Day</div>
+            <div class="stat-value">{{ current_hours }}h</div>
+          </div>
+          <div class="stat-icon"><i class="bi bi-calendar-week"></i></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-6 col-xl-3">
+      <div class="stat-card">
+        <div class="d-flex justify-content-between align-items-start gap-3">
+          <div>
+            <div class="stat-label mb-1">OT Multiplier</div>
+            <div class="stat-value">×{{ current_ot }}</div>
+          </div>
+          <div class="stat-icon"><i class="bi bi-lightning-charge"></i></div>
+        </div>
       </div>
     </div>
   </div>
-</div>
-<div class="card shadow-sm mt-3">
-  <div class="card-body">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <div class="fw-semibold">Settings History</div>
-      <div class="text-muted small">{{ history|length }} version(s)</div>
+
+  <div class="row g-3 align-items-start">
+    <!-- Main Settings -->
+    <div class="col-xl-8">
+      <div class="settings-card">
+        <div class="card-body p-3 p-md-4">
+          <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+            <div>
+              <h5 class="section-title mb-1">Main Settings</h5>
+              <div class="section-subtitle">These values control monthly salary, overtime, and daily entry defaults.</div>
+            </div>
+            <span class="current-badge">
+              <i class="bi bi-check2-circle"></i>
+              Active version
+            </span>
+          </div>
+
+          <form method="post" action="{{ url_for('main.salary_settings_page') }}" class="row g-3">
+            {% if csrf_token is defined %}
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            {% endif %}
+
+            <div class="col-md-6">
+              <div class="setting-input-group">
+                <label class="setting-label">
+                  <i class="bi bi-calendar3"></i>
+                  Effective From
+                </label>
+                <input type="date" class="form-control" name="effective_from"
+                       value="{{ current_effective.isoformat() }}" required>
+                <div class="form-text small">The app will use the 1st day of that month automatically.</div>
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <div class="setting-input-group">
+                <label class="setting-label">
+                  <i class="bi bi-wallet2"></i>
+                  Base Monthly Salary
+                </label>
+                <div class="input-group">
+                  <span class="input-group-text border-0 bg-light rounded-start-4">₩</span>
+                  <input type="number" class="form-control" name="base_salary"
+                         value="{{ current_base|int }}" min="0" required>
+                </div>
+                <div class="form-text small">Your fixed monthly salary before overtime and deductions.</div>
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <div class="setting-input-group">
+                <label class="setting-label">
+                  <i class="bi bi-hourglass-split"></i>
+                  Hourly Rate
+                </label>
+                <div class="input-group">
+                  <span class="input-group-text border-0 bg-light rounded-start-4">₩</span>
+                  <input type="number" step="0.01" class="form-control" name="hourly_rate"
+                         value="{{ current_hourly }}" min="0" required>
+                </div>
+                <div class="form-text small">Used for overtime and full-day leave deduction.</div>
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <div class="setting-input-group">
+                <label class="setting-label">
+                  <i class="bi bi-stopwatch"></i>
+                  Hours Per Day
+                </label>
+                <input type="number" step="0.01" class="form-control" name="hours_per_day"
+                       value="{{ current_hours }}" min="0" required>
+                <div class="form-text small">Regular weekday cap. Weekday overtime starts above this.</div>
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <div class="setting-input-group">
+                <label class="setting-label">
+                  <i class="bi bi-graph-up-arrow"></i>
+                  OT Multiplier
+                </label>
+                <input type="number" step="0.01" class="form-control" name="overtime_multiplier"
+                       value="{{ current_ot }}" min="0" required>
+                <div class="form-text small">Example: 1.5 for normal overtime calculation.</div>
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <div class="setting-input-group">
+                <label class="setting-label">
+                  <i class="bi bi-cup-hot"></i>
+                  Default Lunch
+                </label>
+                <div class="input-group">
+                  <input type="number" class="form-control" name="default_lunch_minutes"
+                         value="{{ current_lunch }}" min="0">
+                  <span class="input-group-text border-0 bg-light rounded-end-4">minutes</span>
+                </div>
+                <div class="form-text small">Default lunch deduction for daily entry. You can still edit each day.</div>
+              </div>
+            </div>
+
+            <div class="col-12 d-flex flex-column flex-sm-row justify-content-between align-items-stretch align-items-sm-center gap-2 pt-1">
+              <div class="small text-muted">
+                <i class="bi bi-info-circle me-1"></i>
+                Saving creates/updates the salary rule version for the selected effective month.
+              </div>
+              <button class="btn btn-primary save-btn">
+                <i class="bi bi-save2 me-1"></i>
+                Save Settings
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
 
-    <div class="table-responsive">
-      <table class="table table-sm align-middle">
-        <thead class="text-muted small">
-          <tr>
-            <th style="width:140px;">Effective From</th>
-            <th class="text-end">Base</th>
-            <th class="text-end">Hourly</th>
-            <th class="text-end">Hrs/Day</th>
-            <th class="text-end">OT x</th>
-            <th class="text-end">Lunch</th>
-          </tr>
-        </thead>
-        <tbody class="small">
-          {% for r in history %}
-            <tr {% if settings and r.id == settings.id %}class="table-light"{% endif %}>
-              <td class="fw-semibold">{{ r.effective_from.strftime("%Y-%m-01") }}</td>
-              <td class="text-end">{{ "{:,}".format(r.base_salary|int) }}</td>
-              <td class="text-end">{{ r.hourly_rate }}</td>
-              <td class="text-end">{{ r.hours_per_day }}</td>
-              <td class="text-end">{{ r.overtime_multiplier }}</td>
-              <td class="text-end">{{ r.default_lunch_minutes }}m</td>
+    <!-- Rules -->
+    <div class="col-xl-4">
+      <div class="rules-card">
+        <div class="card-body p-3 p-md-4">
+          <h5 class="section-title mb-1">Your Rules</h5>
+          <div class="section-subtitle mb-3">Reference used by salary and leave calculations.</div>
+
+          <div class="rule-item">
+            <span class="rule-dot"><i class="bi bi-calendar4-week"></i></span>
+            <div>
+              <div class="fw-semibold">Week structure</div>
+              <div class="small text-muted">Monday → Sunday, with regular workdays Monday → Friday.</div>
+            </div>
+          </div>
+
+          <div class="rule-item">
+            <span class="rule-dot"><i class="bi bi-lightning"></i></span>
+            <div>
+              <div class="fw-semibold">Overtime</div>
+              <div class="small text-muted">Weekend/holiday work is overtime. Weekday OT starts above {{ current_hours }}h.</div>
+            </div>
+          </div>
+
+          <div class="rule-item">
+            <span class="rule-dot"><i class="bi bi-calendar2-x"></i></span>
+            <div>
+              <div class="fw-semibold">Leave deduction</div>
+              <div class="small text-muted">Leave penalty applies only to full-day leaves.</div>
+            </div>
+          </div>
+
+          <div class="rule-item">
+            <span class="rule-dot"><i class="bi bi-arrow-repeat"></i></span>
+            <div>
+              <div class="fw-semibold">Weekly penalty</div>
+              <div class="small text-muted">Leave days + 1 penalty day per week with any leave.</div>
+            </div>
+          </div>
+
+          <div class="rule-item">
+            <span class="rule-dot"><i class="bi bi-shield-check"></i></span>
+            <div>
+              <div class="fw-semibold">Long leave</div>
+              <div class="small text-muted">Long leave skips weekends and saved holidays.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- History -->
+  <div class="history-card mt-3">
+    <div class="card-body p-3 p-md-4">
+      <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+        <div>
+          <h5 class="section-title mb-1">Settings History</h5>
+          <div class="section-subtitle">Previous salary rule versions by effective month.</div>
+        </div>
+        <span class="current-badge">
+          <i class="bi bi-clock-counterclockwise"></i>
+          {{ history|length }} version(s)
+        </span>
+      </div>
+
+      <div class="table-responsive desktop-history">
+        <table class="table history-table align-middle">
+          <thead>
+            <tr>
+              <th style="width: 170px;">Effective From</th>
+              <th class="text-end">Base</th>
+              <th class="text-end">Hourly</th>
+              <th class="text-end">Hrs/Day</th>
+              <th class="text-end">OT x</th>
+              <th class="text-end">Lunch</th>
+              <th class="text-end" style="width: 110px;">Status</th>
             </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {% for r in history %}
+              <tr {% if settings and r.id == settings.id %}class="current-row"{% endif %}>
+                <td class="fw-bold">{{ r.effective_from.strftime("%Y-%m-01") }}</td>
+                <td class="text-end">₩{{ "{:,}".format(r.base_salary|int) }}</td>
+                <td class="text-end">₩{{ "{:,}".format(r.hourly_rate|int) }}</td>
+                <td class="text-end">{{ r.hours_per_day }}h</td>
+                <td class="text-end">×{{ r.overtime_multiplier }}</td>
+                <td class="text-end">{{ r.default_lunch_minutes }}m</td>
+                <td class="text-end">
+                  {% if settings and r.id == settings.id %}
+                    <span class="current-badge"><i class="bi bi-check2"></i> Active</span>
+                  {% else %}
+                    <span class="text-muted small">Old</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="7" class="text-center text-muted py-4">
+                  No salary setting history yet.
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="d-grid gap-2">
+        {% for r in history %}
+          <div class="mobile-history-card {% if settings and r.id == settings.id %}current-row{% endif %}">
+            <div class="d-flex justify-content-between align-items-start gap-2">
+              <div>
+                <div class="fw-bold">{{ r.effective_from.strftime("%Y-%m-01") }}</div>
+                <div class="small text-muted">Salary rule version</div>
+              </div>
+              {% if settings and r.id == settings.id %}
+                <span class="current-badge"><i class="bi bi-check2"></i> Active</span>
+              {% else %}
+                <span class="text-muted small">Old</span>
+              {% endif %}
+            </div>
+
+            <div class="mobile-history-grid">
+              <div>
+                <div class="mini-label">Base</div>
+                <div class="mini-value">₩{{ "{:,}".format(r.base_salary|int) }}</div>
+              </div>
+              <div>
+                <div class="mini-label">Hourly</div>
+                <div class="mini-value">₩{{ "{:,}".format(r.hourly_rate|int) }}</div>
+              </div>
+              <div>
+                <div class="mini-label">Hours / Day</div>
+                <div class="mini-value">{{ r.hours_per_day }}h</div>
+              </div>
+              <div>
+                <div class="mini-label">OT</div>
+                <div class="mini-value">×{{ r.overtime_multiplier }}</div>
+              </div>
+              <div>
+                <div class="mini-label">Lunch</div>
+                <div class="mini-value">{{ r.default_lunch_minutes }}m</div>
+              </div>
+            </div>
+          </div>
+        {% else %}
+          <div class="mobile-history-card text-center text-muted">
+            No salary setting history yet.
+          </div>
+        {% endfor %}
+      </div>
     </div>
   </div>
 </div>
-
 {% endblock %}

@@ -360,7 +360,7 @@ body {
 .account-slider .slider-track::-webkit-scrollbar { display: none; }
 
 .account-slider .slider-viewport {
-  overflow: hidden; flex: 1 1 auto; min-width: 0; max-width: 900px;
+  overflow: hidden; flex: 1 1 auto; min-width: 0; max-width: 75vw; margin: 0 auto;
 }
 
 .acct-card {

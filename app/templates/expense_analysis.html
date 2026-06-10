@@ -1,231 +1,585 @@
 {% extends "base.html" %}
 
+{% set page_title = "Expense Analysis" %}
+{% set page_slug = "expense_analysis" %}
+
 {% block content %}
-<div class="container-fluid py-3">
+<style>
+    .ea-page {
+        --ea-bg: #f5f7fb;
+        --ea-card: #ffffff;
+        --ea-dark: #111827;
+        --ea-muted: #6b7280;
+        --ea-border: rgba(15, 23, 42, .08);
+        --ea-soft: rgba(99, 102, 241, .10);
+        --ea-radius: 22px;
+    }
 
-    <!-- Page Header -->
-    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
-        <div>
-            <h2 class="mb-1">Expense Analysis</h2>
-            <p class="text-muted mb-0">
-                Analyze spending by period, category, account, recipient, and trend.
-            </p>
-        </div>
+    .ea-page .ea-hero {
+        position: relative;
+        overflow: hidden;
+        border-radius: 28px;
+        background:
+            radial-gradient(circle at top left, rgba(96, 165, 250, .55), transparent 34%),
+            radial-gradient(circle at 82% 18%, rgba(34, 197, 94, .32), transparent 28%),
+            linear-gradient(135deg, #0f172a 0%, #1e293b 45%, #312e81 100%);
+        color: #fff !important;
+        box-shadow: 0 22px 55px rgba(15, 23, 42, .18);
+    }
 
-        <div class="d-flex flex-wrap gap-2">
-            <button type="button" class="btn btn-outline-secondary btn-sm" id="resetFiltersBtn">
-                <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
-            </button>
-            <button type="button" class="btn btn-primary btn-sm" id="applyFiltersBtn">
-                <i class="bi bi-funnel me-1"></i> Apply Filters
-            </button>
+    .ea-page .ea-hero::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg, rgba(15, 23, 42, .18), rgba(15, 23, 42, .48));
+        pointer-events: none;
+    }
+
+    .ea-page .ea-hero > * {
+        position: relative;
+        z-index: 1;
+    }
+
+    .ea-page .ea-hero,
+    .ea-page .ea-hero h1,
+    .ea-page .ea-hero p,
+    .ea-page .ea-hero span,
+    .ea-page .ea-hero div,
+    .ea-page .ea-hero i,
+    .ea-page .ea-hero .small,
+    .ea-page .ea-hero .text-muted {
+        color: #ffffff !important;
+    }
+
+    .ea-page .hero-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: .4rem;
+        padding: .42rem .72rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, .14);
+        border: 1px solid rgba(255, 255, 255, .22);
+        backdrop-filter: blur(10px);
+        font-size: .82rem;
+        font-weight: 700;
+    }
+
+    .ea-page .hero-mini-card {
+        border-radius: 18px;
+        background: rgba(255, 255, 255, .12);
+        border: 1px solid rgba(255, 255, 255, .20);
+        backdrop-filter: blur(12px);
+        padding: 1rem;
+    }
+
+    .ea-page .ea-toolbar,
+    .ea-page .ea-card {
+        border: 1px solid var(--ea-border);
+        border-radius: var(--ea-radius);
+        background: var(--ea-card);
+        box-shadow: 0 14px 35px rgba(15, 23, 42, .06);
+    }
+
+    .ea-page .ea-toolbar {
+        margin-top: -1.2rem;
+        position: relative;
+        z-index: 5;
+    }
+
+    .ea-page .form-label {
+        color: #64748b;
+        font-size: .78rem;
+        font-weight: 700;
+        letter-spacing: .02em;
+        margin-bottom: .35rem;
+    }
+
+    .ea-page .form-control,
+    .ea-page .form-select {
+        border-radius: 14px;
+        border-color: rgba(148, 163, 184, .45);
+        min-height: 42px;
+    }
+
+    .ea-page .form-control:focus,
+    .ea-page .form-select:focus {
+        border-color: rgba(99, 102, 241, .65);
+        box-shadow: 0 0 0 .2rem rgba(99, 102, 241, .14);
+    }
+
+    .ea-page .btn {
+        border-radius: 14px;
+        font-weight: 700;
+    }
+
+    .ea-page .btn-primary {
+        background: linear-gradient(135deg, #4f46e5, #2563eb);
+        border: 0;
+        box-shadow: 0 12px 22px rgba(37, 99, 235, .22);
+    }
+
+    .ea-page .metric-card {
+        position: relative;
+        overflow: hidden;
+        border: 1px solid var(--ea-border);
+        border-radius: 22px;
+        background: #fff;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, .06);
+        transition: transform .18s ease, box-shadow .18s ease;
+    }
+
+    .ea-page .metric-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 18px 42px rgba(15, 23, 42, .10);
+    }
+
+    .ea-page .metric-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 5px;
+        height: 100%;
+        background: linear-gradient(180deg, #6366f1, #22c55e);
+    }
+
+    .ea-page .metric-icon {
+        width: 46px;
+        height: 46px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 16px;
+        background: rgba(99, 102, 241, .10);
+        color: #4f46e5;
+        font-size: 1.25rem;
+    }
+
+    .ea-page .metric-label {
+        color: var(--ea-muted);
+        font-size: .78rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        margin-bottom: .25rem;
+    }
+
+    .ea-page .metric-value {
+        font-size: clamp(1rem, 2vw, 1.5rem);
+        font-weight: 850;
+        color: #111827;
+        word-break: break-word;
+        margin: 0;
+    }
+
+    .ea-page .section-title {
+        font-size: 1rem;
+        font-weight: 850;
+        color: #111827;
+        margin: 0;
+    }
+
+    .ea-page .section-subtitle {
+        color: var(--ea-muted);
+        font-size: .85rem;
+        margin: .15rem 0 0;
+    }
+
+    .ea-page .chart-box {
+        height: 340px;
+        position: relative;
+    }
+
+    .ea-page .chart-box.chart-tall {
+        height: 380px;
+    }
+
+    .ea-page .table {
+        --bs-table-bg: transparent;
+        margin-bottom: 0;
+    }
+
+    .ea-page .table thead th {
+        color: #64748b;
+        font-size: .72rem;
+        font-weight: 850;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        border-bottom: 1px solid rgba(15, 23, 42, .08);
+        background: #f8fafc;
+        white-space: nowrap;
+    }
+
+    .ea-page .table tbody td {
+        vertical-align: middle;
+        border-color: rgba(15, 23, 42, .06);
+        font-size: .9rem;
+    }
+
+    .ea-page .sticky-card-header {
+        border-bottom: 1px solid rgba(15, 23, 42, .06);
+        background: linear-gradient(180deg, #ffffff, #fbfdff);
+        padding: 1rem 1.15rem;
+    }
+
+    .ea-page .soft-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: .35rem;
+        padding: .35rem .6rem;
+        border-radius: 999px;
+        background: #f1f5f9;
+        color: #475569;
+        font-size: .78rem;
+        font-weight: 750;
+    }
+
+    .ea-page .rule-chip {
+        border: 1px solid rgba(148, 163, 184, .35);
+        background: #f8fafc;
+        border-radius: 999px;
+        padding: .58rem .8rem;
+        min-height: 42px;
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+    }
+
+    .ea-page .rule-chip .form-check-input {
+        margin-top: 0;
+    }
+
+    .ea-page .rule-chip .form-check-label {
+        color: #334155;
+        font-size: .84rem;
+        font-weight: 700;
+    }
+
+    .ea-page .insight-box .alert {
+        border: 0;
+        border-radius: 18px;
+        box-shadow: inset 4px 0 0 rgba(15, 23, 42, .10);
+    }
+
+    .ea-page .modal-content {
+        border: 0;
+        border-radius: 24px;
+        overflow: hidden;
+    }
+
+    .ea-page .modal-header {
+        background: #f8fafc;
+        border-bottom: 1px solid rgba(15, 23, 42, .08);
+    }
+
+    .ea-page .empty-state {
+        color: #64748b;
+        background: #f8fafc;
+        border-radius: 18px;
+    }
+
+    @media (max-width: 767.98px) {
+        .ea-page {
+            padding-inline: .25rem;
+        }
+
+        .ea-page .ea-hero {
+            border-radius: 22px;
+        }
+
+        .ea-page .ea-toolbar {
+            margin-top: .75rem;
+        }
+
+        .ea-page .chart-box,
+        .ea-page .chart-box.chart-tall {
+            height: 300px;
+        }
+
+        .ea-page .table-responsive {
+            border-radius: 16px;
+        }
+    }
+</style>
+
+<div class="container-fluid py-3 ea-page">
+
+    <!-- Hero -->
+    <section class="ea-hero p-3 p-md-4 p-xl-5 mb-4">
+        <div class="row g-4 align-items-center">
+            <div class="col-12 col-xl-7">
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    <span class="hero-pill">
+                        <i class="bi bi-pie-chart-fill"></i>
+                        Expense Analysis
+                    </span>
+                    <span class="hero-pill">
+                        <i class="bi bi-lightning-charge-fill"></i>
+                        Live API Dashboard
+                    </span>
+                </div>
+
+                <h1 class="display-6 fw-bold mb-2">Understand where your money is going</h1>
+                <p class="mb-0 opacity-75">
+                    Analyze spending by period, category, account, recipient, and trend — then open category details directly from the breakdown table.
+                </p>
+            </div>
+
+            <div class="col-12 col-xl-5">
+                <div class="row g-3">
+                    <div class="col-6">
+                        <div class="hero-mini-card">
+                            <div class="small opacity-75 mb-1">Selected currency</div>
+                            <div class="h4 fw-bold mb-0" id="heroCurrencyText">KRW</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="hero-mini-card">
+                            <div class="small opacity-75 mb-1">Period</div>
+                            <div class="h6 fw-bold mb-0" id="heroPeriodText">This Month</div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="hero-mini-card d-flex align-items-center justify-content-between gap-3">
+                            <div>
+                                <div class="small opacity-75 mb-1">Current filter range</div>
+                                <div class="fw-bold" id="heroDateRangeText">Loading...</div>
+                            </div>
+                            <i class="bi bi-calendar2-range fs-2 opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-    </div>
+    </section>
 
     <!-- Filter Section -->
-    <div class="card shadow-sm border-0 mb-4">
-        <div class="card-body">
-            <div class="row g-3 align-items-end">
+    <section class="ea-toolbar p-3 p-xl-4 mb-4">
+        <div class="d-flex flex-column flex-xl-row justify-content-between gap-3 mb-3">
+            <div>
+                <h5 class="mb-1 fw-bold">Filters</h5>
+                <div class="text-muted small">Change filters and the dashboard updates automatically.</div>
+            </div>
 
-                <div class="col-12 col-md-6 col-xl-2">
-                    <label for="periodPresetFilter" class="form-label">Period</label>
-                    <select id="periodPresetFilter" class="form-select">
-                        <option value="this_month" selected>This Month</option>
-                        <option value="last_month">Last Month</option>
-                        <option value="last_3_months">Last 3 Months</option>
-                        <option value="this_year">This Year</option>
-                        <option value="custom">Custom Range</option>
-                    </select>
+            <div class="d-flex flex-wrap gap-2">
+                <button type="button" class="btn btn-outline-secondary" id="resetFiltersBtn">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
+                </button>
+                <button type="button" class="btn btn-primary" id="applyFiltersBtn">
+                    <i class="bi bi-funnel me-1"></i> Apply Filters
+                </button>
+            </div>
+        </div>
+
+        <div class="row g-3 align-items-end">
+            <div class="col-12 col-md-6 col-xl-2">
+                <label for="periodPresetFilter" class="form-label">Period</label>
+                <select id="periodPresetFilter" class="form-select">
+                    <option value="this_month" selected>This Month</option>
+                    <option value="last_month">Last Month</option>
+                    <option value="last_3_months">Last 3 Months</option>
+                    <option value="this_year">This Year</option>
+                    <option value="custom">Custom Range</option>
+                </select>
+            </div>
+
+            <div class="col-6 col-md-3 col-xl-2">
+                <label for="startDateFilter" class="form-label">Start Date</label>
+                <input type="date" id="startDateFilter" class="form-control">
+            </div>
+
+            <div class="col-6 col-md-3 col-xl-2">
+                <label for="endDateFilter" class="form-label">End Date</label>
+                <input type="date" id="endDateFilter" class="form-control">
+            </div>
+
+            <div class="col-12 col-md-6 col-xl-2">
+                <label for="currencyFilter" class="form-label">Currency</label>
+                <select id="currencyFilter" class="form-select">
+                    <option value="KRW" selected>KRW</option>
+                    <option value="BDT">BDT</option>
+                </select>
+            </div>
+
+            <div class="col-12 col-md-6 col-xl-2">
+                <label for="accountFilter" class="form-label">Account</label>
+                <select id="accountFilter" class="form-select">
+                    <option value="">All Accounts</option>
+                </select>
+            </div>
+
+            <div class="col-12 col-md-6 col-xl-2">
+                <label for="categoryFilter" class="form-label">Category</label>
+                <select id="categoryFilter" class="form-select">
+                    <option value="">All Categories</option>
+                </select>
+            </div>
+
+            <div class="col-12 col-md-6 col-xl-2">
+                <label for="groupByFilter" class="form-label">Trend Group</label>
+                <select id="groupByFilter" class="form-select">
+                    <option value="day" selected>Day</option>
+                    <option value="week">Week</option>
+                    <option value="month">Month</option>
+                </select>
+            </div>
+
+            <div class="col-12 col-xl-10">
+                <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                    <label class="form-label mb-0">Rules</label>
+                    <button class="btn btn-sm btn-light border d-xl-none" type="button" data-bs-toggle="collapse" data-bs-target="#advancedRulesCollapse">
+                        Toggle rules
+                    </button>
                 </div>
 
-                <div class="col-6 col-md-3 col-xl-2">
-                    <label for="startDateFilter" class="form-label">Start Date</label>
-                    <input type="date" id="startDateFilter" class="form-control">
-                </div>
-
-                <div class="col-6 col-md-3 col-xl-2">
-                    <label for="endDateFilter" class="form-label">End Date</label>
-                    <input type="date" id="endDateFilter" class="form-control">
-                </div>
-
-                <div class="col-12 col-md-6 col-xl-2">
-                    <label for="currencyFilter" class="form-label">Currency</label>
-                    <select id="currencyFilter" class="form-select">
-                        <option value="KRW" selected>KRW</option>
-                        <option value="BDT">BDT</option>
-                    </select>
-                </div>
-
-                <div class="col-12 col-md-6 col-xl-2">
-                    <label for="accountFilter" class="form-label">Account</label>
-                    <select id="accountFilter" class="form-select">
-                        <option value="">All Accounts</option>
-                    </select>
-                </div>
-
-                <div class="col-12 col-md-6 col-xl-2">
-                    <label for="categoryFilter" class="form-label">Category</label>
-                    <select id="categoryFilter" class="form-select">
-                        <option value="">All Categories</option>
-                    </select>
-                </div>
-
-                <div class="col-12 col-md-6 col-xl-2">
-                    <label for="groupByFilter" class="form-label">Trend Group</label>
-                    <select id="groupByFilter" class="form-select">
-                        <option value="day" selected>Day</option>
-                        <option value="week">Week</option>
-                        <option value="month">Month</option>
-                    </select>
-                </div>
-
-                <div class="col-12 col-xl-10">
-                    <label class="form-label d-block">Rules</label>
-                    <div class="d-flex flex-wrap gap-3">
-                        <div class="form-check">
+                <div class="collapse show" id="advancedRulesCollapse">
+                    <div class="d-flex flex-wrap gap-2">
+                        <div class="form-check rule-chip">
                             <input class="form-check-input" type="checkbox" id="includeFeesFilter" checked>
-                            <label class="form-check-label" for="includeFeesFilter">
-                                Include fees
-                            </label>
+                            <label class="form-check-label" for="includeFeesFilter">Include fees</label>
                         </div>
 
-                        <div class="form-check">
+                        <div class="form-check rule-chip">
                             <input class="form-check-input" type="checkbox" id="includeTransfersFilter">
-                            <label class="form-check-label" for="includeTransfersFilter">
-                                Include transfers
-                            </label>
+                            <label class="form-check-label" for="includeTransfersFilter">Include transfers</label>
                         </div>
 
-                        <div class="form-check">
+                        <div class="form-check rule-chip">
                             <input class="form-check-input" type="checkbox" id="includePendingFilter">
-                            <label class="form-check-label" for="includePendingFilter">
-                                Include pending
-                            </label>
+                            <label class="form-check-label" for="includePendingFilter">Include pending</label>
                         </div>
 
-                        <div class="form-check">
+                        <div class="form-check rule-chip">
                             <input class="form-check-input" type="checkbox" id="includeSettlementsFilter">
-                            <label class="form-check-label" for="includeSettlementsFilter">
-                                Include card settlements
-                            </label>
+                            <label class="form-check-label" for="includeSettlementsFilter">Include card settlements</label>
                         </div>
                     </div>
                 </div>
-
             </div>
         </div>
-    </div>
+    </section>
 
     <!-- Loading / Error -->
-    <div id="analysisAlert" class="alert d-none mb-4" role="alert"></div>
+    <div id="analysisAlert" class="alert d-none mb-4 rounded-4 border-0 shadow-sm" role="alert"></div>
 
     <!-- Summary Cards -->
-    <div class="row g-3 mb-4">
+    <section class="row g-3 mb-4">
         <div class="col-12 col-sm-6 col-xl-3">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
+            <div class="metric-card h-100">
+                <div class="card-body p-3 p-xl-4">
+                    <div class="d-flex justify-content-between gap-3">
                         <div>
-                            <p class="text-muted mb-1">Total Expense</p>
-                            <h4 class="mb-0" id="totalExpenseCard">-</h4>
+                            <div class="metric-label">Total Expense</div>
+                            <h4 class="metric-value" id="totalExpenseCard">-</h4>
                         </div>
-                        <i class="bi bi-cash-stack fs-4 text-muted"></i>
+                        <span class="metric-icon"><i class="bi bi-cash-stack"></i></span>
                     </div>
+                    <div class="small text-muted mt-3">All filtered expenses</div>
                 </div>
             </div>
         </div>
 
         <div class="col-12 col-sm-6 col-xl-3">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
+            <div class="metric-card h-100">
+                <div class="card-body p-3 p-xl-4">
+                    <div class="d-flex justify-content-between gap-3">
                         <div>
-                            <p class="text-muted mb-1">Total Income</p>
-                            <h4 class="mb-0" id="totalIncomeCard">-</h4>
+                            <div class="metric-label">Total Income</div>
+                            <h4 class="metric-value" id="totalIncomeCard">-</h4>
                         </div>
-                        <i class="bi bi-arrow-down-circle fs-4 text-muted"></i>
+                        <span class="metric-icon"><i class="bi bi-arrow-down-circle"></i></span>
                     </div>
+                    <div class="small text-muted mt-3">Income in selected period</div>
                 </div>
             </div>
         </div>
 
         <div class="col-12 col-sm-6 col-xl-3">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
+            <div class="metric-card h-100">
+                <div class="card-body p-3 p-xl-4">
+                    <div class="d-flex justify-content-between gap-3">
                         <div>
-                            <p class="text-muted mb-1">Net Cashflow</p>
-                            <h4 class="mb-0" id="netCashflowCard">-</h4>
+                            <div class="metric-label">Net Cashflow</div>
+                            <h4 class="metric-value" id="netCashflowCard">-</h4>
                         </div>
-                        <i class="bi bi-activity fs-4 text-muted"></i>
+                        <span class="metric-icon"><i class="bi bi-activity"></i></span>
                     </div>
+                    <div class="small text-muted mt-3">Income minus expense</div>
                 </div>
             </div>
         </div>
 
         <div class="col-12 col-sm-6 col-xl-3">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
+            <div class="metric-card h-100">
+                <div class="card-body p-3 p-xl-4">
+                    <div class="d-flex justify-content-between gap-3">
                         <div>
-                            <p class="text-muted mb-1">Avg Daily Expense</p>
-                            <h4 class="mb-0" id="avgDailyExpenseCard">-</h4>
+                            <div class="metric-label">Avg Daily Expense</div>
+                            <h4 class="metric-value" id="avgDailyExpenseCard">-</h4>
                         </div>
-                        <i class="bi bi-calendar2-week fs-4 text-muted"></i>
+                        <span class="metric-icon"><i class="bi bi-calendar2-week"></i></span>
                     </div>
+                    <div class="small text-muted mt-3">Daily burn rate</div>
                 </div>
             </div>
         </div>
 
         <div class="col-12 col-sm-6 col-xl-3">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-body">
-                    <p class="text-muted mb-1">Transactions</p>
-                    <h4 class="mb-0" id="transactionCountCard">-</h4>
+            <div class="metric-card h-100">
+                <div class="card-body p-3 p-xl-4">
+                    <div class="metric-label">Transactions</div>
+                    <h4 class="metric-value" id="transactionCountCard">-</h4>
+                    <div class="small text-muted mt-3">Filtered transaction count</div>
                 </div>
             </div>
         </div>
 
         <div class="col-12 col-sm-6 col-xl-3">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-body">
-                    <p class="text-muted mb-1">Top Category</p>
-                    <h4 class="mb-0" id="topCategoryCard">-</h4>
-                    <small class="text-muted" id="topCategoryAmountText"></small>
+            <div class="metric-card h-100">
+                <div class="card-body p-3 p-xl-4">
+                    <div class="metric-label">Top Category</div>
+                    <h4 class="metric-value fs-5" id="topCategoryCard">-</h4>
+                    <div class="small text-muted mt-2" id="topCategoryAmountText"></div>
                 </div>
             </div>
         </div>
 
         <div class="col-12 col-sm-6 col-xl-3">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-body">
-                    <p class="text-muted mb-1">Highest Spending</p>
-                    <h4 class="mb-0" id="highestSpendingCard">-</h4>
-                    <small class="text-muted" id="highestSpendingAmountText"></small>
+            <div class="metric-card h-100">
+                <div class="card-body p-3 p-xl-4">
+                    <div class="metric-label">Highest Spending</div>
+                    <h4 class="metric-value fs-5" id="highestSpendingCard">-</h4>
+                    <div class="small text-muted mt-2" id="highestSpendingAmountText"></div>
                 </div>
             </div>
         </div>
 
         <div class="col-12 col-sm-6 col-xl-3">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-body">
-                    <p class="text-muted mb-1">Previous Period</p>
-                    <h4 class="mb-0" id="previousComparisonCard">-</h4>
-                    <small class="text-muted">Compared to same-length period</small>
+            <div class="metric-card h-100">
+                <div class="card-body p-3 p-xl-4">
+                    <div class="metric-label">Previous Period</div>
+                    <h4 class="metric-value" id="previousComparisonCard">-</h4>
+                    <div class="small text-muted mt-3">Same-length comparison</div>
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
     <!-- Charts Row 1 -->
-    <div class="row g-3 mb-4">
+    <section class="row g-3 mb-4">
         <div class="col-12 col-xl-5">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-white border-0 pb-0">
-                    <h5 class="mb-0">Expense by Category</h5>
+            <div class="ea-card h-100">
+                <div class="sticky-card-header">
+                    <div class="d-flex justify-content-between align-items-start gap-3">
+                        <div>
+                            <h5 class="section-title">Expense by Category</h5>
+                            <p class="section-subtitle">Category share of your selected expense period.</p>
+                        </div>
+                        <span class="soft-badge"><i class="bi bi-pie-chart"></i> Share</span>
+                    </div>
                 </div>
                 <div class="card-body">
-                    <div style="height: 330px;">
+                    <div class="chart-box">
                         <canvas id="categoryDoughnutChart"></canvas>
                     </div>
                 </div>
@@ -233,28 +587,40 @@
         </div>
 
         <div class="col-12 col-xl-7">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-white border-0 pb-0">
-                    <h5 class="mb-0">Top Categories</h5>
+            <div class="ea-card h-100">
+                <div class="sticky-card-header">
+                    <div class="d-flex justify-content-between align-items-start gap-3">
+                        <div>
+                            <h5 class="section-title">Top Categories</h5>
+                            <p class="section-subtitle">Your biggest spending groups ranked by amount.</p>
+                        </div>
+                        <span class="soft-badge"><i class="bi bi-bar-chart"></i> Top 8</span>
+                    </div>
                 </div>
                 <div class="card-body">
-                    <div style="height: 330px;">
+                    <div class="chart-box">
                         <canvas id="topCategoryBarChart"></canvas>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
     <!-- Charts Row 2 -->
-    <div class="row g-3 mb-4">
+    <section class="row g-3 mb-4">
         <div class="col-12 col-xl-8">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-white border-0 pb-0">
-                    <h5 class="mb-0">Expense Trend</h5>
+            <div class="ea-card h-100">
+                <div class="sticky-card-header">
+                    <div class="d-flex justify-content-between align-items-start gap-3">
+                        <div>
+                            <h5 class="section-title">Expense Trend</h5>
+                            <p class="section-subtitle">See whether your spending is rising, falling, or stable.</p>
+                        </div>
+                        <span class="soft-badge"><i class="bi bi-graph-up"></i> Trend</span>
+                    </div>
                 </div>
                 <div class="card-body">
-                    <div style="height: 330px;">
+                    <div class="chart-box chart-tall">
                         <canvas id="expenseTrendChart"></canvas>
                     </div>
                 </div>
@@ -262,29 +628,43 @@
         </div>
 
         <div class="col-12 col-xl-4">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-white border-0 pb-0">
-                    <h5 class="mb-0">Account Usage</h5>
+            <div class="ea-card h-100">
+                <div class="sticky-card-header">
+                    <div class="d-flex justify-content-between align-items-start gap-3">
+                        <div>
+                            <h5 class="section-title">Account Usage</h5>
+                            <p class="section-subtitle">Which account/card is carrying the spending.</p>
+                        </div>
+                        <span class="soft-badge"><i class="bi bi-credit-card-2-front"></i> Account</span>
+                    </div>
                 </div>
                 <div class="card-body">
-                    <div style="height: 330px;">
+                    <div class="chart-box chart-tall">
                         <canvas id="accountExpenseChart"></canvas>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
     <!-- Tables -->
-    <div class="row g-3 mb-4">
+    <section class="row g-3 mb-4">
         <div class="col-12 col-xl-7">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-white border-0 pb-0">
-                    <h5 class="mb-0">Category Breakdown</h5>
+            <div class="ea-card h-100">
+                <div class="sticky-card-header">
+                    <div class="d-flex flex-column flex-md-row justify-content-between gap-3">
+                        <div>
+                            <h5 class="section-title">Category Breakdown</h5>
+                            <p class="section-subtitle">Open any category to inspect the transactions behind it.</p>
+                        </div>
+                        <div style="min-width: 220px;">
+                            <input type="search" class="form-control form-control-sm" id="categoryTableSearch" placeholder="Search category table...">
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
+                        <table class="table table-hover align-middle">
                             <thead>
                                 <tr>
                                     <th>Category</th>
@@ -310,13 +690,14 @@
         </div>
 
         <div class="col-12 col-xl-5">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-white border-0 pb-0">
-                    <h5 class="mb-0">Account Breakdown</h5>
+            <div class="ea-card h-100">
+                <div class="sticky-card-header">
+                    <h5 class="section-title">Account Breakdown</h5>
+                    <p class="section-subtitle">Spending share by account.</p>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
+                        <table class="table table-hover align-middle">
                             <thead>
                                 <tr>
                                     <th>Account</th>
@@ -337,18 +718,19 @@
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
     <!-- Recipient + Insights -->
-    <div class="row g-3">
+    <section class="row g-3">
         <div class="col-12 col-xl-5">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-white border-0 pb-0">
-                    <h5 class="mb-0">Top Recipients</h5>
+            <div class="ea-card h-100">
+                <div class="sticky-card-header">
+                    <h5 class="section-title">Top Recipients</h5>
+                    <p class="section-subtitle">Useful for family transfers, personal payments, and recurring recipients.</p>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
+                        <table class="table table-hover align-middle">
                             <thead>
                                 <tr>
                                     <th>Recipient</th>
@@ -370,27 +752,34 @@
         </div>
 
         <div class="col-12 col-xl-7">
-            <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-white border-0 pb-0">
-                    <h5 class="mb-0">Smart Insights</h5>
+            <div class="ea-card h-100">
+                <div class="sticky-card-header">
+                    <div class="d-flex justify-content-between align-items-start gap-3">
+                        <div>
+                            <h5 class="section-title">Smart Insights</h5>
+                            <p class="section-subtitle">Auto-generated notes from your filtered spending data.</p>
+                        </div>
+                        <span class="soft-badge"><i class="bi bi-stars"></i> Tips</span>
+                    </div>
                 </div>
-                <div class="card-body" id="smartInsightsSection">
-                    <div class="text-muted">
+                <div class="card-body insight-box" id="smartInsightsSection">
+                    <div class="empty-state p-4 text-center">
                         Insights will appear here after loading your data.
                     </div>
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
 </div>
+
 <!-- Category Transactions Modal -->
 <div class="modal fade" id="categoryTransactionsModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
-        <div class="modal-content border-0 shadow">
+        <div class="modal-content shadow">
             <div class="modal-header">
                 <div>
-                    <h5 class="modal-title mb-1" id="categoryTransactionsModalTitle">
+                    <h5 class="modal-title mb-1 fw-bold" id="categoryTransactionsModalTitle">
                         Category Transactions
                     </h5>
                     <div class="text-muted small" id="categoryTransactionsModalSummary">
@@ -400,7 +789,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
 
-            <div class="modal-body">
+            <div class="modal-body p-0">
                 <div class="table-responsive">
                     <table class="table table-hover align-middle mb-0">
                         <thead>
@@ -431,6 +820,7 @@
 
 
 {% block scripts %}
+{{ super() }}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
@@ -452,6 +842,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const resetFiltersBtn = document.getElementById('resetFiltersBtn');
     const analysisAlert = document.getElementById('analysisAlert');
 
+    const heroCurrencyText = document.getElementById('heroCurrencyText');
+    const heroPeriodText = document.getElementById('heroPeriodText');
+    const heroDateRangeText = document.getElementById('heroDateRangeText');
+
     const totalExpenseCard = document.getElementById('totalExpenseCard');
     const totalIncomeCard = document.getElementById('totalIncomeCard');
     const netCashflowCard = document.getElementById('netCashflowCard');
@@ -467,15 +861,24 @@ document.addEventListener('DOMContentLoaded', function () {
     const accountBreakdownTable = document.getElementById('accountBreakdownTable');
     const recipientBreakdownTable = document.getElementById('recipientBreakdownTable');
     const smartInsightsSection = document.getElementById('smartInsightsSection');
+    const categoryTableSearch = document.getElementById('categoryTableSearch');
+
     const categoryTransactionsModalEl = document.getElementById('categoryTransactionsModal');
     const categoryTransactionsModal = new bootstrap.Modal(categoryTransactionsModalEl);
     const categoryTransactionsModalTitle = document.getElementById('categoryTransactionsModalTitle');
     const categoryTransactionsModalSummary = document.getElementById('categoryTransactionsModalSummary');
     const categoryTransactionsTable = document.getElementById('categoryTransactionsTable');
+
     let categoryDoughnutChart = null;
     let topCategoryBarChart = null;
     let expenseTrendChart = null;
     let accountExpenseChart = null;
+    let lastCategoryRows = [];
+
+    const chartPalette = [
+        '#4f46e5', '#2563eb', '#0891b2', '#16a34a', '#f59e0b',
+        '#ef4444', '#a855f7', '#ec4899', '#64748b', '#0f766e'
+    ];
 
     function pad(num) {
         return String(num).padStart(2, '0');
@@ -515,8 +918,15 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    function updateHeroTexts() {
+        const selectedPeriod = periodPresetFilter.options[periodPresetFilter.selectedIndex]?.textContent || 'Custom';
+        heroCurrencyText.textContent = currencyFilter.value;
+        heroPeriodText.textContent = selectedPeriod;
+        heroDateRangeText.textContent = `${startDateFilter.value || '-'} → ${endDateFilter.value || '-'}`;
+    }
+
     function setAlert(type, message) {
-        analysisAlert.className = `alert alert-${type} mb-4`;
+        analysisAlert.className = `alert alert-${type} mb-4 rounded-4 border-0 shadow-sm`;
         analysisAlert.textContent = message;
         analysisAlert.classList.remove('d-none');
     }
@@ -554,6 +964,8 @@ document.addEventListener('DOMContentLoaded', function () {
             startDateFilter.value = toInputDate(start);
             endDateFilter.value = toInputDate(end);
         }
+
+        updateHeroTexts();
     }
 
     function populateAccounts(accounts) {
@@ -604,21 +1016,19 @@ document.addEventListener('DOMContentLoaded', function () {
             data: {
                 labels: ['No Data'],
                 datasets: [{
-                    data: [0]
+                    data: [0],
+                    backgroundColor: ['#e2e8f0'],
+                    borderColor: ['#cbd5e1']
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: {
-                        display: false
-                    }
+                    legend: { display: false }
                 },
                 scales: type === 'doughnut' ? {} : {
-                    y: {
-                        beginAtZero: true
-                    }
+                    y: { beginAtZero: true }
                 }
             }
         });
@@ -635,15 +1045,26 @@ document.addEventListener('DOMContentLoaded', function () {
         categoryDoughnutChart = new Chart(document.getElementById('categoryDoughnutChart'), {
             type: 'doughnut',
             data: {
-                labels: false, // Hide labels on chart, we'll show them in tooltip instead
+                labels: rows.map(row => row.category_name),
                 datasets: [{
-                    data: rows.map(row => row.amount)
+                    data: rows.map(row => row.amount),
+                    backgroundColor: rows.map((_, index) => chartPalette[index % chartPalette.length]),
+                    borderWidth: 3,
+                    borderColor: '#ffffff'
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                cutout: '68%',
                 plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 10,
+                            usePointStyle: true
+                        }
+                    },
                     tooltip: {
                         callbacks: {
                             label: function (context) {
@@ -673,7 +1094,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 labels: topRows.map(row => row.category_name),
                 datasets: [{
                     label: 'Expense',
-                    data: topRows.map(row => row.amount)
+                    data: topRows.map(row => row.amount),
+                    backgroundColor: topRows.map((_, index) => chartPalette[index % chartPalette.length]),
+                    borderRadius: 10
                 }]
             },
             options: {
@@ -681,9 +1104,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: {
-                        display: false
-                    },
+                    legend: { display: false },
                     tooltip: {
                         callbacks: {
                             label: function (context) {
@@ -695,11 +1116,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 scales: {
                     x: {
                         beginAtZero: true,
+                        grid: { color: 'rgba(148, 163, 184, .18)' },
                         ticks: {
                             callback: function (value) {
                                 return formatCurrency(value, currency);
                             }
                         }
+                    },
+                    y: {
+                        grid: { display: false }
                     }
                 }
             }
@@ -721,8 +1146,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 datasets: [{
                     label: 'Expense',
                     data: rows.map(row => row.amount),
-                    tension: 0.3,
-                    fill: false
+                    tension: 0.35,
+                    fill: true,
+                    borderColor: '#4f46e5',
+                    backgroundColor: 'rgba(79, 70, 229, .10)',
+                    pointBackgroundColor: '#4f46e5',
+                    pointRadius: 3
                 }]
             },
             options: {
@@ -733,9 +1162,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     intersect: false
                 },
                 plugins: {
-                    legend: {
-                        display: false
-                    },
+                    legend: { display: false },
                     tooltip: {
                         callbacks: {
                             label: function (context) {
@@ -747,11 +1174,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 scales: {
                     y: {
                         beginAtZero: true,
+                        grid: { color: 'rgba(148, 163, 184, .18)' },
                         ticks: {
                             callback: function (value) {
                                 return formatCurrency(value, currency);
                             }
                         }
+                    },
+                    x: {
+                        grid: { display: false }
                     }
                 }
             }
@@ -774,16 +1205,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 labels: topRows.map(row => row.account_name),
                 datasets: [{
                     label: 'Expense',
-                    data: topRows.map(row => row.amount)
+                    data: topRows.map(row => row.amount),
+                    backgroundColor: topRows.map((_, index) => chartPalette[index % chartPalette.length]),
+                    borderRadius: 10
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: {
-                        display: false
-                    },
+                    legend: { display: false },
                     tooltip: {
                         callbacks: {
                             label: function (context) {
@@ -795,11 +1226,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 scales: {
                     y: {
                         beginAtZero: true,
+                        grid: { color: 'rgba(148, 163, 184, .18)' },
                         ticks: {
                             callback: function (value) {
                                 return formatCurrency(value, currency);
                             }
                         }
+                    },
+                    x: {
+                        grid: { display: false }
                     }
                 }
             }
@@ -808,17 +1243,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function statusBadge(status) {
         if (status === 'High') {
-            return '<span class="badge text-bg-danger">High</span>';
+            return '<span class="badge rounded-pill text-bg-danger">High</span>';
         }
 
         if (status === 'Medium') {
-            return '<span class="badge text-bg-warning">Medium</span>';
+            return '<span class="badge rounded-pill text-bg-warning">Medium</span>';
         }
 
-        return '<span class="badge text-bg-secondary">Normal</span>';
+        return '<span class="badge rounded-pill text-bg-secondary">Normal</span>';
     }
 
     function renderCategoryTable(rows, currency) {
+        lastCategoryRows = rows || [];
+
         if (!rows || rows.length === 0) {
             categoryBreakdownTable.innerHTML = `
                 <tr>
@@ -835,10 +1272,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
             return `
                 <tr>
-                    <td>${escapeHtml(row.category_name)}</td>
-                    <td class="text-end">${formatCurrency(row.amount, currency)}</td>
+                    <td>
+                        <div class="fw-bold">${escapeHtml(row.category_name)}</div>
+                        <div class="small text-muted">${row.share}% of selected expenses</div>
+                    </td>
+                    <td class="text-end fw-bold">${formatCurrency(row.amount, currency)}</td>
                     <td class="text-end">${row.share}%</td>
-                    <td class="text-end">${row.transaction_count}</td>
+                    <td class="text-end">${Number(row.transaction_count || 0).toLocaleString()}</td>
                     <td class="text-end">${formatCurrency(row.average_amount, currency)}</td>
                     <td>${statusBadge(row.status)}</td>
                     <td class="text-end">
@@ -854,6 +1294,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 </tr>
             `;
         }).join('');
+
+        filterCategoryTable();
+    }
+
+    function filterCategoryTable() {
+        const q = (categoryTableSearch?.value || '').trim().toLowerCase();
+        const rows = categoryBreakdownTable.querySelectorAll('tr');
+
+        rows.forEach(row => {
+            if (!q) {
+                row.classList.remove('d-none');
+                return;
+            }
+
+            const text = row.textContent.toLowerCase();
+            row.classList.toggle('d-none', !text.includes(q));
+        });
     }
 
     function renderAccountTable(rows, currency) {
@@ -870,10 +1327,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
         accountBreakdownTable.innerHTML = rows.map(row => `
             <tr>
-                <td>${escapeHtml(row.account_name)}</td>
-                <td class="text-end">${formatCurrency(row.amount, currency)}</td>
+                <td>
+                    <div class="fw-bold">${escapeHtml(row.account_name)}</div>
+                    <div class="small text-muted">${row.share}% share</div>
+                </td>
+                <td class="text-end fw-bold">${formatCurrency(row.amount, currency)}</td>
                 <td class="text-end">${row.share}%</td>
-                <td class="text-end">${row.transaction_count}</td>
+                <td class="text-end">${Number(row.transaction_count || 0).toLocaleString()}</td>
             </tr>
         `).join('');
     }
@@ -892,8 +1352,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         recipientBreakdownTable.innerHTML = rows.map(row => `
             <tr>
-                <td>${escapeHtml(row.recipient_name)}</td>
-                <td class="text-end">${formatCurrency(row.amount, currency)}</td>
+                <td class="fw-bold">${escapeHtml(row.recipient_name)}</td>
+                <td class="text-end fw-bold">${formatCurrency(row.amount, currency)}</td>
                 <td class="text-end">${row.share}%</td>
             </tr>
         `).join('');
@@ -902,7 +1362,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function renderInsights(messages) {
         if (!messages || messages.length === 0) {
             smartInsightsSection.innerHTML = `
-                <div class="text-muted">
+                <div class="empty-state p-4 text-center">
                     No insights available for this period.
                 </div>
             `;
@@ -911,7 +1371,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         smartInsightsSection.innerHTML = messages.map(item => `
             <div class="alert alert-${escapeHtml(item.type)} mb-3">
-                <h6 class="mb-1">${escapeHtml(item.title)}</h6>
+                <h6 class="mb-1 fw-bold">${escapeHtml(item.title)}</h6>
                 <div class="small">${escapeHtml(item.text)}</div>
             </div>
         `).join('');
@@ -936,6 +1396,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         previousComparisonCard.textContent = summary.compare_previous || '0%';
     }
+
     function renderCategoryTransactionsTable(rows, currency) {
         if (!rows || rows.length === 0) {
             categoryTransactionsTable.innerHTML = `
@@ -956,7 +1417,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 <td>${escapeHtml(row.recipient_name)}</td>
                 <td>${escapeHtml(row.method)}</td>
                 <td>${escapeHtml(row.note || '-')}</td>
-                <td class="text-end">${formatCurrency(row.amount, currency)}</td>
+                <td class="text-end fw-bold">${formatCurrency(row.amount, currency)}</td>
             </tr>
         `).join('');
     }
@@ -999,7 +1460,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             categoryTransactionsModalSummary.textContent = `
-                ${data.summary.transaction_count} transactions · ${formatCurrency(data.summary.total_amount, currency)}
+                ${Number(data.summary.transaction_count || 0).toLocaleString()} transactions · ${formatCurrency(data.summary.total_amount, currency)}
             `;
 
             renderCategoryTransactionsTable(data.transactions || [], currency);
@@ -1016,8 +1477,10 @@ document.addEventListener('DOMContentLoaded', function () {
             `;
         }
     }
+
     async function loadExpenseAnalysis() {
         hideAlert();
+        updateHeroTexts();
 
         const currency = currencyFilter.value;
 
@@ -1079,9 +1542,14 @@ document.addEventListener('DOMContentLoaded', function () {
         includePendingFilter.checked = false;
         includeSettlementsFilter.checked = false;
 
+        if (categoryTableSearch) {
+            categoryTableSearch.value = '';
+        }
+
         setDatePreset('this_month');
         loadExpenseAnalysis();
     }
+
     categoryBreakdownTable.addEventListener('click', function (event) {
         const button = event.target.closest('.view-category-transactions-btn');
 
@@ -1095,6 +1563,11 @@ document.addEventListener('DOMContentLoaded', function () {
             button.dataset.uncategorized === '1'
         );
     });
+
+    if (categoryTableSearch) {
+        categoryTableSearch.addEventListener('input', filterCategoryTable);
+    }
+
     periodPresetFilter.addEventListener('change', function () {
         setDatePreset(periodPresetFilter.value);
         loadExpenseAnalysis();
@@ -1102,10 +1575,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     startDateFilter.addEventListener('change', function () {
         periodPresetFilter.value = 'custom';
+        updateHeroTexts();
     });
 
     endDateFilter.addEventListener('change', function () {
         periodPresetFilter.value = 'custom';
+        updateHeroTexts();
     });
 
     currencyFilter.addEventListener('change', loadExpenseAnalysis);

@@ -2,699 +2,1161 @@
 {% set page_title = "Transactions" %}
 {% set page_slug  = "transactions" %}
 
-{% block content %}
-<div class="container-fluid py-1">
+{% macro category_options(selected_id) -%}
+  <option value="">All Categories</option>
+  {% for c in categories %}
+    <option value="{{ c.id }}" {{ 'selected' if c.id == selected_id else '' }}>{{ c.name }}</option>
+    {% for ch in c.children %}
+      <option value="{{ ch.id }}" {{ 'selected' if ch.id == selected_id else '' }}>└ {{ ch.name }}</option>
+    {% endfor %}
+  {% endfor %}
+{%- endmacro %}
 
-  {# ====================== KRW SECTION ====================== #}
-  <div class="card shadow-sm mb-4">
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <div class="fw-semibold">KRW Transactions</div>
-      {% if kpi_krw %}
-      <div class="small text-muted">
-        In: <span class="text-success fw-semibold">{{ kpi_krw.inflow_fmt }}</span> ·
-        Out: <span class="text-danger fw-semibold">{{ kpi_krw.outflow_fmt }}</span> ·
-        Net: <span class="fw-semibold">{{ kpi_krw.net_fmt }}</span>
-      </div>
-      {% endif %}
-    </div>
+{% macro account_options(accounts, selected_id, empty_label) -%}
+  <option value="">{{ empty_label }}</option>
+  {% for a in accounts %}
+    <option value="{{ a.id }}" {{ 'selected' if a.id == selected_id else '' }}>{{ a.name }}</option>
+  {% endfor %}
+{%- endmacro %}
 
-    <!-- KRW Filters -->
-    <form class="p-2 p-md-3 border-bottom" method="get" action="{{ url_for('main.transactions_page') }}">
-      <div class="d-flex flex-wrap gap-2 align-items-center">
-        <div class="search-wrap flex-grow-1">
-          <input type="search" class="form-control" name="krw_q" style="max-width: 180px;"
-                 placeholder="Search transaction (KRW)"
-                 value="{{ krw_q or '' }}">
-        </div>
-
-        <select class="form-select" name="krw_category_id" style="max-width:150px;">
-          <option value="">All Category</option>
-          {% for c in categories %}
-            <option value="{{ c.id }}" {{ 'selected' if c.id == krw_category_id else '' }}>{{ c.name }}</option>
-            {% for ch in c.children %}
-              <option value="{{ ch.id }}" {{ 'selected' if ch.id == krw_category_id else '' }}>└ {{ ch.name }}</option>
-            {% endfor %}
-          {% endfor %}
-        </select>
-
-        <select class="form-select" name="krw_account_id" style="max-width:150px;">
-          <option value="">All Account (KRW)</option>
-          {% for a in accounts_krw %}
-            <option value="{{ a.id }}" {{ 'selected' if a.id == krw_account_id else '' }}>
-              {{ a.name }}
-            </option>
-          {% endfor %}
-        </select>
-
-        <div class="d-flex align-items-center gap-2">
-          <i class="bi bi-calendar3 ms-1"></i>
-          <input type="date" class="form-control" name="krw_from" value="{{ krw_from_str }}">
-          <span class="mx-1">to</span>
-          <input type="date" class="form-control" name="krw_to" value="{{ krw_to_str }}">
-        </div>
-
-        <button class="btn btn-dark" type="submit">Apply</button>
-<div class="dropdown ms-auto">
-  <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
-    Download
-  </button>
-<!-- KRW download dropdown -->
-<ul class="dropdown-menu dropdown-menu-end">
-  <li><a class="dropdown-item" href="{{ krw_csv_url }}">CSV</a></li>
-  <li><a class="dropdown-item" href="{{ krw_pdf_url }}">PDF</a></li>
-</ul>
-</div>
-
-
-        {# keep BDT params when submitting KRW form, so BDT panel stays as-is #}
-        <input type="hidden" name="bdt_q" value="{{ bdt_q or '' }}">
-        <input type="hidden" name="bdt_category_id" value="{{ bdt_category_id or '' }}">
-        <input type="hidden" name="bdt_account_id" value="{{ bdt_account_id or '' }}">
-        <input type="hidden" name="bdt_ym" value="{{ bdt_ym or '' }}">
-      </div>
-    </form>
-
-    <!-- KRW Table -->
-    <div class="table-responsive">
-      <table class="table table-hover align-middle tx-table table-striped table-bordered">
-        <thead class="table-dark small">
-          <tr>
-            <th>Transaction</th>
-            <th>Account</th>
-            <th>Date &amp; Time</th>
-            <th class="text-end">Amount</th>
-            <th>Note</th>
-            <th class="text-end">Actions</th>
-            <th class="text-end">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for t in krw_rows %}
-          <tr>
-            <td>
-          <div class="fw-semibold">
-            {% if t.note and 'credit card settlement' in t.note|lower %}
-              Settlement
-            {% elif t.type.value in ['transfer_international', 'transfer_domestic'] %}
-              Transfer to {{ t.recipient_name if t.recipient_name else 'self' }}
-            {% else %}
-              {{ t.category_name or 'Uncategorized' }}
-            {% endif %}
-          </div>
-
-            <div class="text-muted tiny">
-                {{ t.type.value|capitalize }}
-            </div>
-            </td>
-
-            <td>
-              {% if t.account and t.account.type.value == 'credit' %}
-                <span class="badge rounded-pill bg-dark-subtle text-dark px-2">VISA</span>
-              {% endif %}
-              <div class="tiny text-muted">{{ t.account.name if t.account else '—' }}</div>
-            </td>
-            <td>
-              {{ t.date.strftime('%Y-%m-%d') }}
-              <div class="tiny text-muted">{{ t.created_at.strftime('%I:%M %p') if t.created_at else '' }}</div>
-            </td>
-            <td class="text-end fw-semibold">
-              {% if t.note and 'credit card settlement' in t.note|lower %}
-                <span class="text-primary">
-                  {{ '{:,.0f}'.format(t.amount) }} 원
-                </span>
-              {% else %}
-                <span class="{{ 'text-danger' if t.amount < 0 else 'text-success' }}">
-                  {{ '+{:,.0f}'.format(t.amount) if t.amount > 0 else '{:,.0f}'.format(t.amount) }} 원
-                </span>
-              {% endif %}
-            </td>
-            <td class="text-muted ellipsis">{{ t.note or '—' }}</td>
-            {# In the row loop, last cell: #}
-<td class="text-end">
-  {% set cur = 'KRW' if t.__table__.name == 'transactions_krw' else 'BDT' %}
-  {% if not t.is_deleted %}
-    <button type="button"
-            class="btn btn-sm btn-outline-primary"
-            data-bs-toggle="modal"
-            data-bs-target="#editTxModal"
-            data-tx='{{ {
-              "id": t.id,
-              "cur": cur,
-              "date": t.date.isoformat(),
-              "account_id": t.account_id,
-              "category_id": t.category_id,
-              "type": t.type.value,
-              "amount": (t.amount|string),
-              "note": t.note or "",
-              "is_pending": (1 if t.is_pending else 0)
-            } | tojson }}'>
-      Edit
-    </button>
-
-    <form method="post"
-          action="/transactions/{{ cur }}/{{ t.id }}/delete"
-          class="d-inline ms-1"
-          onsubmit="return confirm('Delete this transaction?');">
-      <button class="btn btn-sm btn-outline-danger">Delete</button>
-    </form>
+{% macro status_badge(t, is_settlement=False) -%}
+  {% if t.is_deleted %}
+    <span class="tx-status tx-status-deleted">Deleted</span>
+  {% elif t.is_pending %}
+    <span class="tx-status tx-status-pending">Pending</span>
+  {% elif is_settlement %}
+    <span class="tx-status tx-status-settlement">Settlement</span>
   {% else %}
-    <form method="post"
-          action="/transactions/{{ cur }}/{{ t.id }}/restore"
-          class="d-inline">
-      <button class="btn btn-sm btn-outline-success">Restore</button>
-    </form>
+    <span class="tx-status tx-status-completed">Completed</span>
   {% endif %}
-</td>
+{%- endmacro %}
 
-
-            <td class="text-end">
-              {% if t.is_deleted %}
-                <span class="badge bg-danger-subtle text-danger">Deleted</span>
-              {% elif t.is_pending %}
-                <span class="badge bg-warning-subtle text-warning">Pending</span>
-              {% elif t.note and 'credit card settlement' in t.note|lower %}
-                <span class="badge bg-primary-subtle text-primary">Settlement</span>
-              {% else %}
-                <span class="badge bg-success-subtle text-success">Completed</span>
-              {% endif %}
-            </td>
-          </tr>
-          {% else %}
-          <tr><td colspan="6" class="text-center text-muted py-4">No KRW transactions</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-{# ---------- KRW SAFE DEFAULTS ---------- #}
-{% set _krw_total = krw_total|default(0)|int %}
-{% set _krw_per   = krw_per_page|default(10)|int %}
-{% set _krw_page  = krw_page|default(1)|int %}
-{% set _krw_pages = krw_pages|default(((_krw_total + _krw_per - 1)//_krw_per))|int %}
-
-{# ---------- KRW PAGINATION (windowed, max 10) ---------- #}
-{% if _krw_pages >= 1 %}
-  {% set page = _krw_page %}
-  {% set total = _krw_pages %}
-  {% set win = 10 if total >= 10 else total %}
-  {% set half = win // 2 %}
-
-  {% set start = page - half %}
-  {% if start < 1 %}{% set start = 1 %}{% endif %}
-  {% set end = start + win - 1 %}
-  {% if end > total %}
-    {% set end = total %}
-    {% set start = end - win + 1 %}
-    {% if start < 1 %}{% set start = 1 %}{% endif %}
-  {% endif %}
-
-  {% macro krw_item(p, label=None, disabled=False, active=False) -%}
-    {% set lbl = label or p %}
-    {% if disabled %}
-      <li class="page-item disabled"><span class="page-link">{{ lbl }}</span></li>
-    {% elif active %}
-      <li class="page-item active" aria-current="page"><span class="page-link">{{ lbl }}</span></li>
-    {% else %}
-      <li class="page-item">
-        <a class="page-link"
-           href="{{ url_for('main.transactions_page',
-                            krw_page=p,
-                            krw_q=krw_q,
-                            krw_category_id=krw_category_id,
-                            krw_account_id=krw_account_id,
-                            krw_from=krw_from_str,
-                            krw_to=krw_to_str) }}#krw-table">{{ lbl }}</a>
-      </li>
-    {% endif %}
-  {%- endmacro %}
-
-  <nav aria-label="KRW pagination">
-    <ul class="pagination pagination-sm justify-content-center flex-wrap">
-      {{ krw_item(1, '« First', disabled=(page == 1)) }}
-      {{ krw_item(page-1, '‹ Prev', disabled=(page == 1)) }}
-
-      {% if start > 1 %}
-        {{ krw_item(1, '1') }}
-        {% if start > 2 %}
-          <li class="page-item disabled"><span class="page-link">…</span></li>
-        {% endif %}
-      {% endif %}
-
-      {% for p in range(start, end + 1) %}
-        {{ krw_item(p, active=(p == page)) }}
-      {% endfor %}
-
-      {% if end < total %}
-        {% if end < total - 1 %}
-          <li class="page-item disabled"><span class="page-link">…</span></li>
-        {% endif %}
-        {{ krw_item(total, total) }}
-      {% endif %}
-
-      {{ krw_item(page+1, 'Next ›', disabled=(page == total)) }}
-      {{ krw_item(total, 'Last »', disabled=(page == total)) }}
-    </ul>
-  </nav>
-{% endif %}
-
-
-    </div>
-  </div>
-
-  {# ====================== BDT SECTION ====================== #}
-  <div class="card shadow-sm">
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <div class="fw-semibold">BDT Transactions</div>
-      {% if kpi_bdt %}
-      <div class="small text-muted">
-        In: <span class="text-success fw-semibold">{{ kpi_bdt.inflow_fmt }}</span> ·
-        Out: <span class="text-danger fw-semibold">{{ kpi_bdt.outflow_fmt }}</span> ·
-      </div>
-      {% endif %}
-    </div>
-
-    <!-- BDT Filters -->
-    <form class="p-2 p-md-3 border-bottom" method="get" action="{{ url_for('main.transactions_page') }}">
-      <div class="d-flex flex-wrap gap-2 align-items-center">
-        <div class="search-wrap flex-grow-1">
-          <input type="search" class="form-control" name="bdt_q" style="max-width: 180px;"
-                 placeholder="Search transaction (BDT)"
-                 value="{{ bdt_q or '' }}">
-        </div>
-
-        <select class="form-select" name="bdt_category_id" style="max-width:150px;">
-          <option value="">All Category</option>
-          {% for c in categories %}
-            <option value="{{ c.id }}" {{ 'selected' if c.id == bdt_category_id else '' }}>{{ c.name }}</option>
-            {% for ch in c.children %}
-              <option value="{{ ch.id }}" {{ 'selected' if ch.id == bdt_category_id else '' }}>└ {{ ch.name }}</option>
-            {% endfor %}
-          {% endfor %}
-        </select>
-
-        <select class="form-select" name="bdt_account_id" style="max-width:150px;">
-          <option value="">All Account (BDT)</option>
-          {% for a in accounts_bdt %}
-            <option value="{{ a.id }}" {{ 'selected' if a.id == bdt_account_id else '' }}>
-              {{ a.name }}
-            </option>
-          {% endfor %}
-        </select>
-        <div class="d-flex align-items-center gap-2">
-          <i class="bi bi-calendar3 ms-1"></i>
-          <input type="date" class="form-control" name="bdt_from" value="{{ bdt_from_str }}">
-          <span class="mx-1">to</span>
-          <input type="date" class="form-control" name="bdt_to" value="{{ bdt_to_str }}">
-        </div>
-
-        <button class="btn btn-dark" type="submit">Apply</button>
-<div class="dropdown ms-auto">
-  <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
-    Download
-  </button>
-<!-- BDT download dropdown -->
-<ul class="dropdown-menu dropdown-menu-end">
-  <li><a class="dropdown-item" href="{{ bdt_csv_url }}">CSV</a></li>
-  <li><a class="dropdown-item" href="{{ bdt_pdf_url }}">PDF</a></li>
-</ul>
-</div>
-
-        {# keep KRW params when submitting BDT form #}
-        <input type="hidden" name="krw_q" value="{{ krw_q or '' }}">
-        <input type="hidden" name="krw_category_id" value="{{ krw_category_id or '' }}">
-        <input type="hidden" name="krw_account_id" value="{{ krw_account_id or '' }}">
-        <input type="hidden" name="krw_ym" value="{{ krw_ym or '' }}">
-      </div>
-    </form>
-
-    <!-- BDT Table -->
-    <div class="table-responsive">
-      <table class="table table-hover align-middle tx-table table-striped table-bordered">
-        <thead class="table-dark small">
-          <tr>
-            <th>Transaction</th>
-            <th>Account</th>
-            <th>Date &amp; Time</th>
-            <th class="text-end">Amount</th>
-            <th>Note</th>
-            <th class="text-end">Actions</th>
-            <th class="text-end">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for t in bdt_rows %}
-          <tr>
-              <td>
-                <div class="fw-semibold">
-                  {% if t.type.value in ['transfer_international', 'transfer_domestic'] %}
-                    Transfer to {{ t.recipient_name or 'Self' }}
-                  {% else %}
-                    {{ t.category_name or 'Uncategorized' }}
-                  {% endif %}
-
-                </div>
-                <div class="text-muted tiny">{{ t.type.value|capitalize }}</div>
-              </td>
-        
-
-            <td>
-              {% if t.account and t.account.type.value == 'credit' %}
-                <span class="badge rounded-pill bg-dark-subtle text-dark px-2">VISA</span>
-              {% endif %}
-              <div class="tiny text-muted">{{ t.account.name if t.account else '—' }}</div>
-            </td>
-            <td>
-              {{ t.date.strftime('%Y-%m-%d') }}
-              <div class="tiny text-muted">{{ t.created_at.strftime('%I:%M %p') if t.created_at else '' }}</div>
-            </td>
-            <td class="text-end fw-semibold">
-              {% set is_external_bdt = (t.type.value == 'transfer_international' and (t.recipient_name or "Self") != "Self") %}
-              <span class="{% if is_external_bdt %}text-primary{% else %}{{ 'text-danger' if t.amount < 0 else 'text-success' }}{% endif %}">
-                ৳{{ '+{:,.0f}'.format(t.amount) if t.amount > 0 else '{:,.0f}'.format(t.amount) }}
-              </span>
-            </td>
-
-            <td class="text-muted ellipsis">{{ t.note or '—' }}</td>
-            {# In the row loop, last cell: #}
-           <td class="text-end">
-  {% set cur = 'KRW' if t.__table__.name == 'transactions_krw' else 'BDT' %}
-  {% if not t.is_deleted %}
-    <button type="button"
-            class="btn btn-sm btn-outline-primary"
-            data-bs-toggle="modal"
-            data-bs-target="#editTxModal"
-            data-tx='{{ {
-              "id": t.id,
-              "cur": cur,
-              "date": t.date.isoformat(),
-              "account_id": t.account_id,
-              "category_id": t.category_id,
-              "type": t.type.value,
-              "amount": (t.amount|string),
-              "note": t.note or "",
-              "is_pending": (1 if t.is_pending else 0)
-            } | tojson }}'>
-      Edit
-    </button>
-
-    <form method="post"
-          action="/transactions/{{ cur }}/{{ t.id }}/delete"
-          class="d-inline ms-1"
-          onsubmit="return confirm('Delete this transaction?');">
-      <button class="btn btn-sm btn-outline-danger">Delete</button>
-    </form>
+{% macro transaction_title(t, cur) -%}
+  {% set is_settlement = (cur == 'KRW' and t.note and 'credit card settlement' in t.note|lower) %}
+  {% if is_settlement %}
+    Settlement
+  {% elif t.type.value in ['transfer_international', 'transfer_domestic'] %}
+    Transfer to {{ t.recipient_name or ('self' if cur == 'KRW' else 'Self') }}
   {% else %}
-    <form method="post"
-          action="/transactions/{{ cur }}/{{ t.id }}/restore"
-          class="d-inline">
-      <button class="btn btn-sm btn-outline-success">Restore</button>
-    </form>
+    {{ t.category_name or 'Uncategorized' }}
   {% endif %}
-</td>
+{%- endmacro %}
 
+{% macro tx_actions(t, cur) -%}
+  {% if not t.is_deleted %}
+    <div class="d-flex justify-content-end gap-2 flex-wrap">
+      <button type="button"
+              class="btn btn-sm btn-light border tx-action-btn"
+              data-bs-toggle="modal"
+              data-bs-target="#editTxModal"
+              data-tx='{{ {
+                "id": t.id,
+                "cur": cur,
+                "date": t.date.isoformat(),
+                "account_id": t.account_id,
+                "category_id": t.category_id,
+                "type": t.type.value,
+                "amount": (t.amount|string),
+                "note": t.note or "",
+                "is_pending": (1 if t.is_pending else 0)
+              } | tojson }}'>
+        <i class="bi bi-pencil-square me-1"></i>Edit
+      </button>
 
-            <td class="text-end">
-              {% if t.is_deleted %}
-                <span class="badge bg-danger-subtle text-danger">Deleted</span>
-              {% elif t.is_pending %}
-                <span class="badge bg-warning-subtle text-warning">Pending</span>
-              {% else %}
-                <span class="badge bg-success-subtle text-success">Completed</span>
-              {% endif %}
-            </td>
-          </tr>
-          {% else %}
-          <tr><td colspan="6" class="text-center text-muted py-4">No BDT transactions</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-{# ---------- BDT SAFE DEFAULTS ---------- #}
-{% set _bdt_total = bdt_total|default(0)|int %}
-{% set _bdt_per   = bdt_per_page|default(10)|int %}
-{% set _bdt_page  = bdt_page|default(1)|int %}
-{% set _bdt_pages = bdt_pages|default(((_bdt_total + _bdt_per - 1)//_bdt_per))|int %}
-
-{# ---------- BDT PAGINATION (windowed, max 10) ---------- #}
-{% if _bdt_pages >= 1 %}
-  {% set page = _bdt_page %}
-  {% set total = _bdt_pages %}
-  {% set win = 10 if total >= 10 else total %}
-  {% set half = win // 2 %}
-
-  {% set start = page - half %}
-  {% if start < 1 %}{% set start = 1 %}{% endif %}
-  {% set end = start + win - 1 %}
-  {% if end > total %}
-    {% set end = total %}
-    {% set start = end - win + 1 %}
-    {% if start < 1 %}{% set start = 1 %}{% endif %}
-  {% endif %}
-
-  {% macro bdt_item(p, label=None, disabled=False, active=False) -%}
-    {% set lbl = label or p %}
-    {% if disabled %}
-      <li class="page-item disabled"><span class="page-link">{{ lbl }}</span></li>
-    {% elif active %}
-      <li class="page-item active" aria-current="page"><span class="page-link">{{ lbl }}</span></li>
-    {% else %}
-      <li class="page-item">
-        <a class="page-link"
-           href="{{ url_for('main.transactions_page',
-                            bdt_page=p,
-                            bdt_q=bdt_q,
-                            bdt_category_id=bdt_category_id,
-                            bdt_account_id=bdt_account_id,
-                            bdt_from=bdt_from_str,
-                            bdt_to=bdt_to_str) }}#bdt-table">{{ lbl }}</a>
-      </li>
-    {% endif %}
-  {%- endmacro %}
-
-  <nav aria-label="BDT pagination">
-    <ul class="pagination pagination-sm justify-content-center flex-wrap">
-      {{ bdt_item(1, '« First', disabled=(page == 1)) }}
-      {{ bdt_item(page-1, '‹ Prev', disabled=(page == 1)) }}
-
-      {% if start > 1 %}
-        {{ bdt_item(1, '1') }}
-        {% if start > 2 %}
-          <li class="page-item disabled"><span class="page-link">…</span></li>
-        {% endif %}
-      {% endif %}
-
-      {% for p in range(start, end + 1) %}
-        {{ bdt_item(p, active=(p == page)) }}
-      {% endfor %}
-
-      {% if end < total %}
-        {% if end < total - 1 %}
-          <li class="page-item disabled"><span class="page-link">…</span></li>
-        {% endif %}
-        {{ bdt_item(total, total) }}
-      {% endif %}
-
-      {{ bdt_item(page+1, 'Next ›', disabled=(page == total)) }}
-      {{ bdt_item(total, 'Last »', disabled=(page == total)) }}
-    </ul>
-  </nav>
-{% endif %}
-
-
-    </div>
-  </div>
-  <!-- ================== Remittance Overview ================== -->
-<section id="send-overview" class="container py-3">
-  <!-- Filters -->
-  <div class="row g-3 align-items-end mb-3">
-    <div class="col-12 col-md-6">
-      <label for="filterYear" class="form-label small text-muted mb-1">Select Year</label>
-      <select id="filterYear" class="form-select">
-        <!-- Fill options dynamically -->
-        <option selected>2025</option>
-      </select>
-    </div>
-    <div class="col-12 col-md-6">
-      <label for="filterMonth" class="form-label small text-muted mb-1">Select Month</label>
-      <select id="filterMonth" class="form-select">
-        <!-- Fill options dynamically -->
-        <option selected>February</option>
-      </select>
-    </div>
-  </div>
-
-  <!-- Big KPI Card -->
-  <div class="card border-0 shadow-sm mb-4 overflow-hidden">
-    <div class="card-body p-4 position-relative">
-      <!-- Gradient background -->
-      <div class="position-absolute top-0 start-0 w-100 h-100" style="
-          background: linear-gradient(90deg, #3AA0FF 0%, #6DC1FF 50%, #95D4FF 100%);
-          opacity: .9;"></div>
-
-      <div class="position-relative text-center text-white">
-        <div class="fw-semibold small opacity-75">Total Sent Amount</div>
-        <div class="display-5 fw-bold lh-1 my-2">
-          ৳<span id="kpiTotalSent">98,300</span>
-        </div>
-        <div class="small opacity-75">
-          For <span id="kpiPeriod">February, 2025</span>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Charts Row -->
-  <div class="row g-4">
-    <!-- Left: Line chart -->
-    <div class="col-12 col-xl-6">
-      <div class="card shadow-sm h-100">
-        <div class="h6 mb-3 text-center mt-3">Total Sent Over the Year</div>
-        <div class="chart-wrap">
-          <canvas id="totalSentYearChart" height="260" aria-label="Total Sent Over the Year"></canvas>
-        </div>
-      </div>
-    </div>
-
-    <!-- Right: Bar chart -->
-    <div class="col-12 col-xl-6">
-      <div class="card shadow-sm h-100">
-        <div class="h6 mb-3 text-center mt-3">Total Sent Per Recipient</div>
-        <div class="chart-wrap">
-          <canvas id="totalSentByRecipientChart" height="260" aria-label="Total Sent Per Recipient"></canvas>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-</div>
-<div class="modal fade" id="editTxModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-scrollable">
-    <div class="modal-content">
-      <form method="post" id="editTxForm">
-
-        <div class="modal-header">
-          <h5 class="modal-title">Edit transaction</h5>
-          <button class="btn-close" data-bs-dismiss="modal" type="button"></button>
-        </div>
-
-        <div class="modal-body">
-          <input type="hidden" name="cur" id="tx-cur">
-          <div class="mb-2">
-            <label class="form-label">Date</label>
-            <input type="date" class="form-control" name="date" id="tx-date" required>
-          </div>
-          <div class="mb-2">
-            <label class="form-label">Account</label>
-            <select class="form-select" name="account_id" id="tx-account">
-              {% for a in accounts_krw %}<option data-cur="KRW" value="{{ a.id }}">{{ a.name }}</option>{% endfor %}
-              {% for a in accounts_bdt %}<option data-cur="BDT" value="{{ a.id }}">{{ a.name }}</option>{% endfor %}
-            </select>
-          </div>
-          <div class="mb-2">
-            <label class="form-label">Category</label>
-            <select class="form-select" name="category_id" id="tx-category">
-              <option value="">—</option>
-              {% for c in categories %}
-                <option value="{{ c.id }}">{{ c.name }}</option>
-                {% for ch in c.children %}
-                  <option value="{{ ch.id }}">└ {{ ch.name }}</option>
-                {% endfor %}
-              {% endfor %}
-            </select>
-          </div>
-          <div class="mb-2">
-            <label class="form-label">Type</label>
-            <select class="form-select" name="type" id="tx-type">
-              {% for tt in ['income','expense','transfer_domestic','transfer_international','refund','fee','adjustment'] %}
-                <option value="{{ tt }}">{{ tt|capitalize }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="mb-2">
-            <label class="form-label">Amount</label>
-            <input type="number" step="0.01" class="form-control" name="amount" id="tx-amount" required>
-            <div class="form-text">Use negative for outflow.</div>
-          </div>
-          <div class="mb-2">
-            <label class="form-label">Note</label>
-            <input type="text" class="form-control" name="note" id="tx-note">
-          </div>
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" name="is_pending" id="tx-pending">
-            <label class="form-check-label" for="tx-pending">Pending</label>
-          </div>
-        </div>
-
-        <div class="modal-footer">
-          <!-- Cancel button just closes modal -->
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <!-- Save button submits the form -->
-          <button type="submit" class="btn btn-primary">Save changes</button>
-        </div>
+      <form method="post"
+            action="/transactions/{{ cur }}/{{ t.id }}/delete"
+            class="d-inline"
+            onsubmit="return confirm('Delete this transaction?');">
+        <button class="btn btn-sm btn-outline-danger tx-action-btn">
+          <i class="bi bi-trash3 me-1"></i>Delete
+        </button>
       </form>
     </div>
+  {% else %}
+    <form method="post" action="/transactions/{{ cur }}/{{ t.id }}/restore" class="text-end">
+      <button class="btn btn-sm btn-outline-success tx-action-btn">
+        <i class="bi bi-arrow-counterclockwise me-1"></i>Restore
+      </button>
+    </form>
+  {% endif %}
+{%- endmacro %}
+
+{% block content %}
+<style>
+  .tx-page {
+    --tx-bg: #f5f7fb;
+    --tx-card: #ffffff;
+    --tx-ink: #111827;
+    --tx-muted: #6b7280;
+    --tx-line: rgba(15, 23, 42, .08);
+    --tx-soft: rgba(15, 23, 42, .04);
+    --tx-krw: #2563eb;
+    --tx-bdt: #059669;
+    --tx-danger: #dc2626;
+    --tx-warning: #d97706;
+    --tx-radius: 22px;
+  }
+
+  .tx-page .hero-card {
+    border: 0;
+    border-radius: 28px;
+    overflow: hidden;
+    color: #fff;
+    background:
+      radial-gradient(circle at 12% 18%, rgba(255,255,255,.23), transparent 22%),
+      radial-gradient(circle at 88% 16%, rgba(34,197,94,.34), transparent 28%),
+      linear-gradient(135deg, #111827 0%, #172554 48%, #064e3b 100%);
+    box-shadow: 0 22px 60px rgba(15, 23, 42, .18);
+  }
+
+  .tx-page .hero-card .hero-pill {
+    display: inline-flex;
+    gap: .45rem;
+    align-items: center;
+    padding: .4rem .75rem;
+    border-radius: 999px;
+    background: rgba(255,255,255,.14);
+    border: 1px solid rgba(255,255,255,.18);
+    color: rgba(255,255,255,.88);
+    font-size: .82rem;
+  }
+
+  .tx-page .stat-card,
+  .tx-page .section-card,
+  .tx-page .filter-card,
+  .tx-page .chart-card {
+    border: 1px solid var(--tx-line);
+    border-radius: var(--tx-radius);
+    background: var(--tx-card);
+    box-shadow: 0 12px 36px rgba(15, 23, 42, .06);
+  }
+
+  .tx-page .stat-card {
+    padding: 1rem;
+    height: 100%;
+  }
+
+  .tx-page .stat-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--tx-soft);
+    color: var(--tx-ink);
+    font-size: 1.05rem;
+  }
+
+  .tx-page .stat-label {
+    color: var(--tx-muted);
+    font-size: .77rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+  }
+
+  .tx-page .stat-value {
+    color: var(--tx-ink);
+    font-size: 1.25rem;
+    font-weight: 800;
+    line-height: 1.15;
+  }
+
+  .tx-page .nav-pills.tx-tabs {
+    gap: .5rem;
+    padding: .45rem;
+    border-radius: 999px;
+    background: #eef2f7;
+    width: fit-content;
+    max-width: 100%;
+  }
+
+  .tx-page .nav-pills.tx-tabs .nav-link {
+    border-radius: 999px;
+    color: #475569;
+    font-weight: 700;
+    font-size: .9rem;
+    padding: .55rem .9rem;
+  }
+
+  .tx-page .nav-pills.tx-tabs .nav-link.active {
+    background: #111827;
+    color: #fff;
+    box-shadow: 0 8px 20px rgba(17, 24, 39, .18);
+  }
+
+  .tx-page .section-card {
+    overflow: hidden;
+  }
+
+  .tx-page .section-head {
+    padding: 1rem 1rem .75rem;
+    border-bottom: 1px solid var(--tx-line);
+    background: linear-gradient(180deg, #fff, #fbfdff);
+  }
+
+  .tx-page .section-title {
+    font-weight: 850;
+    color: var(--tx-ink);
+    margin: 0;
+  }
+
+  .tx-page .section-subtitle {
+    color: var(--tx-muted);
+    font-size: .86rem;
+  }
+
+  .tx-page .filter-card {
+    padding: .9rem;
+    background: #fbfdff;
+  }
+
+  .tx-page .filter-card .form-label {
+    font-size: .76rem;
+    font-weight: 800;
+    color: #64748b;
+    margin-bottom: .25rem;
+  }
+
+  .tx-page .filter-card .form-control,
+  .tx-page .filter-card .form-select,
+  .tx-page .modal .form-control,
+  .tx-page .modal .form-select {
+    border-radius: 14px;
+    border-color: #dbe3ef;
+  }
+
+  .tx-page .btn-soft-dark {
+    border-radius: 14px;
+    background: #111827;
+    color: #fff;
+    border: 0;
+  }
+
+  .tx-page .btn-soft-dark:hover {
+    background: #0b1220;
+    color: #fff;
+  }
+
+  .tx-page .btn-soft-light {
+    border-radius: 14px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    color: #334155;
+  }
+
+  .tx-page .table-wrap {
+    border-top: 1px solid var(--tx-line);
+  }
+
+  .tx-page .modern-table {
+    margin-bottom: 0;
+  }
+
+  .tx-page .modern-table thead th {
+    background: #f8fafc;
+    color: #475569;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: .74rem;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    padding: .85rem .95rem;
+    white-space: nowrap;
+  }
+
+  .tx-page .modern-table tbody td {
+    padding: .95rem;
+    vertical-align: middle;
+    border-color: #edf2f7;
+  }
+
+  .tx-page .tx-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 15px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    color: #fff;
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    flex: 0 0 auto;
+  }
+
+  .tx-page .tx-avatar.bdt {
+    background: linear-gradient(135deg, #059669, #047857);
+  }
+
+  .tx-page .tx-title {
+    font-weight: 800;
+    color: #111827;
+    line-height: 1.15;
+  }
+
+  .tx-page .tx-meta,
+  .tx-page .tiny {
+    color: var(--tx-muted);
+    font-size: .78rem;
+  }
+
+  .tx-page .amount-positive { color: #059669; }
+  .tx-page .amount-negative { color: #dc2626; }
+  .tx-page .amount-settlement { color: #2563eb; }
+  .tx-page .amount-external { color: #7c3aed; }
+
+  .tx-page .note-cell {
+    max-width: 320px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #64748b;
+  }
+
+  .tx-page .tx-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: .38rem .65rem;
+    border-radius: 999px;
+    font-size: .75rem;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+
+  .tx-page .tx-status-completed { background: #dcfce7; color: #166534; }
+  .tx-page .tx-status-pending { background: #fef3c7; color: #92400e; }
+  .tx-page .tx-status-deleted { background: #fee2e2; color: #991b1b; }
+  .tx-page .tx-status-settlement { background: #dbeafe; color: #1d4ed8; }
+
+  .tx-page .tx-action-btn {
+    border-radius: 12px;
+    font-weight: 700;
+  }
+
+  .tx-page .pagination .page-link {
+    border-radius: 12px;
+    margin: .15rem;
+    border-color: #e2e8f0;
+    color: #334155;
+    font-weight: 700;
+  }
+
+  .tx-page .pagination .active .page-link {
+    background: #111827;
+    border-color: #111827;
+    color: #fff;
+  }
+
+  .tx-page .remittance-hero {
+    border-radius: 26px;
+    overflow: hidden;
+    color: #fff;
+    background:
+      radial-gradient(circle at 18% 20%, rgba(255,255,255,.28), transparent 22%),
+      linear-gradient(135deg, #0284c7 0%, #2563eb 45%, #7c3aed 100%);
+    box-shadow: 0 18px 40px rgba(37, 99, 235, .18);
+  }
+
+  .tx-page .chart-box {
+    height: 320px;
+    position: relative;
+  }
+
+  .tx-page .local-search-wrap {
+    position: relative;
+  }
+
+  .tx-page .local-search-wrap .bi-search {
+    position: absolute;
+    left: .9rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+  }
+
+  .tx-page .local-search-wrap input {
+    padding-left: 2.35rem;
+    border-radius: 14px;
+  }
+
+
+
+  /* Strong hero contrast fix: keeps hero text visible even if base.html/card styles override colors */
+  .tx-page .hero-card,
+  .tx-page .hero-card h1,
+  .tx-page .hero-card p,
+  .tx-page .hero-card span,
+  .tx-page .hero-card div,
+  .tx-page .hero-card i,
+  .tx-page .hero-card .small,
+  .tx-page .hero-card .h3 {
+    color: #ffffff !important;
+  }
+
+  .tx-page .hero-card {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .tx-page .hero-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: linear-gradient(135deg, rgba(2, 6, 23, .70), rgba(15, 23, 42, .42));
+    pointer-events: none;
+  }
+
+  .tx-page .hero-card .card-body {
+    position: relative;
+    z-index: 1;
+  }
+
+  .tx-page .hero-card h1,
+  .tx-page .hero-card p,
+  .tx-page .hero-pill,
+  .tx-page .hero-card .h3 {
+    text-shadow: 0 2px 14px rgba(0, 0, 0, .28);
+  }
+
+  .tx-page .hero-card .hero-pill,
+  .tx-page .hero-card .rounded-4 {
+    background: rgba(255, 255, 255, .18) !important;
+    border-color: rgba(255, 255, 255, .30) !important;
+    backdrop-filter: blur(10px);
+  }
+
+  .tx-page .remittance-hero,
+  .tx-page .remittance-hero * {
+    color: #ffffff !important;
+  }
+
+  @media (max-width: 767.98px) {
+    .tx-page .hero-card { border-radius: 22px; }
+    .tx-page .hero-card h1 { font-size: 1.6rem; }
+    .tx-page .nav-pills.tx-tabs {
+      width: 100%;
+      border-radius: 18px;
+    }
+    .tx-page .nav-pills.tx-tabs .nav-item { flex: 1 1 auto; }
+    .tx-page .nav-pills.tx-tabs .nav-link { width: 100%; text-align: center; }
+    .tx-page .modern-table thead { display: none; }
+    .tx-page .modern-table,
+    .tx-page .modern-table tbody,
+    .tx-page .modern-table tr,
+    .tx-page .modern-table td {
+      display: block;
+      width: 100%;
+    }
+    .tx-page .modern-table tr {
+      margin: .75rem;
+      border: 1px solid #e2e8f0;
+      border-radius: 18px;
+      overflow: hidden;
+      background: #fff;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, .05);
+    }
+    .tx-page .modern-table tbody td {
+      border: 0;
+      border-bottom: 1px solid #edf2f7;
+      padding: .75rem .9rem;
+    }
+    .tx-page .modern-table tbody td:last-child { border-bottom: 0; }
+    .tx-page .modern-table td[data-label]::before {
+      content: attr(data-label);
+      display: block;
+      font-size: .72rem;
+      color: #94a3b8;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      margin-bottom: .25rem;
+    }
+    .tx-page .text-end { text-align: left !important; }
+    .tx-page .note-cell { max-width: 100%; white-space: normal; }
+  }
+</style>
+
+<div class="tx-page container-fluid py-3 py-md-4">
+  {% set _krw_total = krw_total|default(0)|int %}
+  {% set _bdt_total = bdt_total|default(0)|int %}
+  {% set _krw_rows_count = krw_rows|length %}
+  {% set _bdt_rows_count = bdt_rows|length %}
+
+  <div class="hero-card card mb-4">
+    <div class="card-body p-4 p-lg-5">
+      <div class="row g-4 align-items-center">
+        <div class="col-12 col-xl-7">
+          <span class="hero-pill mb-3"><i class="bi bi-wallet2"></i> Money movement dashboard</span>
+          <h1 class="fw-black mb-2" style="font-weight: 900;">Transactions</h1>
+          <p class="mb-0 opacity-75">
+            Track KRW and BDT money flow, manage pending/deleted records, download reports, and review remittance trends from one clean page.
+          </p>
+        </div>
+        <div class="col-12 col-xl-5">
+          <div class="row g-3">
+            <div class="col-6">
+              <div class="p-3 rounded-4" style="background: rgba(255,255,255,.13); border: 1px solid rgba(255,255,255,.18);">
+                <div class="small opacity-75">KRW rows</div>
+                <div class="h3 fw-bold mb-0">{{ _krw_total if _krw_total else _krw_rows_count }}</div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="p-3 rounded-4" style="background: rgba(255,255,255,.13); border: 1px solid rgba(255,255,255,.18);">
+                <div class="small opacity-75">BDT rows</div>
+                <div class="h3 fw-bold mb-0">{{ _bdt_total if _bdt_total else _bdt_rows_count }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-12 col-md-6 col-xl-3">
+      <div class="stat-card">
+        <div class="d-flex align-items-start justify-content-between gap-3">
+          <div>
+            <div class="stat-label">KRW Inflow</div>
+            <div class="stat-value text-success">{{ kpi_krw.inflow_fmt if kpi_krw else '—' }}</div>
+          </div>
+          <div class="stat-icon"><i class="bi bi-arrow-down-left"></i></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-3">
+      <div class="stat-card">
+        <div class="d-flex align-items-start justify-content-between gap-3">
+          <div>
+            <div class="stat-label">KRW Outflow</div>
+            <div class="stat-value text-danger">{{ kpi_krw.outflow_fmt if kpi_krw else '—' }}</div>
+          </div>
+          <div class="stat-icon"><i class="bi bi-arrow-up-right"></i></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-3">
+      <div class="stat-card">
+        <div class="d-flex align-items-start justify-content-between gap-3">
+          <div>
+            <div class="stat-label">KRW Net</div>
+            <div class="stat-value">{{ kpi_krw.net_fmt if kpi_krw else '—' }}</div>
+          </div>
+          <div class="stat-icon"><i class="bi bi-activity"></i></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-3">
+      <div class="stat-card">
+        <div class="d-flex align-items-start justify-content-between gap-3">
+          <div>
+            <div class="stat-label">BDT Flow</div>
+            <div class="stat-value text-success">{{ kpi_bdt.inflow_fmt if kpi_bdt else '—' }}</div>
+            <div class="tiny">Out: {{ kpi_bdt.outflow_fmt if kpi_bdt else '—' }}</div>
+          </div>
+          <div class="stat-icon"><i class="bi bi-send-check"></i></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-3">
+    <ul class="nav nav-pills tx-tabs" id="txTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="krw-tab" data-bs-toggle="pill" data-bs-target="#krw-pane" type="button" role="tab">
+          <i class="bi bi-cash-stack me-1"></i>KRW
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="bdt-tab" data-bs-toggle="pill" data-bs-target="#bdt-pane" type="button" role="tab">
+          <i class="bi bi-bank me-1"></i>BDT
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="send-tab" data-bs-toggle="pill" data-bs-target="#send-pane" type="button" role="tab">
+          <i class="bi bi-graph-up-arrow me-1"></i>Remittance
+        </button>
+      </li>
+    </ul>
+
+    <a class="btn btn-soft-light" href="{{ url_for('main.transactions_page') }}">
+      <i class="bi bi-arrow-clockwise me-1"></i>Reset all filters
+    </a>
+  </div>
+
+  <div class="tab-content" id="txTabsContent">
+    <div class="tab-pane fade show active" id="krw-pane" role="tabpanel" aria-labelledby="krw-tab" tabindex="0">
+      <div class="section-card mb-4" id="krw-table">
+        <div class="section-head">
+          <div class="d-flex flex-column flex-xl-row justify-content-between gap-3">
+            <div>
+              <h5 class="section-title"><i class="bi bi-currency-exchange me-2 text-primary"></i>KRW Transactions</h5>
+              <div class="section-subtitle">
+                In: <span class="text-success fw-bold">{{ kpi_krw.inflow_fmt if kpi_krw else '—' }}</span>
+                · Out: <span class="text-danger fw-bold">{{ kpi_krw.outflow_fmt if kpi_krw else '—' }}</span>
+                · Net: <span class="fw-bold">{{ kpi_krw.net_fmt if kpi_krw else '—' }}</span>
+              </div>
+            </div>
+            <div class="local-search-wrap" style="min-width: min(100%, 320px);">
+              <i class="bi bi-search"></i>
+              <input type="search" class="form-control" data-table-search="krwTxTable" placeholder="Quick search current page...">
+            </div>
+          </div>
+        </div>
+
+        <form class="filter-card m-3" method="get" action="{{ url_for('main.transactions_page') }}">
+          <div class="row g-3 align-items-end">
+            <div class="col-12 col-md-6 col-xl-3">
+              <label class="form-label">Search</label>
+              <input type="search" class="form-control" name="krw_q" placeholder="Search transaction (KRW)" value="{{ krw_q or '' }}">
+            </div>
+            <div class="col-12 col-md-6 col-xl-2">
+              <label class="form-label">Category</label>
+              <select class="form-select" name="krw_category_id">{{ category_options(krw_category_id) }}</select>
+            </div>
+            <div class="col-12 col-md-6 col-xl-2">
+              <label class="form-label">Account</label>
+              <select class="form-select" name="krw_account_id">{{ account_options(accounts_krw, krw_account_id, 'All KRW Accounts') }}</select>
+            </div>
+            <div class="col-6 col-md-3 col-xl-2">
+              <label class="form-label">From</label>
+              <input type="date" class="form-control" name="krw_from" value="{{ krw_from_str }}">
+            </div>
+            <div class="col-6 col-md-3 col-xl-2">
+              <label class="form-label">To</label>
+              <input type="date" class="form-control" name="krw_to" value="{{ krw_to_str }}">
+            </div>
+            <div class="col-12 col-xl-1 d-grid">
+              <button class="btn btn-soft-dark" type="submit">Apply</button>
+            </div>
+
+            <div class="col-12 d-flex flex-wrap justify-content-between align-items-center gap-2 pt-1">
+              <div class="tiny">Showing {{ _krw_rows_count }} on this page{% if _krw_total %} · {{ _krw_total }} total{% endif %}</div>
+              <div class="dropdown">
+                <button class="btn btn-sm btn-soft-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                  <i class="bi bi-download me-1"></i>Download
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                  <li><a class="dropdown-item" href="{{ krw_csv_url }}">CSV</a></li>
+                  <li><a class="dropdown-item" href="{{ krw_pdf_url }}">PDF</a></li>
+                </ul>
+              </div>
+            </div>
+
+            <input type="hidden" name="bdt_q" value="{{ bdt_q or '' }}">
+            <input type="hidden" name="bdt_category_id" value="{{ bdt_category_id or '' }}">
+            <input type="hidden" name="bdt_account_id" value="{{ bdt_account_id or '' }}">
+            <input type="hidden" name="bdt_from" value="{{ bdt_from_str|default('') }}">
+            <input type="hidden" name="bdt_to" value="{{ bdt_to_str|default('') }}">
+            <input type="hidden" name="bdt_ym" value="{{ bdt_ym|default('') }}">
+          </div>
+        </form>
+
+        <div class="table-responsive table-wrap">
+          <table class="table table-hover align-middle modern-table" id="krwTxTable">
+            <thead>
+              <tr>
+                <th>Transaction</th>
+                <th>Account</th>
+                <th>Date &amp; Time</th>
+                <th class="text-end">Amount</th>
+                <th>Note</th>
+                <th class="text-end">Status</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for t in krw_rows %}
+                {% set is_settlement = (t.note and 'credit card settlement' in t.note|lower) %}
+                <tr>
+                  <td data-label="Transaction">
+                    <div class="d-flex align-items-center gap-3">
+                      <div class="tx-avatar">₩</div>
+                      <div>
+                        <div class="tx-title">{{ transaction_title(t, 'KRW') }}</div>
+                        <div class="tx-meta">{{ t.type.value|replace('_', ' ')|title }}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td data-label="Account">
+                    {% if t.account and t.account.type.value == 'credit' %}
+                      <span class="badge rounded-pill bg-dark-subtle text-dark px-2 mb-1">VISA</span>
+                    {% endif %}
+                    <div class="fw-semibold">{{ t.account.name if t.account else '—' }}</div>
+                  </td>
+                  <td data-label="Date & Time">
+                    <div class="fw-semibold">{{ t.date.strftime('%Y-%m-%d') }}</div>
+                    <div class="tx-meta">{{ t.created_at.strftime('%I:%M %p') if t.created_at else '' }}</div>
+                  </td>
+                  <td data-label="Amount" class="text-end fw-bold">
+                    {% if is_settlement %}
+                      <span class="amount-settlement">{{ '{:,.0f}'.format(t.amount) }} 원</span>
+                    {% else %}
+                      <span class="{{ 'amount-negative' if t.amount < 0 else 'amount-positive' }}">
+                        {{ '+{:,.0f}'.format(t.amount) if t.amount > 0 else '{:,.0f}'.format(t.amount) }} 원
+                      </span>
+                    {% endif %}
+                  </td>
+                  <td data-label="Note"><div class="note-cell" title="{{ t.note or '—' }}">{{ t.note or '—' }}</div></td>
+                  <td data-label="Status" class="text-end">{{ status_badge(t, is_settlement) }}</td>
+                  <td data-label="Actions" class="text-end">{{ tx_actions(t, 'KRW') }}</td>
+                </tr>
+              {% else %}
+                <tr class="tx-empty-row"><td colspan="7" class="text-center text-muted py-5">No KRW transactions found</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        {% set _krw_per = krw_per_page|default(10)|int %}
+        {% set _krw_page = krw_page|default(1)|int %}
+        {% set _krw_pages = krw_pages|default(((_krw_total + _krw_per - 1)//_krw_per))|int %}
+        {% if _krw_pages >= 1 %}
+          {% set page = _krw_page %}
+          {% set total = _krw_pages %}
+          {% set win = 10 if total >= 10 else total %}
+          {% set half = win // 2 %}
+          {% set start = page - half %}
+          {% if start < 1 %}{% set start = 1 %}{% endif %}
+          {% set end = start + win - 1 %}
+          {% if end > total %}
+            {% set end = total %}
+            {% set start = end - win + 1 %}
+            {% if start < 1 %}{% set start = 1 %}{% endif %}
+          {% endif %}
+
+          {% macro krw_item(p, label=None, disabled=False, active=False) -%}
+            {% set lbl = label or p %}
+            {% if disabled %}
+              <li class="page-item disabled"><span class="page-link">{{ lbl }}</span></li>
+            {% elif active %}
+              <li class="page-item active" aria-current="page"><span class="page-link">{{ lbl }}</span></li>
+            {% else %}
+              <li class="page-item"><a class="page-link" href="{{ url_for('main.transactions_page', krw_page=p, krw_q=krw_q, krw_category_id=krw_category_id, krw_account_id=krw_account_id, krw_from=krw_from_str, krw_to=krw_to_str, bdt_q=bdt_q, bdt_category_id=bdt_category_id, bdt_account_id=bdt_account_id, bdt_from=bdt_from_str, bdt_to=bdt_to_str) }}#krw-table">{{ lbl }}</a></li>
+            {% endif %}
+          {%- endmacro %}
+
+          <nav class="p-3" aria-label="KRW pagination">
+            <ul class="pagination pagination-sm justify-content-center flex-wrap mb-0">
+              {{ krw_item(1, '« First', disabled=(page == 1)) }}
+              {{ krw_item(page-1, '‹ Prev', disabled=(page == 1)) }}
+              {% if start > 1 %}
+                {{ krw_item(1, '1') }}
+                {% if start > 2 %}<li class="page-item disabled"><span class="page-link">…</span></li>{% endif %}
+              {% endif %}
+              {% for p in range(start, end + 1) %}{{ krw_item(p, active=(p == page)) }}{% endfor %}
+              {% if end < total %}
+                {% if end < total - 1 %}<li class="page-item disabled"><span class="page-link">…</span></li>{% endif %}
+                {{ krw_item(total, total) }}
+              {% endif %}
+              {{ krw_item(page+1, 'Next ›', disabled=(page == total)) }}
+              {{ krw_item(total, 'Last »', disabled=(page == total)) }}
+            </ul>
+          </nav>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="tab-pane fade" id="bdt-pane" role="tabpanel" aria-labelledby="bdt-tab" tabindex="0">
+      <div class="section-card mb-4" id="bdt-table">
+        <div class="section-head">
+          <div class="d-flex flex-column flex-xl-row justify-content-between gap-3">
+            <div>
+              <h5 class="section-title"><i class="bi bi-send me-2 text-success"></i>BDT Transactions</h5>
+              <div class="section-subtitle">
+                In: <span class="text-success fw-bold">{{ kpi_bdt.inflow_fmt if kpi_bdt else '—' }}</span>
+                · Out: <span class="text-danger fw-bold">{{ kpi_bdt.outflow_fmt if kpi_bdt else '—' }}</span>
+              </div>
+            </div>
+            <div class="local-search-wrap" style="min-width: min(100%, 320px);">
+              <i class="bi bi-search"></i>
+              <input type="search" class="form-control" data-table-search="bdtTxTable" placeholder="Quick search current page...">
+            </div>
+          </div>
+        </div>
+
+        <form class="filter-card m-3" method="get" action="{{ url_for('main.transactions_page') }}">
+          <div class="row g-3 align-items-end">
+            <div class="col-12 col-md-6 col-xl-3">
+              <label class="form-label">Search</label>
+              <input type="search" class="form-control" name="bdt_q" placeholder="Search transaction (BDT)" value="{{ bdt_q or '' }}">
+            </div>
+            <div class="col-12 col-md-6 col-xl-2">
+              <label class="form-label">Category</label>
+              <select class="form-select" name="bdt_category_id">{{ category_options(bdt_category_id) }}</select>
+            </div>
+            <div class="col-12 col-md-6 col-xl-2">
+              <label class="form-label">Account</label>
+              <select class="form-select" name="bdt_account_id">{{ account_options(accounts_bdt, bdt_account_id, 'All BDT Accounts') }}</select>
+            </div>
+            <div class="col-6 col-md-3 col-xl-2">
+              <label class="form-label">From</label>
+              <input type="date" class="form-control" name="bdt_from" value="{{ bdt_from_str }}">
+            </div>
+            <div class="col-6 col-md-3 col-xl-2">
+              <label class="form-label">To</label>
+              <input type="date" class="form-control" name="bdt_to" value="{{ bdt_to_str }}">
+            </div>
+            <div class="col-12 col-xl-1 d-grid">
+              <button class="btn btn-soft-dark" type="submit">Apply</button>
+            </div>
+
+            <div class="col-12 d-flex flex-wrap justify-content-between align-items-center gap-2 pt-1">
+              <div class="tiny">Showing {{ _bdt_rows_count }} on this page{% if _bdt_total %} · {{ _bdt_total }} total{% endif %}</div>
+              <div class="dropdown">
+                <button class="btn btn-sm btn-soft-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                  <i class="bi bi-download me-1"></i>Download
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                  <li><a class="dropdown-item" href="{{ bdt_csv_url }}">CSV</a></li>
+                  <li><a class="dropdown-item" href="{{ bdt_pdf_url }}">PDF</a></li>
+                </ul>
+              </div>
+            </div>
+
+            <input type="hidden" name="krw_q" value="{{ krw_q or '' }}">
+            <input type="hidden" name="krw_category_id" value="{{ krw_category_id or '' }}">
+            <input type="hidden" name="krw_account_id" value="{{ krw_account_id or '' }}">
+            <input type="hidden" name="krw_from" value="{{ krw_from_str|default('') }}">
+            <input type="hidden" name="krw_to" value="{{ krw_to_str|default('') }}">
+            <input type="hidden" name="krw_ym" value="{{ krw_ym|default('') }}">
+          </div>
+        </form>
+
+        <div class="table-responsive table-wrap">
+          <table class="table table-hover align-middle modern-table" id="bdtTxTable">
+            <thead>
+              <tr>
+                <th>Transaction</th>
+                <th>Account</th>
+                <th>Date &amp; Time</th>
+                <th class="text-end">Amount</th>
+                <th>Note</th>
+                <th class="text-end">Status</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for t in bdt_rows %}
+                {% set is_external_bdt = (t.type.value == 'transfer_international' and (t.recipient_name or 'Self') != 'Self') %}
+                <tr>
+                  <td data-label="Transaction">
+                    <div class="d-flex align-items-center gap-3">
+                      <div class="tx-avatar bdt">৳</div>
+                      <div>
+                        <div class="tx-title">{{ transaction_title(t, 'BDT') }}</div>
+                        <div class="tx-meta">{{ t.type.value|replace('_', ' ')|title }}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td data-label="Account">
+                    {% if t.account and t.account.type.value == 'credit' %}
+                      <span class="badge rounded-pill bg-dark-subtle text-dark px-2 mb-1">VISA</span>
+                    {% endif %}
+                    <div class="fw-semibold">{{ t.account.name if t.account else '—' }}</div>
+                  </td>
+                  <td data-label="Date & Time">
+                    <div class="fw-semibold">{{ t.date.strftime('%Y-%m-%d') }}</div>
+                    <div class="tx-meta">{{ t.created_at.strftime('%I:%M %p') if t.created_at else '' }}</div>
+                  </td>
+                  <td data-label="Amount" class="text-end fw-bold">
+                    <span class="{% if is_external_bdt %}amount-external{% else %}{{ 'amount-negative' if t.amount < 0 else 'amount-positive' }}{% endif %}">
+                      ৳{{ '+{:,.0f}'.format(t.amount) if t.amount > 0 else '{:,.0f}'.format(t.amount) }}
+                    </span>
+                  </td>
+                  <td data-label="Note"><div class="note-cell" title="{{ t.note or '—' }}">{{ t.note or '—' }}</div></td>
+                  <td data-label="Status" class="text-end">{{ status_badge(t, False) }}</td>
+                  <td data-label="Actions" class="text-end">{{ tx_actions(t, 'BDT') }}</td>
+                </tr>
+              {% else %}
+                <tr class="tx-empty-row"><td colspan="7" class="text-center text-muted py-5">No BDT transactions found</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        {% set _bdt_per = bdt_per_page|default(10)|int %}
+        {% set _bdt_page = bdt_page|default(1)|int %}
+        {% set _bdt_pages = bdt_pages|default(((_bdt_total + _bdt_per - 1)//_bdt_per))|int %}
+        {% if _bdt_pages >= 1 %}
+          {% set page = _bdt_page %}
+          {% set total = _bdt_pages %}
+          {% set win = 10 if total >= 10 else total %}
+          {% set half = win // 2 %}
+          {% set start = page - half %}
+          {% if start < 1 %}{% set start = 1 %}{% endif %}
+          {% set end = start + win - 1 %}
+          {% if end > total %}
+            {% set end = total %}
+            {% set start = end - win + 1 %}
+            {% if start < 1 %}{% set start = 1 %}{% endif %}
+          {% endif %}
+
+          {% macro bdt_item(p, label=None, disabled=False, active=False) -%}
+            {% set lbl = label or p %}
+            {% if disabled %}
+              <li class="page-item disabled"><span class="page-link">{{ lbl }}</span></li>
+            {% elif active %}
+              <li class="page-item active" aria-current="page"><span class="page-link">{{ lbl }}</span></li>
+            {% else %}
+              <li class="page-item"><a class="page-link" href="{{ url_for('main.transactions_page', bdt_page=p, bdt_q=bdt_q, bdt_category_id=bdt_category_id, bdt_account_id=bdt_account_id, bdt_from=bdt_from_str, bdt_to=bdt_to_str, krw_q=krw_q, krw_category_id=krw_category_id, krw_account_id=krw_account_id, krw_from=krw_from_str, krw_to=krw_to_str) }}#bdt-table">{{ lbl }}</a></li>
+            {% endif %}
+          {%- endmacro %}
+
+          <nav class="p-3" aria-label="BDT pagination">
+            <ul class="pagination pagination-sm justify-content-center flex-wrap mb-0">
+              {{ bdt_item(1, '« First', disabled=(page == 1)) }}
+              {{ bdt_item(page-1, '‹ Prev', disabled=(page == 1)) }}
+              {% if start > 1 %}
+                {{ bdt_item(1, '1') }}
+                {% if start > 2 %}<li class="page-item disabled"><span class="page-link">…</span></li>{% endif %}
+              {% endif %}
+              {% for p in range(start, end + 1) %}{{ bdt_item(p, active=(p == page)) }}{% endfor %}
+              {% if end < total %}
+                {% if end < total - 1 %}<li class="page-item disabled"><span class="page-link">…</span></li>{% endif %}
+                {{ bdt_item(total, total) }}
+              {% endif %}
+              {{ bdt_item(page+1, 'Next ›', disabled=(page == total)) }}
+              {{ bdt_item(total, 'Last »', disabled=(page == total)) }}
+            </ul>
+          </nav>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="tab-pane fade" id="send-pane" role="tabpanel" aria-labelledby="send-tab" tabindex="0">
+      <section id="send-overview" class="section-card overflow-hidden">
+        <div class="section-head">
+          <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-end gap-3">
+            <div>
+              <h5 class="section-title"><i class="bi bi-globe-central-south-asia me-2 text-primary"></i>Remittance Overview</h5>
+              <div class="section-subtitle">Yearly sending trend and recipient-wise totals from your send overview API.</div>
+            </div>
+            <div class="row g-2 w-100 w-lg-auto" style="max-width: 560px;">
+              <div class="col-12 col-sm-6">
+                <label for="filterYear" class="form-label small text-muted fw-bold mb-1">Year</label>
+                <select id="filterYear" class="form-select"></select>
+              </div>
+              <div class="col-12 col-sm-6">
+                <label for="filterMonth" class="form-label small text-muted fw-bold mb-1">Month</label>
+                <select id="filterMonth" class="form-select"></select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="p-3 p-md-4">
+          <div class="remittance-hero mb-4">
+            <div class="p-4 p-lg-5 text-center">
+              <div class="small opacity-75 fw-bold text-uppercase" style="letter-spacing: .08em;">Total Sent Amount</div>
+              <div class="display-5 fw-bold lh-1 my-3">৳<span id="kpiTotalSent">0</span></div>
+              <div class="opacity-75">For <span id="kpiPeriod">—</span></div>
+            </div>
+          </div>
+
+          <div class="row g-4">
+            <div class="col-12 col-xl-6">
+              <div class="chart-card h-100 p-3 p-md-4">
+                <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                  <div>
+                    <h6 class="fw-bold mb-1">Total Sent Over the Year</h6>
+                    <div class="tiny">Monthly remittance trend</div>
+                  </div>
+                  <i class="bi bi-graph-up text-primary fs-4"></i>
+                </div>
+                <div class="chart-box"><canvas id="totalSentYearChart" aria-label="Total Sent Over the Year"></canvas></div>
+              </div>
+            </div>
+            <div class="col-12 col-xl-6">
+              <div class="chart-card h-100 p-3 p-md-4">
+                <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                  <div>
+                    <h6 class="fw-bold mb-1">Total Sent Per Recipient</h6>
+                    <div class="tiny">Recipient comparison for selected scope</div>
+                  </div>
+                  <i class="bi bi-bar-chart-line text-success fs-4"></i>
+                </div>
+                <div class="chart-box"><canvas id="totalSentByRecipientChart" aria-label="Total Sent Per Recipient"></canvas></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="sendOverviewError" class="alert alert-warning mt-3 d-none mb-0"></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="modal fade" id="editTxModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
+      <div class="modal-content border-0 rounded-4 shadow-lg">
+        <form method="post" id="editTxForm">
+          <div class="modal-header border-0 pb-0">
+            <div>
+              <h5 class="modal-title fw-bold">Edit transaction</h5>
+              <div class="tiny">Update date, account, category, type, amount, note, or pending status.</div>
+            </div>
+            <button class="btn-close" data-bs-dismiss="modal" type="button"></button>
+          </div>
+
+          <div class="modal-body">
+            <input type="hidden" name="cur" id="tx-cur">
+            <div class="row g-3">
+              <div class="col-12 col-md-6">
+                <label class="form-label small fw-bold text-muted">Date</label>
+                <input type="date" class="form-control" name="date" id="tx-date" required>
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label small fw-bold text-muted">Account</label>
+                <select class="form-select" name="account_id" id="tx-account">
+                  {% for a in accounts_krw %}<option data-cur="KRW" value="{{ a.id }}">{{ a.name }}</option>{% endfor %}
+                  {% for a in accounts_bdt %}<option data-cur="BDT" value="{{ a.id }}">{{ a.name }}</option>{% endfor %}
+                </select>
+              </div>
+              <div class="col-12">
+                <label class="form-label small fw-bold text-muted">Category</label>
+                <select class="form-select" name="category_id" id="tx-category">
+                  <option value="">—</option>
+                  {% for c in categories %}
+                    <option value="{{ c.id }}">{{ c.name }}</option>
+                    {% for ch in c.children %}<option value="{{ ch.id }}">└ {{ ch.name }}</option>{% endfor %}
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label small fw-bold text-muted">Type</label>
+                <select class="form-select" name="type" id="tx-type">
+                  {% for tt in ['income','expense','transfer_domestic','transfer_international','refund','fee','adjustment'] %}
+                    <option value="{{ tt }}">{{ tt|replace('_', ' ')|title }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label small fw-bold text-muted">Amount</label>
+                <input type="number" step="0.01" class="form-control" name="amount" id="tx-amount" required>
+                <div class="form-text">Use negative for outflow.</div>
+              </div>
+              <div class="col-12">
+                <label class="form-label small fw-bold text-muted">Note</label>
+                <input type="text" class="form-control" name="note" id="tx-note">
+              </div>
+              <div class="col-12">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" name="is_pending" id="tx-pending">
+                  <label class="form-check-label" for="tx-pending">Mark as pending</label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer border-0 pt-0">
+            <button type="button" class="btn btn-soft-light" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-soft-dark">Save changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 </div>
+{% endblock %}
 
 {% block scripts %}
 {{ super() }}
 <script>
-document.getElementById('editTxModal').addEventListener('show.bs.modal', function (e) {
-  const raw = e.relatedTarget?.getAttribute('data-tx');
-  if (!raw) return;
-  const tx = JSON.parse(raw);
-
-  // Fill fields
-  document.getElementById('tx-date').value    = tx.date;
-  document.getElementById('tx-account').value = tx.account_id;
-  document.getElementById('tx-category').value= tx.category_id || "";
-  document.getElementById('tx-type').value    = tx.type;
-  document.getElementById('tx-amount').value  = tx.amount;
-  document.getElementById('tx-note').value    = tx.note || "";
-  document.getElementById('tx-pending').checked = !!tx.is_pending;
-
-  // ✅ Set form action directly (no url_for needed)
-  const form = document.getElementById('editTxForm');
-  form.action = `/transactions/${tx.cur}/${tx.id}/edit`;
-});
-/* static/js/send_overview.js */
 (function () {
-  if (window.__sendOverviewInit) return; // avoid double init
+  // Activate the correct tab when pagination/filter links land on a section hash.
+  function activateTabFromHash() {
+    const hash = window.location.hash;
+    const targetMap = {
+      '#krw-table': '#krw-tab',
+      '#bdt-table': '#bdt-tab',
+      '#send-overview': '#send-tab'
+    };
+    const tabSelector = targetMap[hash];
+    if (!tabSelector || typeof bootstrap === 'undefined') return;
+    const tabBtn = document.querySelector(tabSelector);
+    if (tabBtn) bootstrap.Tab.getOrCreateInstance(tabBtn).show();
+  }
+  activateTabFromHash();
+  window.addEventListener('hashchange', activateTabFromHash);
+
+  // Quick search only filters the rows currently loaded on the page.
+  document.querySelectorAll('[data-table-search]').forEach((input) => {
+    const tableId = input.getAttribute('data-table-search');
+    const table = document.getElementById(tableId);
+    if (!table) return;
+
+    input.addEventListener('input', () => {
+      const q = input.value.trim().toLowerCase();
+      table.querySelectorAll('tbody tr').forEach((row) => {
+        if (row.classList.contains('tx-empty-row')) return;
+        row.style.display = row.innerText.toLowerCase().includes(q) ? '' : 'none';
+      });
+    });
+  });
+
+  const editModal = document.getElementById('editTxModal');
+  if (editModal) {
+    editModal.addEventListener('show.bs.modal', function (e) {
+      const raw = e.relatedTarget?.getAttribute('data-tx');
+      if (!raw) return;
+      const tx = JSON.parse(raw);
+
+      document.getElementById('tx-cur').value = tx.cur;
+      document.getElementById('tx-date').value = tx.date;
+      document.getElementById('tx-category').value = tx.category_id || '';
+      document.getElementById('tx-type').value = tx.type;
+      document.getElementById('tx-amount').value = tx.amount;
+      document.getElementById('tx-note').value = tx.note || '';
+      document.getElementById('tx-pending').checked = !!tx.is_pending;
+
+      const account = document.getElementById('tx-account');
+      account.querySelectorAll('option').forEach((opt) => {
+        const sameCurrency = !opt.dataset.cur || opt.dataset.cur === tx.cur;
+        opt.hidden = !sameCurrency;
+        opt.disabled = !sameCurrency;
+      });
+      account.value = String(tx.account_id || '');
+
+      document.getElementById('editTxForm').action = `/transactions/${tx.cur}/${tx.id}/edit`;
+    });
+  }
+})();
+
+(function () {
+  if (window.__sendOverviewInit) return;
   window.__sendOverviewInit = true;
 
-  // ---------- DOM ----------
-  const yearSel   = document.getElementById('filterYear');
-  const monthSel  = document.getElementById('filterMonth');
+  const yearSel = document.getElementById('filterYear');
+  const monthSel = document.getElementById('filterMonth');
   const kpiAmount = document.getElementById('kpiTotalSent');
   const kpiPeriod = document.getElementById('kpiPeriod');
-
   const lineCanvas = document.getElementById('totalSentYearChart');
-  const barCanvas  = document.getElementById('totalSentByRecipientChart');
+  const barCanvas = document.getElementById('totalSentByRecipientChart');
+  const errorBox = document.getElementById('sendOverviewError');
 
-  if (!yearSel || !monthSel || !lineCanvas || !barCanvas) {
-    console.warn('[send-overview] Missing DOM elements');
-    return;
-  }
+  if (!yearSel || !monthSel || !lineCanvas || !barCanvas) return;
 
-  const lineCtx = lineCanvas.getContext('2d');
-  const barCtx  = barCanvas.getContext('2d');
-
-  // ---------- Helpers ----------
-  const MONTHS = [
-    'January','February','March','April','May','June',
-    'July','August','September','October','November','December'
-  ];
-
-  const now  = new Date();
+  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const now = new Date();
   const curY = now.getFullYear();
   const curM = now.getMonth() + 1;
+  let lineChart = null;
+  let barChart = null;
 
-  function fmt(n) { return n.toLocaleString(); }
-  function monthName(m) { return MONTHS[m - 1]; }
+  function fmt(n) { return Number(n || 0).toLocaleString(); }
+  function monthName(m) { return MONTHS[Number(m) - 1] || ''; }
+  function showError(message) {
+    if (!errorBox) return;
+    errorBox.textContent = message;
+    errorBox.classList.toggle('d-none', !message);
+  }
 
-  // Populate year selector
   function populateYears() {
-    const start = curY - 5;
     yearSel.innerHTML = '';
-    for (let y = curY; y >= start; y--) {
+    for (let y = curY; y >= curY - 5; y--) {
       const opt = document.createElement('option');
       opt.value = y;
       opt.textContent = y;
@@ -703,152 +1165,114 @@ document.getElementById('editTxModal').addEventListener('show.bs.modal', functio
     yearSel.value = curY;
   }
 
-  // Populate months (+ All)
   function populateMonths() {
-    monthSel.innerHTML = '';
-
-    const all = document.createElement('option');
-    all.value = '';
-    all.textContent = 'All Months';
-    monthSel.appendChild(all);
-
+    monthSel.innerHTML = '<option value="">All Months</option>';
     MONTHS.forEach((name, i) => {
       const opt = document.createElement('option');
       opt.value = i + 1;
       opt.textContent = name;
       monthSel.appendChild(opt);
     });
-
-    monthSel.value = String(curM); // default current
+    monthSel.value = String(curM);
   }
 
-  // ---------- Charts ----------
-  let lineChart = null;
-  let barChart  = null;
+  function chartOptions(currencyPrefix) {
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: { ticks: { callback: (v) => currencyPrefix + fmt(v) }, grid: { color: 'rgba(148,163,184,.18)' } },
+        x: { grid: { display: false } }
+      },
+      plugins: {
+        tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${currencyPrefix}${fmt(ctx.parsed.y)}` } },
+        legend: { labels: { boxWidth: 12, usePointStyle: true } }
+      }
+    };
+  }
 
   function buildLineChart(dataByMonth) {
+    if (typeof Chart === 'undefined') {
+      showError('Chart.js is not loaded. Please make sure your base.html includes Chart.js.');
+      return;
+    }
     if (lineChart) lineChart.destroy();
-
-    const labels = MONTHS;
-    const data   = [];
-    for (let m = 1; m <= 12; m++) data.push(Number(dataByMonth[m] || 0));
-
-    lineChart = new Chart(lineCtx, {
+    const data = [];
+    for (let m = 1; m <= 12; m++) data.push(Number(dataByMonth?.[m] || 0));
+    lineChart = new Chart(lineCanvas.getContext('2d'), {
       type: 'line',
       data: {
-        labels,
+        labels: MONTHS,
         datasets: [{
           label: 'Total Sent',
           data,
           tension: 0.35,
-          borderColor: '#007bff',
-          backgroundColor: 'rgba(0,123,255,0.1)',
-          pointRadius: 3
+          fill: true,
+          borderColor: '#2563eb',
+          backgroundColor: 'rgba(37, 99, 235, .10)',
+          pointRadius: 3,
+          pointHoverRadius: 5
         }]
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          y: { ticks: { callback: v => fmt(v) } }
-        },
-        plugins: {
-          tooltip: {
-            callbacks: { label: ctx => `৳${fmt(ctx.parsed.y)}` }
-          },
-          legend: { display: true }
-        }
-      }
+      options: chartOptions('৳')
     });
   }
 
   function buildBarChart(items) {
+    if (typeof Chart === 'undefined') {
+      showError('Chart.js is not loaded. Please make sure your base.html includes Chart.js.');
+      return;
+    }
     if (barChart) barChart.destroy();
-
-    const labels = items.map(i => i.name || '—');
-    const data   = items.map(i => Number(i.total || 0));
-
-    barChart = new Chart(barCtx, {
+    barChart = new Chart(barCanvas.getContext('2d'), {
       type: 'bar',
       data: {
-        labels,
+        labels: (items || []).map((i) => i.name || '—'),
         datasets: [{
           label: 'Total Sent',
-          data,
-          backgroundColor: '#ff9800'
+          data: (items || []).map((i) => Number(i.total || 0)),
+          borderRadius: 10,
+          backgroundColor: 'rgba(5, 150, 105, .82)'
         }]
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          y: { ticks: { callback: v => fmt(v) } }
-        },
-        plugins: {
-          tooltip: {
-            callbacks: { label: ctx => `৳${fmt(ctx.parsed.y)}` }
-          },
-          legend: { display: true }
-        }
-      }
+      options: chartOptions('৳')
     });
   }
 
-// ---------- Fetch + Render ----------
-async function load() {
-  const year  = Number(yearSel.value);
-  const month = monthSel.value ? Number(monthSel.value) : null;
+  async function loadSendOverview() {
+    const year = Number(yearSel.value);
+    const month = monthSel.value ? Number(monthSel.value) : null;
+    const qsYear = new URLSearchParams({ year: String(year) });
+    const qsScoped = new URLSearchParams({ year: String(year) });
+    if (month) qsScoped.set('month', String(month));
 
-  // Build query strings
-  const qsYear   = new URLSearchParams({ year: String(year) }).toString();     // yearly (no month)
-  const qsScoped = new URLSearchParams({ year: String(year) });                // month-scoped (optional)
-  if (month) qsScoped.set('month', String(month));
+    showError('');
+    try {
+      const [resYear, resScoped] = await Promise.all([
+        fetch(`/api/send_overview?${qsYear.toString()}`),
+        fetch(`/api/send_overview?${qsScoped.toString()}`)
+      ]);
+      if (!resYear.ok) throw new Error(`Yearly request failed: ${resYear.status}`);
+      if (!resScoped.ok) throw new Error(`Scoped request failed: ${resScoped.status}`);
 
-  try {
-    // Fetch both in parallel
-    const [resYear, resScoped] = await Promise.all([
-      fetch(`/api/send_overview?${qsYear}`),
-      fetch(`/api/send_overview?${qsScoped.toString()}`)
-    ]);
+      const [dataYear, dataScoped] = await Promise.all([resYear.json(), resScoped.json()]);
+      const kpiData = month ? dataScoped : dataYear;
+      kpiAmount.textContent = fmt(kpiData.total_sent || 0);
+      kpiPeriod.textContent = kpiData.month ? `${monthName(kpiData.month)}, ${kpiData.year}` : String(kpiData.year || year);
 
-    if (!resYear.ok)   throw new Error(`yearly HTTP ${resYear.status}`);
-    if (!resScoped.ok) throw new Error(`scoped HTTP ${resScoped.status}`);
-
-    const [dataYear, dataScoped] = await Promise.all([resYear.json(), resScoped.json()]);
-
-    // ----- KPI (use scoped if month selected, else yearly) -----
-    const kpiData = month ? dataScoped : dataYear;
-    const total = Number(kpiData.total_sent || 0);
-    kpiAmount.textContent = fmt(total);
-    if (kpiData.month) {
-      kpiPeriod.textContent = `${monthName(kpiData.month)}, ${kpiData.year}`;
-    } else {
-      kpiPeriod.textContent = `${kpiData.year}`;
+      buildLineChart(dataYear.monthly || {});
+      buildBarChart(dataScoped.recipients || []);
+    } catch (err) {
+      console.error('[send-overview] Failed:', err);
+      showError('Failed to load remittance overview data. Please check /api/send_overview.');
     }
-
-    // ----- Line chart (always full year) -----
-    buildLineChart(dataYear.monthly || {});
-
-    // ----- Bar chart (use scoped to reflect filter) -----
-    buildBarChart((dataScoped.recipients || []));
-
-  } catch (err) {
-    console.error('[send-overview] Failed:', err);
   }
-}
 
-
-  // ---------- Events ----------
-  yearSel.addEventListener('change', load);
-  monthSel.addEventListener('change', load);
-
-  // ---------- Init ----------
+  yearSel.addEventListener('change', loadSendOverview);
+  monthSel.addEventListener('change', loadSendOverview);
   populateYears();
   populateMonths();
-  load();
+  loadSendOverview();
 })();
-
 </script>
-{% endblock %}
-
 {% endblock %}

@@ -1,289 +1,991 @@
 {% extends "base.html" %}
+{% set page_slug = "debts" %}
 {% set cur_user_id = current_user.id %}
 
+{% block styles %}
+<style>
+  .debt-page {
+    --debt-bg: #f5f7fb;
+    --debt-surface: rgba(255, 255, 255, .92);
+    --debt-border: rgba(15, 23, 42, .08);
+    --debt-text: #0f172a;
+    --debt-muted: #64748b;
+    --debt-brand: #2563eb;
+    --debt-brand-2: #7c3aed;
+    --debt-danger: #ef4444;
+    --debt-success: #16a34a;
+    --debt-warning: #f59e0b;
+    --debt-info: #0891b2;
+    --debt-radius: 24px;
+  }
+
+  .debt-page {
+    max-width: 1480px;
+    margin: 0 auto;
+    color: var(--debt-text);
+  }
+
+  .debt-hero {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, .32);
+    border-radius: 32px;
+    background:
+      radial-gradient(circle at 12% 20%, rgba(96, 165, 250, .35), transparent 32%),
+      radial-gradient(circle at 84% 10%, rgba(167, 139, 250, .32), transparent 28%),
+      linear-gradient(135deg, #0f172a 0%, #1e293b 48%, #312e81 100%);
+    color: #fff;
+    padding: clamp(1.25rem, 2vw, 2rem);
+    box-shadow: 0 24px 70px rgba(15, 23, 42, .22);
+  }
+
+  .debt-hero::after {
+    content: "";
+    position: absolute;
+    inset: auto -8% -42% auto;
+    width: 360px;
+    height: 360px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .09);
+    pointer-events: none;
+  }
+
+  .hero-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .38rem .7rem;
+    border: 1px solid rgba(255, 255, 255, .18);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .10);
+    backdrop-filter: blur(10px);
+    color: rgba(255, 255, 255, .82);
+    font-size: .78rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+
+  .hero-title {
+    margin: .9rem 0 .4rem;
+    font-size: clamp(1.8rem, 3.8vw, 3.25rem);
+    font-weight: 850;
+    letter-spacing: -.055em;
+  }
+
+  .hero-subtitle {
+    max-width: 660px;
+    color: rgba(255, 255, 255, .72);
+    margin: 0;
+  }
+
+  .hero-actions {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .65rem;
+  }
+
+  .hero-filter {
+    position: relative;
+    z-index: 1;
+    margin-top: 1.25rem;
+    padding: .75rem;
+    border: 1px solid rgba(255, 255, 255, .16);
+    border-radius: 22px;
+    background: rgba(255, 255, 255, .10);
+    backdrop-filter: blur(16px);
+  }
+
+  .hero-filter .form-control,
+  .hero-filter .form-select {
+    border: 0;
+    min-height: 42px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, .95);
+    box-shadow: none;
+  }
+
+  .btn-soft-light {
+    border: 1px solid rgba(255, 255, 255, .22);
+    background: rgba(255, 255, 255, .12);
+    color: #fff;
+  }
+
+  .btn-soft-light:hover,
+  .btn-soft-light:focus {
+    border-color: rgba(255, 255, 255, .34);
+    background: rgba(255, 255, 255, .18);
+    color: #fff;
+  }
+
+  .btn-debt-primary {
+    border: 0;
+    background: linear-gradient(135deg, var(--debt-brand), var(--debt-brand-2));
+    color: #fff;
+    box-shadow: 0 14px 30px rgba(37, 99, 235, .25);
+  }
+
+  .btn-debt-primary:hover,
+  .btn-debt-primary:focus {
+    color: #fff;
+    transform: translateY(-1px);
+  }
+
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+
+  .debt-summary-card,
+  .debt-panel,
+  .debt-table-card {
+    border: 1px solid var(--debt-border);
+    border-radius: var(--debt-radius);
+    background: var(--debt-surface);
+    box-shadow: 0 18px 45px rgba(15, 23, 42, .08);
+  }
+
+  .debt-summary-card {
+    overflow: hidden;
+    position: relative;
+    padding: 1.1rem;
+  }
+
+  .debt-summary-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 5px;
+    background: linear-gradient(90deg, var(--accent, var(--debt-brand)), rgba(124, 58, 237, .65));
+  }
+
+  .summary-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .summary-icon {
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    border-radius: 16px;
+    color: var(--accent, var(--debt-brand));
+    background: color-mix(in srgb, var(--accent, #2563eb) 12%, white);
+    font-size: 1.15rem;
+  }
+
+  .summary-label {
+    color: var(--debt-muted);
+    font-weight: 750;
+    font-size: .78rem;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+
+  .summary-value {
+    margin: .4rem 0 .15rem;
+    font-size: clamp(1.5rem, 2vw, 2.15rem);
+    font-weight: 850;
+    letter-spacing: -.035em;
+  }
+
+  .summary-meta {
+    color: var(--debt-muted);
+    font-size: .9rem;
+  }
+
+  .debt-progress {
+    height: 10px;
+    border-radius: 999px;
+    background: #e2e8f0;
+    overflow: hidden;
+  }
+
+  .debt-progress .progress-bar {
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--accent, var(--debt-brand)), color-mix(in srgb, var(--accent, #2563eb) 60%, #ffffff));
+  }
+
+  .debt-panel {
+    overflow: hidden;
+  }
+
+  .panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.15rem 1.25rem;
+    border-bottom: 1px solid var(--debt-border);
+    background: linear-gradient(180deg, rgba(248, 250, 252, .92), rgba(255, 255, 255, .92));
+  }
+
+  .panel-kicker {
+    color: var(--debt-muted);
+    font-size: .77rem;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+
+  .panel-title {
+    margin: .1rem 0 0;
+    font-weight: 850;
+    letter-spacing: -.025em;
+  }
+
+  .panel-body {
+    padding: 1.25rem;
+  }
+
+  .debt-tabs {
+    display: inline-flex;
+    gap: .35rem;
+    padding: .35rem;
+    border: 1px solid var(--debt-border);
+    border-radius: 18px;
+    background: #f8fafc;
+  }
+
+  .debt-tabs .nav-link {
+    border-radius: 14px;
+    color: var(--debt-muted);
+    font-weight: 800;
+    padding: .65rem .9rem;
+  }
+
+  .debt-tabs .nav-link.active {
+    background: #0f172a;
+    color: #fff;
+    box-shadow: 0 12px 24px rgba(15, 23, 42, .14);
+  }
+
+  .field-card {
+    height: 100%;
+    border: 1px solid rgba(15, 23, 42, .07);
+    border-radius: 18px;
+    background: #fff;
+    padding: .9rem;
+  }
+
+  .field-card .form-label {
+    margin-bottom: .38rem;
+    color: var(--debt-muted);
+    font-size: .76rem;
+    font-weight: 800;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+
+  .field-card .form-control,
+  .field-card .form-select {
+    border-radius: 14px;
+    border-color: #e2e8f0;
+    min-height: 46px;
+  }
+
+  .form-hint {
+    margin-top: .45rem;
+    color: var(--debt-muted);
+    font-size: .82rem;
+  }
+
+  .repay-note {
+    border: 1px dashed rgba(22, 163, 74, .35);
+    border-radius: 18px;
+    background: rgba(22, 163, 74, .06);
+    padding: .9rem;
+    color: #166534;
+    font-size: .9rem;
+  }
+
+  .debt-table-card {
+    overflow: hidden;
+  }
+
+  .table-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.15rem;
+    border-bottom: 1px solid var(--debt-border);
+    background: #fff;
+  }
+
+  .table-card-title {
+    margin: 0;
+    font-weight: 850;
+    letter-spacing: -.02em;
+  }
+
+  .table-card-subtitle {
+    color: var(--debt-muted);
+    font-size: .86rem;
+  }
+
+  .debt-table {
+    margin: 0;
+  }
+
+  .debt-table thead th {
+    border: 0;
+    background: #f8fafc;
+    color: var(--debt-muted);
+    font-size: .72rem;
+    font-weight: 850;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    padding: .9rem 1rem;
+  }
+
+  .debt-table tbody td {
+    border-color: rgba(15, 23, 42, .06);
+    padding: .95rem 1rem;
+    vertical-align: middle;
+  }
+
+  .debt-table tbody tr:hover {
+    background: #f8fafc;
+  }
+
+  .debt-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .42rem .62rem;
+    border-radius: 999px;
+    font-size: .75rem;
+    font-weight: 850;
+    line-height: 1;
+    border: 1px solid transparent;
+  }
+
+  .badge-owe {
+    color: #92400e;
+    background: #fffbeb;
+    border-color: #fde68a;
+  }
+
+  .badge-lend {
+    color: #075985;
+    background: #f0f9ff;
+    border-color: #bae6fd;
+  }
+
+  .badge-add {
+    color: #4338ca;
+    background: #eef2ff;
+    border-color: #c7d2fe;
+  }
+
+  .badge-repayment {
+    color: #166534;
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+  }
+
+  .badge-paid {
+    color: #166534;
+    background: #dcfce7;
+    border-color: #bbf7d0;
+  }
+
+  .amount-text {
+    font-weight: 850;
+    letter-spacing: -.015em;
+  }
+
+  .note-muted {
+    color: var(--debt-muted);
+  }
+
+  .mobile-list {
+    display: grid;
+    gap: .85rem;
+    padding: 1rem;
+  }
+
+  .mobile-card {
+    border: 1px solid rgba(15, 23, 42, .08);
+    border-radius: 20px;
+    background: #fff;
+    padding: 1rem;
+  }
+
+  .mobile-card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: .75rem;
+    margin-bottom: .75rem;
+  }
+
+  .mobile-recipient {
+    font-weight: 850;
+    font-size: 1rem;
+  }
+
+  .mobile-meta {
+    color: var(--debt-muted);
+    font-size: .84rem;
+  }
+
+  .mini-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .65rem;
+  }
+
+  .mini-stat {
+    border-radius: 16px;
+    background: #f8fafc;
+    padding: .75rem;
+  }
+
+  .mini-label {
+    color: var(--debt-muted);
+    font-size: .72rem;
+    font-weight: 800;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+  }
+
+  .mini-value {
+    margin-top: .2rem;
+    font-weight: 850;
+  }
+
+  .empty-state {
+    padding: 3rem 1rem;
+    text-align: center;
+    color: var(--debt-muted);
+  }
+
+  .empty-state i {
+    display: inline-grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    margin-bottom: .75rem;
+    border-radius: 18px;
+    background: #f1f5f9;
+    color: #94a3b8;
+    font-size: 1.45rem;
+  }
+
+  @media (max-width: 991.98px) {
+    .summary-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .hero-actions {
+      margin-top: 1rem;
+    }
+  }
+
+  @media (max-width: 767.98px) {
+    .debt-page {
+      padding-inline: .1rem;
+    }
+
+    .debt-hero,
+    .debt-panel,
+    .debt-table-card,
+    .debt-summary-card {
+      border-radius: 22px;
+    }
+
+    .hero-filter .row > * {
+      width: 100%;
+    }
+
+    .panel-head,
+    .table-card-head {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
+    .debt-tabs {
+      display: grid;
+      width: 100%;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .panel-body {
+      padding: 1rem;
+    }
+
+    .mini-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container py-3">
+<div class="debt-page px-1 px-md-2">
+  {% set owe = cards.owe %}
+  {% set lend = cards.lend %}
 
-  <!-- Header -->
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h3 class="mb-0">Debt Tracker</h3>
-    <form class="d-flex gap-2" method="get" action="{{ url_for('main.debts_page') }}">
-      <select name="type" class="form-select form-select-sm" style="width:140px">
-        <option value="">All Types</option>
-        <option value="owe"  {{ 'selected' if t_filter=='owe'  else '' }}>I Owe</option>
-        <option value="lend" {{ 'selected' if t_filter=='lend' else '' }}>Owed To Me</option>
-      </select>
-      <select name="action" class="form-select form-select-sm" style="width:140px">
-        <option value="">All Actions</option>
-        <option value="add" {{ 'selected' if a_filter=='add' else '' }}>Add</option>
-        <option value="repayment" {{ 'selected' if a_filter=='repayment' else '' }}>Repayment</option>
-      </select>
-      <input class="form-control form-control-sm" name="q" placeholder="Search recipient" value="{{ q }}">
-      <button class="btn btn-sm btn-primary">Filter</button>
+  <section class="debt-hero mb-4">
+    <div class="row g-4 align-items-center">
+      <div class="col-lg-8">
+        <span class="hero-eyebrow"><i class="bi bi-wallet2"></i> Debt command center</span>
+        <h1 class="hero-title">Debt Tracker</h1>
+        <p class="hero-subtitle">
+          Track what you owe, what others owe you, repayments, and person-wise balances from one clean page.
+        </p>
+      </div>
+      <div class="col-lg-4">
+        <div class="hero-actions justify-content-lg-end">
+          <a href="#debt-form" class="btn btn-light rounded-pill px-3">
+            <i class="bi bi-plus-circle me-1"></i> Add debt
+          </a>
+          <a href="#repay-pane" class="btn btn-soft-light rounded-pill px-3" data-bs-toggle="pill" data-bs-target="#repay-pane" role="button" aria-controls="repay-pane">
+            <i class="bi bi-check2-circle me-1"></i> Record payment
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <form class="hero-filter" method="get" action="{{ url_for('main.debts_page') }}">
+      <div class="row g-2 align-items-center">
+        <div class="col-12 col-lg-2">
+          <select name="type" class="form-select" aria-label="Filter by type">
+            <option value="">All Types</option>
+            <option value="owe"  {{ 'selected' if t_filter=='owe'  else '' }}>I Owe</option>
+            <option value="lend" {{ 'selected' if t_filter=='lend' else '' }}>Owed To Me</option>
+          </select>
+        </div>
+        <div class="col-12 col-lg-2">
+          <select name="action" class="form-select" aria-label="Filter by action">
+            <option value="">All Actions</option>
+            <option value="add" {{ 'selected' if a_filter=='add' else '' }}>Add</option>
+            <option value="repayment" {{ 'selected' if a_filter=='repayment' else '' }}>Repayment</option>
+          </select>
+        </div>
+        <div class="col-12 col-lg">
+          <div class="input-group">
+            <span class="input-group-text border-0 bg-white"><i class="bi bi-search text-muted"></i></span>
+            <input class="form-control" name="q" placeholder="Search recipient" value="{{ q }}" aria-label="Search recipient">
+          </div>
+        </div>
+        <div class="col-12 col-lg-auto d-flex gap-2">
+          <button class="btn btn-light rounded-pill px-4 flex-fill flex-lg-grow-0">
+            <i class="bi bi-funnel me-1"></i> Filter
+          </button>
+          <a class="btn btn-soft-light rounded-pill px-3" href="{{ url_for('main.debts_page') }}">Reset</a>
+        </div>
+      </div>
     </form>
-  </div>
+  </section>
 
-  <!-- Top cards -->
-  <div class="row g-3 mb-3">
-    {% set owe = cards.owe %}
-    {% set lend = cards.lend %}
-    <div class="col-md-6">
-      <div class="card shadow-sm">
-        <div class="card-body">
-          <div class="d-flex justify-content-between mb-1">
-            <div class="fw-semibold">I Owe</div>
-            <div class="text-muted small">Paid {{ '%.2f'|format(owe.pct) }}%</div>
-          </div>
-          <div class="h4 mb-1">Remaining: {{ owe.outstanding }}</div>
-          <div class="text-muted small mb-2">Paid: {{ owe.paid }} • Original: {{ owe.original }}</div>
-          <div class="progress" role="progressbar" aria-valuenow="{{ owe.pct|int }}" aria-valuemin="0" aria-valuemax="100">
-            <div class="progress-bar {% if owe.pct>=70 %}bg-success{% elif owe.pct>=40 %}bg-warning{% else %}bg-danger{% endif %}" style="width: {{ owe.pct }}%"></div>
-          </div>
+  <section class="summary-grid mb-4">
+    <article class="debt-summary-card" style="--accent: var(--debt-warning);">
+      <div class="summary-head">
+        <div>
+          <div class="summary-label">I Owe</div>
+          <div class="summary-value">{{ owe.outstanding }}</div>
+          <div class="summary-meta">Paid {{ owe.paid }} • Original {{ owe.original }}</div>
         </div>
+        <div class="summary-icon"><i class="bi bi-arrow-up-right-circle"></i></div>
       </div>
-    </div>
-    <div class="col-md-6">
-      <div class="card shadow-sm">
-        <div class="card-body">
-          <div class="d-flex justify-content-between mb-1">
-            <div class="fw-semibold">Owed To Me</div>
-            <div class="text-muted small">Collected {{ '%.2f'|format(lend.pct) }}%</div>
-          </div>
-          <div class="h4 mb-1">Remaining: {{ lend.outstanding }}</div>
-          <div class="text-muted small mb-2">Collected: {{ lend.paid }} • Original: {{ lend.original }}</div>
-          <div class="progress" role="progressbar" aria-valuenow="{{ lend.pct|int }}" aria-valuemin="0" aria-valuemax="100">
-            <div class="progress-bar {% if lend.pct>=70 %}bg-success{% elif lend.pct>=40 %}bg-warning{% else %}bg-danger{% endif %}" style="width: {{ lend.pct }}%"></div>
-          </div>
-        </div>
+      <div class="d-flex justify-content-between align-items-center mt-3 mb-2">
+        <span class="small text-muted fw-semibold">Payment progress</span>
+        <span class="small fw-bold">{{ '%.2f'|format(owe.pct) }}%</span>
       </div>
-    </div>
-  </div>
+      <div class="debt-progress progress" role="progressbar" aria-valuenow="{{ owe.pct|int }}" aria-valuemin="0" aria-valuemax="100">
+        <div class="progress-bar" style="width: {{ owe.pct }}%"></div>
+      </div>
+    </article>
 
-  <!-- Form tabs -->
-  <div class="card shadow-sm mb-3">
-    <div class="card-body">
-      <ul class="nav nav-pills mb-3" id="debtTabs" role="tablist">
+    <article class="debt-summary-card" style="--accent: var(--debt-info);">
+      <div class="summary-head">
+        <div>
+          <div class="summary-label">Owed To Me</div>
+          <div class="summary-value">{{ lend.outstanding }}</div>
+          <div class="summary-meta">Collected {{ lend.paid }} • Original {{ lend.original }}</div>
+        </div>
+        <div class="summary-icon"><i class="bi bi-arrow-down-left-circle"></i></div>
+      </div>
+      <div class="d-flex justify-content-between align-items-center mt-3 mb-2">
+        <span class="small text-muted fw-semibold">Collection progress</span>
+        <span class="small fw-bold">{{ '%.2f'|format(lend.pct) }}%</span>
+      </div>
+      <div class="debt-progress progress" role="progressbar" aria-valuenow="{{ lend.pct|int }}" aria-valuemin="0" aria-valuemax="100">
+        <div class="progress-bar" style="width: {{ lend.pct }}%"></div>
+      </div>
+    </article>
+  </section>
+
+  <section class="debt-panel mb-4" id="debt-form">
+    <div class="panel-head">
+      <div>
+        <div class="panel-kicker">Create / repay</div>
+        <h2 class="h5 panel-title">Manage debt records</h2>
+      </div>
+      <ul class="nav debt-tabs" id="debtTabs" role="tablist">
         <li class="nav-item" role="presentation">
-          <button class="nav-link active" id="add-tab" data-bs-toggle="pill" data-bs-target="#add-pane" type="button">Add (Debt / Lend)</button>
+          <button class="nav-link active" id="add-tab" data-bs-toggle="pill" data-bs-target="#add-pane" type="button" role="tab" aria-controls="add-pane" aria-selected="true">
+            <i class="bi bi-plus-lg me-1"></i> Add
+          </button>
         </li>
         <li class="nav-item" role="presentation">
-          <button class="nav-link" id="repay-tab" data-bs-toggle="pill" data-bs-target="#repay-pane" type="button">Repayment</button>
+          <button class="nav-link" id="repay-tab" data-bs-toggle="pill" data-bs-target="#repay-pane" type="button" role="tab" aria-controls="repay-pane" aria-selected="false">
+            <i class="bi bi-check2 me-1"></i> Repayment
+          </button>
         </li>
       </ul>
+    </div>
 
+    <div class="panel-body">
       <div class="tab-content">
-        <!-- Add -->
-        <div class="tab-pane fade show active" id="add-pane">
-          <form class="row g-2" method="post" action="{{ url_for('main.debts_add') }}">
-            <div class="col-md-2">
-              <label class="form-label small">Type</label>
-              <select name="direction" class="form-select form-select-sm" required>
-                <option value="owe">I Owe</option>
-                <option value="lend">Owed To Me</option>
-              </select>
-            </div>
-            <div class="col-md-3">
-              <label class="form-label small">Recipient</label>
-              <select name="recipient_id" class="form-select form-select-sm" required>
-                {% for r in recipients %}
-                  <option value="{{ r.id }}">{{ r.name }}</option>
-                {% endfor %}
-              </select>
-            </div>
-            <div class="col-md-2">
-              <label class="form-label small">Currency</label>
-              <select name="currency" class="form-select form-select-sm" required>
-                <option value="KRW">KRW</option>
-                <option value="BDT">BDT</option>
-              </select>
-            </div>
-            <div class="col-md-2">
-              <label class="form-label small">Amount</label>
-              <input type="number" step="0.01" class="form-control form-control-sm" name="amount" required>
-            </div>
-            <div class="col-md-2">
-              <label class="form-label small">Start Date</label>
-              <input type="date" class="form-control form-control-sm" name="start_date" value="{{ now().date() if now is defined else '' }}">
-            </div>
-            <div class="col-md-12">
-              <input type="text" class="form-control form-control-sm" name="note" placeholder="Note (optional)">
-            </div>
-            <div class="col-md-12 d-flex justify-content-end">
-              <button class="btn btn-sm btn-primary">Add</button>
+        <div class="tab-pane fade show active" id="add-pane" role="tabpanel" aria-labelledby="add-tab" tabindex="0">
+          <form method="post" action="{{ url_for('main.debts_add') }}">
+            <div class="row g-3">
+              <div class="col-12 col-md-6 col-xl-2">
+                <div class="field-card">
+                  <label class="form-label">Type</label>
+                  <select name="direction" class="form-select" required>
+                    <option value="owe">I Owe</option>
+                    <option value="lend">Owed To Me</option>
+                  </select>
+                </div>
+              </div>
+              <div class="col-12 col-md-6 col-xl-3">
+                <div class="field-card">
+                  <label class="form-label">Recipient</label>
+                  <select name="recipient_id" class="form-select" required>
+                    {% for r in recipients %}
+                      <option value="{{ r.id }}">{{ r.name }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+              </div>
+              <div class="col-12 col-md-6 col-xl-2">
+                <div class="field-card">
+                  <label class="form-label">Currency</label>
+                  <select name="currency" class="form-select" required>
+                    <option value="KRW">KRW</option>
+                    <option value="BDT">BDT</option>
+                  </select>
+                </div>
+              </div>
+              <div class="col-12 col-md-6 col-xl-2">
+                <div class="field-card">
+                  <label class="form-label">Amount</label>
+                  <input type="number" step="0.01" class="form-control" name="amount" placeholder="0.00" required>
+                </div>
+              </div>
+              <div class="col-12 col-md-6 col-xl-3">
+                <div class="field-card">
+                  <label class="form-label">Start Date</label>
+                  <input type="date" class="form-control" name="start_date" value="{{ now().date() if now is defined else '' }}">
+                </div>
+              </div>
+              <div class="col-12">
+                <div class="field-card">
+                  <label class="form-label">Note</label>
+                  <input type="text" class="form-control" name="note" placeholder="Optional note, reason, or reminder">
+                  <div class="form-hint">Example: borrowed cash, advance payment, family support, bill share.</div>
+                </div>
+              </div>
+              <div class="col-12 d-flex justify-content-end">
+                <button class="btn btn-debt-primary rounded-pill px-4 py-2">
+                  <i class="bi bi-plus-circle me-1"></i> Add record
+                </button>
+              </div>
             </div>
           </form>
         </div>
 
-<!-- Repayment -->
-<div class="tab-pane fade" id="repay-pane">
-  <div class="row g-3">
+        <div class="tab-pane fade" id="repay-pane" role="tabpanel" aria-labelledby="repay-tab" tabindex="0">
+          <div class="repay-note mb-3">
+            <i class="bi bi-info-circle me-1"></i>
+            Repayment by person will auto-split the payment across that person’s open debt/lend items.
+          </div>
 
-    <!-- RIGHT: new behavior = repay by person (auto-splits across all open items) -->
-    <div class="col-md-12">
-      <h6 class="mb-1 small text-muted">Repay by person (all open items)</h6>
-      <form class="row g-2" method="post" action="{{ url_for('main.debts_repay_person') }}">
-        <div class="col-12">
-          <label class="form-label small">Recipient</label>
-          <select name="recipient_id" class="form-select form-select-sm" required>
-            {% for r in recipients %}
-              <option value="{{ r.id }}">{{ r.name }}</option>
-            {% endfor %}
-          </select>
+          <form method="post" action="{{ url_for('main.debts_repay_person') }}">
+            <div class="row g-3">
+              <div class="col-12 col-lg-4">
+                <div class="field-card">
+                  <label class="form-label">Recipient</label>
+                  <select name="recipient_id" class="form-select" required>
+                    {% for r in recipients %}
+                      <option value="{{ r.id }}">{{ r.name }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+              </div>
+              <div class="col-12 col-md-6 col-lg-3">
+                <div class="field-card">
+                  <label class="form-label">Direction</label>
+                  <select name="direction" class="form-select" required>
+                    <option value="owe">I owe them</option>
+                    <option value="lend">They owe me</option>
+                  </select>
+                </div>
+              </div>
+              <div class="col-12 col-md-6 col-lg-2">
+                <div class="field-card">
+                  <label class="form-label">Date</label>
+                  <input type="date" class="form-control" name="date">
+                </div>
+              </div>
+              <div class="col-12 col-md-6 col-lg-3">
+                <div class="field-card">
+                  <label class="form-label">Amount</label>
+                  <input type="number" step="0.01" class="form-control" name="amount" placeholder="0.00" required>
+                </div>
+              </div>
+              <div class="col-12">
+                <div class="field-card">
+                  <label class="form-label">Note</label>
+                  <input type="text" class="form-control" name="note" placeholder="Optional payment note">
+                </div>
+              </div>
+              <div class="col-12 d-flex justify-content-end">
+                <button class="btn btn-success rounded-pill px-4 py-2">
+                  <i class="bi bi-check2-circle me-1"></i> Record payment
+                </button>
+              </div>
+            </div>
+          </form>
         </div>
-
-        <div class="col-md-6">
-          <label class="form-label small">Direction</label>
-          <select name="direction" class="form-select form-select-sm" required>
-            <option value="owe">I owe them</option>
-            <option value="lend">They owe me</option>
-          </select>
-        </div>
-
-        <div class="col-md-6">
-          <label class="form-label small">Date</label>
-          <input type="date" class="form-control form-control-sm" name="date">
-        </div>
-
-        <div class="col-md-6">
-          <label class="form-label small">Amount</label>
-          <input type="number" step="0.01" class="form-control form-control-sm" name="amount" required>
-        </div>
-
-        <div class="col-12">
-          <input type="text" class="form-control form-control-sm" name="note" placeholder="Note (optional)">
-        </div>
-
-        <div class="col-12 d-flex justify-content-end">
-          <button class="btn btn-sm btn-success">Record Payment (Person)</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-
-
-
       </div>
     </div>
-  </div>
+  </section>
 
-  <!-- Transactions table -->
-  <div class="card shadow-sm mb-3">
-    <div class="card-body">
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <div class="fw-semibold">Transactions</div>
+  <section class="debt-table-card mb-4">
+    <div class="table-card-head">
+      <div>
+        <h2 class="h5 table-card-title">Transactions</h2>
+        <div class="table-card-subtitle">All debt/lend adds and repayments.</div>
       </div>
+      <span class="debt-badge badge-add"><i class="bi bi-clock-history"></i> Activity log</span>
+    </div>
 
-      <div class="table-responsive">
-        <table class="table table-sm align-middle table-bordered">
-          <thead class="table-dark">
-            <tr>
-              <th style="width: 110px;">Date</th>
-              <th style="width: 110px;">Type</th>
-              <th style="width: 110px;">Action</th>
-              <th>Recipient</th>
-              <th class="text-end" style="width: 160px;">Amount</th>
-              <th>Note</th>
-              <th style="width: 100px;">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for txn, item, rcp in txns %}
-              {# Row color rules #}
-              {% set row_class = '' %}
-              {% if item.direction.value == 'owe' and txn.action == 'add' %}{% set row_class = 'table-warning' %}
-              {% elif item.direction.value == 'owe' and txn.action == 'repayment' %}{% set row_class = 'table-success' %}
-              {% elif item.direction.value == 'lend' and txn.action == 'add' %}{% set row_class = 'table-info' %}
-              {% elif item.direction.value == 'lend' and txn.action == 'repayment' %}{% set row_class = 'table-primary' %}
+    <div class="table-responsive d-none d-md-block">
+      <table class="table debt-table align-middle">
+        <thead>
+          <tr>
+            <th style="width: 120px;">Date</th>
+            <th style="width: 120px;">Type</th>
+            <th style="width: 130px;">Action</th>
+            <th>Recipient</th>
+            <th class="text-end" style="width: 180px;">Amount</th>
+            <th>Note</th>
+            <th class="text-end" style="width: 110px;">Manage</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for txn, item, rcp in txns %}
+          <tr>
+            <td class="note-muted">{{ txn.date }}</td>
+            <td>
+              <span class="debt-badge {{ 'badge-owe' if item.direction.value == 'owe' else 'badge-lend' }}">
+                {{ 'I OWE' if item.direction.value == 'owe' else 'LEND' }}
+              </span>
+            </td>
+            <td>
+              <span class="debt-badge {{ 'badge-add' if txn.action == 'add' else 'badge-repayment' }}">
+                {{ txn.action|title }}
+              </span>
+            </td>
+            <td class="fw-bold">{{ rcp.name }}</td>
+            <td class="text-end amount-text">{{ item.currency.value }} {{ txn.amount }}</td>
+            <td class="note-muted">{{ txn.note or '—' }}</td>
+            <td class="text-end">
+              <button class="btn btn-sm btn-outline-danger rounded-pill" data-id="{{ txn.id }}" onclick="delTxn(this)">
+                <i class="bi bi-trash3"></i>
+              </button>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7">
+              <div class="empty-state">
+                <i class="bi bi-receipt"></i>
+                <div class="fw-bold">No transactions yet.</div>
+                <div>Create your first debt or lend record above.</div>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="mobile-list d-md-none">
+      {% for txn, item, rcp in txns %}
+      <article class="mobile-card">
+        <div class="mobile-card-top">
+          <div>
+            <div class="mobile-recipient">{{ rcp.name }}</div>
+            <div class="mobile-meta">{{ txn.date }} • {{ txn.action|title }}</div>
+          </div>
+          <span class="debt-badge {{ 'badge-owe' if item.direction.value == 'owe' else 'badge-lend' }}">
+            {{ item.direction.value.upper() }}
+          </span>
+        </div>
+        <div class="mini-grid mb-3">
+          <div class="mini-stat">
+            <div class="mini-label">Amount</div>
+            <div class="mini-value">{{ item.currency.value }} {{ txn.amount }}</div>
+          </div>
+          <div class="mini-stat">
+            <div class="mini-label">Note</div>
+            <div class="mini-value">{{ txn.note or '—' }}</div>
+          </div>
+        </div>
+        <button class="btn btn-outline-danger btn-sm rounded-pill w-100" data-id="{{ txn.id }}" onclick="delTxn(this)">
+          <i class="bi bi-trash3 me-1"></i> Delete
+        </button>
+      </article>
+      {% else %}
+      <div class="empty-state">
+        <i class="bi bi-receipt"></i>
+        <div class="fw-bold">No transactions yet.</div>
+        <div>Create your first debt or lend record above.</div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="debt-table-card">
+    <div class="table-card-head">
+      <div>
+        <h2 class="h5 table-card-title">Totals by Person</h2>
+        <div class="table-card-subtitle">See who still has an open balance and who is fully paid.</div>
+      </div>
+      <span class="debt-badge badge-paid"><i class="bi bi-people"></i> Person summary</span>
+    </div>
+
+    <div class="table-responsive d-none d-md-block">
+      <table class="table debt-table align-middle">
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Recipient</th>
+            <th class="text-end">Count</th>
+            <th class="text-end">Original Total</th>
+            <th class="text-end">Paid / Collected</th>
+            <th class="text-end">Outstanding</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for direction, name, cnt, orig, paid, out, is_paid in per_person %}
+          <tr>
+            <td>
+              <span class="debt-badge {{ 'badge-owe' if direction.value == 'owe' else 'badge-lend' }}">
+                {{ direction.value.upper() }}
+              </span>
+            </td>
+            <td class="fw-bold">
+              {{ name }}
+              {% if is_paid %}
+                <span class="debt-badge badge-paid ms-1"><i class="bi bi-check-circle"></i> Paid</span>
               {% endif %}
-
-              <tr class="{{ row_class }}">
-                <td>{{ txn.date }}</td>
-                <td><span class="badge text-bg-secondary">{{ item.direction.value.upper() }}</span></td>
-                <td><span class="badge text-bg-dark">{{ txn.action }}</span></td>
-                <td>{{ rcp.name }}</td>
-                <td class="text-end">{{ item.currency.value }} {{ txn.amount }}</td>
-                <td>{{ txn.note or '—' }}</td>
-                <td>
-                  <div class="btn-group btn-group-sm">
-                    <button class="btn btn-outline-danger" data-id="{{ txn.id }}" onclick="delTxn(this)">Delete</button>
-                  </div>
-                </td>
-              </tr>
-            {% else %}
-              <tr><td colspan="8" class="text-center text-muted">No transactions yet.</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
+            </td>
+            <td class="text-end">{{ cnt }}</td>
+            <td class="text-end amount-text">{{ orig }}</td>
+            <td class="text-end amount-text">
+              {{ paid }}
+              {% if is_paid %}<i class="bi bi-check-circle text-success ms-1"></i>{% endif %}
+            </td>
+            <td class="text-end amount-text">{{ out }}</td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="6">
+              <div class="empty-state">
+                <i class="bi bi-person-lines-fill"></i>
+                <div class="fw-bold">No debts or lends found.</div>
+                <div>Person-wise totals will appear here.</div>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
-  </div>
 
-  <!-- Grouped by person -->
-  <div class="card shadow-sm">
-    <div class="card-body">
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <div class="fw-semibold">Totals by Person</div>
+    <div class="mobile-list d-md-none">
+      {% for direction, name, cnt, orig, paid, out, is_paid in per_person %}
+      <article class="mobile-card">
+        <div class="mobile-card-top">
+          <div>
+            <div class="mobile-recipient">{{ name }}</div>
+            <div class="mobile-meta">{{ cnt }} open record{{ '' if cnt == 1 else 's' }}</div>
+          </div>
+          <div class="d-flex gap-1 flex-wrap justify-content-end">
+            <span class="debt-badge {{ 'badge-owe' if direction.value == 'owe' else 'badge-lend' }}">{{ direction.value.upper() }}</span>
+            {% if is_paid %}<span class="debt-badge badge-paid">Paid</span>{% endif %}
+          </div>
+        </div>
+        <div class="mini-grid">
+          <div class="mini-stat">
+            <div class="mini-label">Original</div>
+            <div class="mini-value">{{ orig }}</div>
+          </div>
+          <div class="mini-stat">
+            <div class="mini-label">Paid / Collected</div>
+            <div class="mini-value">{{ paid }}</div>
+          </div>
+          <div class="mini-stat">
+            <div class="mini-label">Outstanding</div>
+            <div class="mini-value">{{ out }}</div>
+          </div>
+          <div class="mini-stat">
+            <div class="mini-label">Status</div>
+            <div class="mini-value">{{ 'Paid' if is_paid else 'Open' }}</div>
+          </div>
+        </div>
+      </article>
+      {% else %}
+      <div class="empty-state">
+        <i class="bi bi-person-lines-fill"></i>
+        <div class="fw-bold">No debts or lends found.</div>
+        <div>Person-wise totals will appear here.</div>
       </div>
-
-      <div class="table-responsive">
-        <table class="table table-sm align-middle table-bordered">
-          <thead class="table-dark">
-            <tr>
-              <th>Type</th>
-              <th>Recipient</th>
-              <th class="text-end">Count</th>
-              <th class="text-end">Original Total</th>
-              <th class="text-end">Paid/Collected</th>
-              <th class="text-end">Outstanding</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for direction, name, cnt, orig, paid, out, is_paid in per_person %}
-            {% set row_class = 'table-warning' if direction.value=='owe' else 'table-info' %}
-            <tr class="{{ row_class }}">
-                <td><span class="badge text-bg-secondary">{{ direction.value.upper() }}</span></td>
-                <td>
-                {{ name }}
-                {% if is_paid %}
-                    <span class="badge bg-success ms-1">Paid</span>
-                {% endif %}
-                </td>
-                <td class="text-end">{{ cnt }}</td>
-                <td class="text-end">{{ orig }}</td>
-                <td class="text-end">
-                {{ paid }}
-                {% if is_paid %}
-                    <i class="bi bi-check-circle text-success ms-1"></i>
-                {% endif %}
-                </td>
-                <td class="text-end">{{ out }}</td>
-            </tr>
-            {% else %}
-            <tr><td colspan="6" class="text-center text-muted">No debts/lends found.</td></tr>
-            {% endfor %}
-
-          </tbody>
-        </table>
-      </div>
+      {% endfor %}
     </div>
-  </div>
-
+  </section>
 </div>
+{% endblock %}
 
+{% block scripts %}
 <script>
 async function delTxn(btn){
   const id = btn.dataset.id;
-  const res = await fetch(`{{ url_for('main.debts_tx_delete', txid=0) }}`.replace('/0','/'+id), {method:'POST'});
-  if(res.ok){ location.reload(); }
+  if(!id) return;
+  if(!confirm('Delete this debt transaction?')) return;
+
+  const url = `{{ url_for('main.debts_tx_delete', txid=0) }}`.replace('/0','/'+id);
+  const res = await fetch(url, {method:'POST'});
+  if(res.ok){
+    location.reload();
+  } else {
+    alert('Could not delete this transaction. Please try again.');
+  }
 }
+
 async function editNote(btn){
   const id = btn.dataset.id;
   const note = prompt('Update note:');
-  if(note===null) return;
+  if(note === null) return;
   const form = new FormData();
   form.append('note', note);
-  const res = await fetch(`{{ url_for('main.debts_tx_edit', txid=0) }}`.replace('/0','/'+id), {method:'POST', body: form});
+  const url = `{{ url_for('main.debts_tx_edit', txid=0) }}`.replace('/0','/'+id);
+  const res = await fetch(url, {method:'POST', body: form});
   if(res.ok){ location.reload(); }
 }
 </script>

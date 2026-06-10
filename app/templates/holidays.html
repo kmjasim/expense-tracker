@@ -1,62 +1,437 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <div>
-    <h4 class="mb-0">Holidays</h4>
-    <div class="text-muted small">Used to skip days in Long Leave + Salary calculations.</div>
+{% set ns = namespace(public=0, company=0, weekend=0, upcoming=0) %}
+{% for h in holidays %}
+  {% if h.kind == "company" %}
+    {% set ns.company = ns.company + 1 %}
+  {% else %}
+    {% set ns.public = ns.public + 1 %}
+  {% endif %}
+  {% if h.holiday_date.weekday() >= 5 %}
+    {% set ns.weekend = ns.weekend + 1 %}
+  {% endif %}
+  {% if h.holiday_date >= today %}
+    {% set ns.upcoming = ns.upcoming + 1 %}
+  {% endif %}
+{% endfor %}
+
+<style>
+  .holiday-page {
+    --holiday-bg: #f6f8fb;
+    --holiday-card: rgba(255, 255, 255, .88);
+    --holiday-border: rgba(15, 23, 42, .08);
+    --holiday-text: #0f172a;
+    --holiday-muted: #64748b;
+    --holiday-primary: #2563eb;
+    --holiday-primary-soft: rgba(37, 99, 235, .1);
+    --holiday-success-soft: rgba(16, 185, 129, .12);
+    --holiday-warning-soft: rgba(245, 158, 11, .14);
+    --holiday-danger-soft: rgba(239, 68, 68, .1);
+  }
+
+  .holiday-hero {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,.24);
+    border-radius: 28px;
+    padding: 1.25rem;
+    color: #fff;
+    background:
+      radial-gradient(circle at top left, rgba(255,255,255,.32), transparent 30%),
+      linear-gradient(135deg, #0f172a 0%, #1d4ed8 52%, #06b6d4 100%);
+    box-shadow: 0 22px 60px rgba(37, 99, 235, .24);
+  }
+
+  .holiday-hero:after {
+    content: "";
+    position: absolute;
+    width: 300px;
+    height: 300px;
+    right: -120px;
+    top: -120px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.16);
+  }
+
+  .holiday-hero > * { position: relative; z-index: 1; }
+
+  .holiday-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    padding: .35rem .7rem;
+    border-radius: 999px;
+    background: rgba(255,255,255,.16);
+    border: 1px solid rgba(255,255,255,.2);
+    font-size: .78rem;
+    font-weight: 700;
+    letter-spacing: .02em;
+  }
+
+  .holiday-hero-title {
+    font-weight: 900;
+    letter-spacing: -.04em;
+    line-height: 1;
+  }
+
+  .holiday-hero-subtitle {
+    color: rgba(255,255,255,.78);
+    max-width: 680px;
+  }
+
+  .holiday-year-picker {
+    min-width: 170px;
+    border: 1px solid rgba(255,255,255,.28);
+    border-radius: 18px;
+    background: rgba(255,255,255,.16);
+    backdrop-filter: blur(12px);
+    padding: .75rem;
+  }
+
+  .holiday-year-picker label { color: rgba(255,255,255,.75); }
+  .holiday-year-picker .form-select { border: 0; font-weight: 800; border-radius: 14px; }
+
+  .holiday-stat-card,
+  .holiday-panel {
+    background: var(--holiday-card);
+    border: 1px solid var(--holiday-border);
+    border-radius: 24px;
+    box-shadow: 0 14px 38px rgba(15, 23, 42, .07);
+  }
+
+  .holiday-stat-card {
+    padding: 1rem;
+    height: 100%;
+    transition: transform .2s ease, box-shadow .2s ease;
+  }
+
+  .holiday-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 18px 46px rgba(15, 23, 42, .1);
+  }
+
+  .holiday-icon {
+    width: 42px;
+    height: 42px;
+    display: inline-grid;
+    place-items: center;
+    border-radius: 16px;
+    background: var(--holiday-primary-soft);
+    color: var(--holiday-primary);
+    font-size: 1.1rem;
+  }
+
+  .holiday-stat-value {
+    font-size: 1.55rem;
+    font-weight: 900;
+    line-height: 1;
+    color: var(--holiday-text);
+  }
+
+  .holiday-stat-label,
+  .holiday-muted { color: var(--holiday-muted); }
+
+  .holiday-panel-header {
+    padding: 1.1rem 1.15rem;
+    border-bottom: 1px solid var(--holiday-border);
+  }
+
+  .holiday-panel-body { padding: 1.15rem; }
+
+  .holiday-add-toggle {
+    border-radius: 16px !important;
+    box-shadow: 0 10px 24px rgba(37, 99, 235, .22);
+  }
+
+  .holiday-control,
+  .holiday-page .form-control,
+  .holiday-page .form-select {
+    border-radius: 16px;
+    border-color: var(--holiday-border);
+  }
+
+  .holiday-page .form-control:focus,
+  .holiday-page .form-select:focus {
+    border-color: rgba(37, 99, 235, .5);
+    box-shadow: 0 0 0 .22rem rgba(37, 99, 235, .12);
+  }
+
+  .holiday-filter-bar {
+    display: flex;
+    gap: .5rem;
+    flex-wrap: wrap;
+  }
+
+  .holiday-filter-btn {
+    border: 1px solid var(--holiday-border);
+    background: #fff;
+    color: var(--holiday-muted);
+    border-radius: 999px;
+    padding: .45rem .78rem;
+    font-size: .82rem;
+    font-weight: 800;
+  }
+
+  .holiday-filter-btn.active,
+  .holiday-filter-btn:hover {
+    border-color: rgba(37, 99, 235, .28);
+    background: var(--holiday-primary-soft);
+    color: var(--holiday-primary);
+  }
+
+  .holiday-table {
+    border-collapse: separate;
+    border-spacing: 0 .65rem;
+  }
+
+  .holiday-table thead th {
+    border: 0;
+    color: var(--holiday-muted);
+    font-size: .74rem;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+  }
+
+  .holiday-table tbody tr {
+    box-shadow: 0 8px 22px rgba(15, 23, 42, .055);
+  }
+
+  .holiday-table tbody td {
+    background: #fff;
+    border-top: 1px solid var(--holiday-border);
+    border-bottom: 1px solid var(--holiday-border);
+    padding: .9rem .85rem;
+  }
+
+  .holiday-table tbody td:first-child {
+    border-left: 1px solid var(--holiday-border);
+    border-top-left-radius: 18px;
+    border-bottom-left-radius: 18px;
+  }
+
+  .holiday-table tbody td:last-child {
+    border-right: 1px solid var(--holiday-border);
+    border-top-right-radius: 18px;
+    border-bottom-right-radius: 18px;
+  }
+
+  .holiday-table tbody tr.is-weekend td {
+    background: linear-gradient(90deg, rgba(37, 99, 235, .08), #fff 42%);
+  }
+
+  .holiday-date-chip {
+    display: inline-flex;
+    flex-direction: column;
+    min-width: 78px;
+    padding: .45rem .65rem;
+    border-radius: 16px;
+    background: #f8fafc;
+    border: 1px solid var(--holiday-border);
+  }
+
+  .holiday-date-chip strong { color: var(--holiday-text); }
+
+  .holiday-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    border-radius: 999px;
+    padding: .35rem .65rem;
+    font-size: .74rem;
+    font-weight: 900;
+  }
+
+  .holiday-badge-public { background: var(--holiday-warning-soft); color: #a16207; }
+  .holiday-badge-company { background: var(--holiday-primary-soft); color: #1d4ed8; }
+  .holiday-badge-weekend { background: var(--holiday-success-soft); color: #047857; }
+  .holiday-badge-upcoming { background: rgba(99, 102, 241, .12); color: #4f46e5; }
+
+  .holiday-mobile-card {
+    background: #fff;
+    border: 1px solid var(--holiday-border);
+    border-radius: 22px;
+    padding: 1rem;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, .06);
+  }
+
+  .holiday-month-strip {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: .5rem;
+  }
+
+  .holiday-month-pill {
+    border: 1px solid var(--holiday-border);
+    background: #fff;
+    border-radius: 16px;
+    padding: .55rem .35rem;
+    text-align: center;
+    min-height: 62px;
+  }
+
+  .holiday-month-pill.has-days {
+    background: linear-gradient(180deg, rgba(37, 99, 235, .09), #fff);
+    border-color: rgba(37, 99, 235, .18);
+  }
+
+  .holiday-month-pill span {
+    display: block;
+    color: var(--holiday-muted);
+    font-size: .7rem;
+    font-weight: 900;
+  }
+
+  .holiday-month-pill strong {
+    display: block;
+    color: var(--holiday-text);
+    font-size: 1rem;
+    margin-top: .15rem;
+  }
+
+  .holiday-empty-state {
+    border: 1px dashed rgba(100, 116, 139, .35);
+    border-radius: 22px;
+    padding: 2.25rem 1rem;
+    text-align: center;
+    background: #fff;
+  }
+
+  @media (max-width: 991.98px) {
+    .holiday-hero { border-radius: 22px; }
+    .holiday-month-strip { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  }
+
+  @media (max-width: 575.98px) {
+    .holiday-hero { padding: 1rem; }
+    .holiday-hero-title { font-size: 1.85rem; }
+    .holiday-month-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  }
+</style>
+
+<div class="holiday-page">
+  <!-- Hero -->
+  <section class="holiday-hero mb-4">
+    <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-lg-end">
+      <div>
+        <div class="holiday-eyebrow mb-3">
+          <i class="bi bi-calendar2-heart"></i>
+          Salary calendar
+        </div>
+        <h1 class="holiday-hero-title display-6 mb-2">Holidays for {{ year }}</h1>
+        <p class="holiday-hero-subtitle mb-0">
+          Manage public and company holidays used to skip days in Long Leave and Salary calculations.
+        </p>
+      </div>
+
+      <div class="d-flex flex-column flex-sm-row gap-2 align-items-stretch align-items-sm-end">
+        <form method="get" action="{{ url_for('main.holidays_page') }}" class="holiday-year-picker">
+          <label class="form-label small fw-bold mb-1">Selected year</label>
+          <select name="year" class="form-select" onchange="this.form.submit()">
+            {% for y in range(year-3, year+2) %}
+              <option value="{{ y }}" {% if y==year %}selected{% endif %}>{{ y }}</option>
+            {% endfor %}
+          </select>
+        </form>
+
+        <button class="btn btn-light holiday-add-toggle fw-bold px-3 py-3"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#holidayAddCollapse"
+                aria-expanded="false"
+                aria-controls="holidayAddCollapse">
+          <i class="bi bi-plus-lg me-1"></i>Add Holiday
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Stats -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-xl-3">
+      <div class="holiday-stat-card">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <span class="holiday-icon"><i class="bi bi-calendar-check"></i></span>
+          <span class="holiday-badge holiday-badge-upcoming">{{ year }}</span>
+        </div>
+        <div class="holiday-stat-value">{{ holidays|length }}</div>
+        <div class="holiday-stat-label small fw-semibold mt-1">Total saved days</div>
+      </div>
+    </div>
+
+    <div class="col-6 col-xl-3">
+      <div class="holiday-stat-card">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <span class="holiday-icon"><i class="bi bi-megaphone"></i></span>
+          <span class="holiday-badge holiday-badge-public">Public</span>
+        </div>
+        <div class="holiday-stat-value">{{ ns.public }}</div>
+        <div class="holiday-stat-label small fw-semibold mt-1">Public holidays</div>
+      </div>
+    </div>
+
+    <div class="col-6 col-xl-3">
+      <div class="holiday-stat-card">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <span class="holiday-icon"><i class="bi bi-building"></i></span>
+          <span class="holiday-badge holiday-badge-company">Company</span>
+        </div>
+        <div class="holiday-stat-value">{{ ns.company }}</div>
+        <div class="holiday-stat-label small fw-semibold mt-1">Company holidays</div>
+      </div>
+    </div>
+
+    <div class="col-6 col-xl-3">
+      <div class="holiday-stat-card">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <span class="holiday-icon"><i class="bi bi-clock-history"></i></span>
+          <span class="holiday-badge holiday-badge-weekend">Upcoming</span>
+        </div>
+        <div class="holiday-stat-value">{{ ns.upcoming }}</div>
+        <div class="holiday-stat-label small fw-semibold mt-1">Remaining from today</div>
+      </div>
+    </div>
   </div>
 
-  <form method="get" action="{{ url_for('main.holidays_page') }}" class="d-flex gap-2 align-items-center">
-    <label class="small text-muted">Year</label>
-    <select name="year" class="form-select form-select-sm" style="width:110px;" onchange="this.form.submit()">
-      {% for y in range(year-3, year+2) %}
-        <option value="{{ y }}" {% if y==year %}selected{% endif %}>{{ y }}</option>
-      {% endfor %}
-    </select>
-  </form>
-</div>
+  <!-- Add Holiday -->
+  <div class="collapse mb-4" id="holidayAddCollapse">
+    <div class="holiday-panel">
+      <div class="holiday-panel-header d-flex justify-content-between align-items-center gap-3">
+        <div>
+          <h5 class="mb-1 fw-black">Add a new holiday</h5>
+          <div class="holiday-muted small">Manual entries are immediately used by your salary and leave calculations.</div>
+        </div>
+        <span class="holiday-icon d-none d-sm-inline-grid"><i class="bi bi-pencil-square"></i></span>
+      </div>
 
-<!-- Add Holiday (accordion, closed by default) -->
-<div class="accordion mb-3" id="holidayAccordion">
-  <div class="accordion-item shadow-sm">
-    <h2 class="accordion-header">
-      <button class="accordion-button collapsed" type="button"
-              data-bs-toggle="collapse" data-bs-target="#holidayAddCollapse"
-              aria-expanded="false" aria-controls="holidayAddCollapse">
-        <span class="fw-semibold">Add Holiday</span>
-        <span class="text-muted small ms-2">(manual)</span>
-      </button>
-    </h2>
-
-    <div id="holidayAddCollapse" class="accordion-collapse collapse" data-bs-parent="#holidayAccordion">
-      <div class="accordion-body">
-        <form class="row g-2" method="post" action="{{ url_for('main.holiday_add') }}">
+      <div class="holiday-panel-body">
+        <form method="post" action="{{ url_for('main.holiday_add') }}" class="row g-3 align-items-end">
           {% if csrf_token is defined %}
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           {% endif %}
 
-          <div class="col-md-3">
-            <label class="form-label small">Date</label>
-            <input type="date" class="form-control form-control-sm" name="holiday_date"
+          <div class="col-12 col-md-3">
+            <label class="form-label small fw-bold text-muted">Date</label>
+            <input type="date" class="form-control form-control-lg" name="holiday_date"
                    value="{{ today.isoformat() }}" required>
           </div>
-          <div class="col-md-3">
-            <label class="form-label small">Kind</label>
-            <select class="form-select form-select-sm" name="kind" required>
+
+          <div class="col-12 col-md-3">
+            <label class="form-label small fw-bold text-muted">Kind</label>
+            <select class="form-select form-select-lg" name="kind" required>
               <option value="public" selected>Public</option>
               <option value="company">Company</option>
             </select>
           </div>
 
-          <div class="col-md-3">
-            <label class="form-label small">Holiday name</label>
-            <input type="text" class="form-control form-control-sm" name="name"
+          <div class="col-12 col-md-4">
+            <label class="form-label small fw-bold text-muted">Holiday name</label>
+            <input type="text" class="form-control form-control-lg" name="name"
                    placeholder="e.g., Chuseok / Lunar New Year" required>
           </div>
 
-          <div class="col-md-3 d-flex align-items-end justify-content-end">
-            <button class="btn btn-sm btn-primary px-6">
+          <div class="col-12 col-md-2 d-grid">
+            <button class="btn btn-primary btn-lg fw-bold rounded-4">
               <i class="bi bi-plus-lg me-1"></i>Add
             </button>
           </div>
@@ -64,69 +439,246 @@
       </div>
     </div>
   </div>
-</div>
 
-<!-- List -->
-<div class="card shadow-sm">
-  <div class="card-body">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <div class="fw-semibold">Holidays in {{ year }}</div>
-      <div class="text-muted small">{{ holidays|length }} day(s)</div>
+  <!-- Month overview -->
+  <div class="holiday-panel mb-4">
+    <div class="holiday-panel-header d-flex flex-column flex-lg-row justify-content-between gap-3 align-items-lg-center">
+      <div>
+        <h5 class="mb-1 fw-bold">Year overview</h5>
+        <div class="holiday-muted small">A quick month-by-month holiday map.</div>
+      </div>
+      <div class="holiday-muted small">
+        <i class="bi bi-info-circle me-1"></i>Weekend holidays are highlighted in the list below.
+      </div>
+    </div>
+    <div class="holiday-panel-body">
+      <div class="holiday-month-strip">
+        {% for m in range(1, 13) %}
+          {% set mc = namespace(count=0) %}
+          {% for h in holidays %}
+            {% if h.holiday_date.month == m %}
+              {% set mc.count = mc.count + 1 %}
+            {% endif %}
+          {% endfor %}
+          <div class="holiday-month-pill {% if mc.count > 0 %}has-days{% endif %}">
+            <span>{{ ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][m-1] }}</span>
+            <strong>{{ mc.count }}</strong>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- List -->
+  <div class="holiday-panel">
+    <div class="holiday-panel-header">
+      <div class="d-flex flex-column flex-xl-row justify-content-between gap-3 align-items-xl-center">
+        <div>
+          <h5 class="mb-1 fw-bold">Holiday list</h5>
+          <div class="holiday-muted small"><span id="holidayVisibleCount">{{ holidays|length }}</span> of {{ holidays|length }} day(s) showing</div>
+        </div>
+
+        <div class="d-flex flex-column flex-md-row gap-2 align-items-stretch align-items-md-center">
+          <div class="input-group">
+            <span class="input-group-text bg-white border-end-0 holiday-control"><i class="bi bi-search text-muted"></i></span>
+            <input type="search"
+                   id="holidaySearchInput"
+                   class="form-control border-start-0 holiday-control"
+                   placeholder="Search name, date, kind...">
+          </div>
+
+          <div class="holiday-filter-bar" role="group" aria-label="Holiday filters">
+            <button type="button" class="holiday-filter-btn active" data-filter="all">All</button>
+            <button type="button" class="holiday-filter-btn" data-filter="public">Public</button>
+            <button type="button" class="holiday-filter-btn" data-filter="company">Company</button>
+            <button type="button" class="holiday-filter-btn" data-filter="weekend">Weekend</button>
+            <button type="button" class="holiday-filter-btn" data-filter="upcoming">Upcoming</button>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div class="table-responsive">
-      <table class="table table-sm align-middle">
-        <thead class="text-muted small">
-          <tr>
-            <th style="width:140px;">Date</th>
-            <th style="width:110px;">Day</th>
-            <th>Name</th>
-            <th class="text-end" style="width:120px;">Action</th>
-            <th style="width:110px;">Kind</th>
-          </tr>
+    <div class="holiday-panel-body">
+      {% if holidays %}
+        <!-- Desktop / tablet table -->
+        <div class="table-responsive d-none d-md-block">
+          <table class="table holiday-table align-middle mb-0">
+            <thead>
+              <tr>
+                <th style="width: 150px;">Date</th>
+                <th style="width: 120px;">Day</th>
+                <th>Name</th>
+                <th style="width: 160px;">Kind</th>
+                <th class="text-end" style="width: 120px;">Action</th>
+              </tr>
+            </thead>
 
-        </thead>
+            <tbody id="holidayTableBody">
+              {% for h in holidays %}
+                {% set isWeekend = h.holiday_date.weekday() >= 5 %}
+                {% set isUpcoming = h.holiday_date >= today %}
+                <tr class="holiday-item {% if isWeekend %}is-weekend{% endif %}"
+                    data-kind="{{ h.kind }}"
+                    data-weekend="{% if isWeekend %}1{% else %}0{% endif %}"
+                    data-upcoming="{% if isUpcoming %}1{% else %}0{% endif %}"
+                    data-search="{{ h.holiday_date.strftime('%Y-%m-%d') }} {{ h.holiday_date.strftime('%a') }} {{ h.name|lower }} {{ h.kind }} {% if isWeekend %}weekend{% endif %} {% if isUpcoming %}upcoming{% endif %}">
+                  <td>
+                    <span class="holiday-date-chip">
+                      <strong>{{ h.holiday_date.strftime("%b %d") }}</strong>
+                      <small class="holiday-muted">{{ h.holiday_date.strftime("%Y-%m-%d") }}</small>
+                    </span>
+                  </td>
+                  <td>
+                    <span class="fw-bold">{{ h.holiday_date.strftime("%a") }}</span>
+                    {% if isWeekend %}
+                      <div class="mt-1"><span class="holiday-badge holiday-badge-weekend">Weekend</span></div>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <div class="fw-bold text-dark">{{ h.name }}</div>
+                    {% if isUpcoming %}
+                      <div class="small holiday-muted mt-1"><i class="bi bi-arrow-right-circle me-1"></i>Upcoming</div>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if h.kind == "company" %}
+                      <span class="holiday-badge holiday-badge-company"><i class="bi bi-building"></i>Company</span>
+                    {% else %}
+                      <span class="holiday-badge holiday-badge-public"><i class="bi bi-megaphone"></i>Public</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-end">
+                    <form method="post" action="{{ url_for('main.holiday_delete', hid=h.id) }}" class="d-inline">
+                      {% if csrf_token is defined %}
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      {% endif %}
+                      <button class="btn btn-sm btn-outline-danger rounded-pill px-3"
+                              onclick="return confirm('Delete this holiday?');">
+                        <i class="bi bi-trash3 me-1"></i>Delete
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
 
-        <tbody class="small">
+        <!-- Mobile cards -->
+        <div class="d-md-none d-grid gap-3" id="holidayMobileList">
           {% for h in holidays %}
             {% set isWeekend = h.holiday_date.weekday() >= 5 %}
-            <tr class="{% if isWeekend %}table-primary{% endif %}">
-              <td class="fw-semibold">{{ h.holiday_date.strftime("%Y-%m-%d") }}</td>
-              <td class="text-muted">
-                {{ h.holiday_date.strftime("%a") }}
-                {% if isWeekend %}
-                  <span class="badge text-bg-primary ms-1">Weekend</span>
-                {% endif %}
-              </td>
+            {% set isUpcoming = h.holiday_date >= today %}
+            <div class="holiday-mobile-card holiday-item"
+                 data-kind="{{ h.kind }}"
+                 data-weekend="{% if isWeekend %}1{% else %}0{% endif %}"
+                 data-upcoming="{% if isUpcoming %}1{% else %}0{% endif %}"
+                 data-search="{{ h.holiday_date.strftime('%Y-%m-%d') }} {{ h.holiday_date.strftime('%a') }} {{ h.name|lower }} {{ h.kind }} {% if isWeekend %}weekend{% endif %} {% if isUpcoming %}upcoming{% endif %}">
+              <div class="d-flex justify-content-between align-items-start gap-3">
+                <div>
+                  <div class="small holiday-muted fw-bold">{{ h.holiday_date.strftime("%A") }}</div>
+                  <h6 class="fw-bold mb-1">{{ h.name }}</h6>
+                  <div class="holiday-muted small">{{ h.holiday_date.strftime("%Y-%m-%d") }}</div>
+                </div>
+                <div class="text-end">
+                  <div class="fw-black fs-5">{{ h.holiday_date.strftime("%d") }}</div>
+                  <div class="holiday-muted small fw-bold">{{ h.holiday_date.strftime("%b") }}</div>
+                </div>
+              </div>
 
-              <td>{{ h.name }}</td>
-              <td class="text-end">
-                <form method="post" action="{{ url_for('main.holiday_delete', hid=h.id) }}" class="d-inline">
-                  {% if csrf_token is defined %}
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                  {% endif %}
-                  <button class="btn btn-sm btn-outline-danger">Delete</button>
-                </form>
-              </td>
-                            <td>
+              <div class="d-flex flex-wrap gap-2 mt-3">
                 {% if h.kind == "company" %}
-                  <span class="badge text-bg-secondary">Company</span>
+                  <span class="holiday-badge holiday-badge-company"><i class="bi bi-building"></i>Company</span>
                 {% else %}
-                  <span class="badge text-bg-warning">Public</span>
+                  <span class="holiday-badge holiday-badge-public"><i class="bi bi-megaphone"></i>Public</span>
                 {% endif %}
-              </td>
-            </tr>
-          {% else %}
-            <tr>
-              <td colspan="4" class="text-center text-muted py-3">
-                No holidays saved for {{ year }}.
-              </td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+                {% if isWeekend %}<span class="holiday-badge holiday-badge-weekend">Weekend</span>{% endif %}
+                {% if isUpcoming %}<span class="holiday-badge holiday-badge-upcoming">Upcoming</span>{% endif %}
+              </div>
 
+              <form method="post" action="{{ url_for('main.holiday_delete', hid=h.id) }}" class="mt-3">
+                {% if csrf_token is defined %}
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                {% endif %}
+                <button class="btn btn-outline-danger w-100 rounded-4"
+                        onclick="return confirm('Delete this holiday?');">
+                  <i class="bi bi-trash3 me-1"></i>Delete
+                </button>
+              </form>
+            </div>
+          {% endfor %}
+        </div>
+
+        <div id="holidayNoResults" class="holiday-empty-state d-none mt-3">
+          <div class="holiday-icon mx-auto mb-3"><i class="bi bi-search"></i></div>
+          <h6 class="fw-bold mb-1">No matching holidays</h6>
+          <div class="holiday-muted small">Try another search word or clear the active filter.</div>
+        </div>
+      {% else %}
+        <div class="holiday-empty-state">
+          <div class="holiday-icon mx-auto mb-3"><i class="bi bi-calendar-plus"></i></div>
+          <h5 class="fw-bold mb-1">No holidays saved for {{ year }}</h5>
+          <p class="holiday-muted mb-3">Add public holidays or company holidays so salary and leave calculations can skip them correctly.</p>
+          <button class="btn btn-primary rounded-4 fw-bold px-4"
+                  type="button"
+                  data-bs-toggle="collapse"
+                  data-bs-target="#holidayAddCollapse">
+            <i class="bi bi-plus-lg me-1"></i>Add first holiday
+          </button>
+        </div>
+      {% endif %}
+    </div>
   </div>
 </div>
+
+<script>
+  (function () {
+    const searchInput = document.getElementById('holidaySearchInput');
+    const filterButtons = document.querySelectorAll('.holiday-filter-btn');
+    const items = document.querySelectorAll('.holiday-item');
+    const visibleCount = document.getElementById('holidayVisibleCount');
+    const noResults = document.getElementById('holidayNoResults');
+    let activeFilter = 'all';
+
+    function itemMatchesFilter(item) {
+      if (activeFilter === 'all') return true;
+      if (activeFilter === 'weekend') return item.dataset.weekend === '1';
+      if (activeFilter === 'upcoming') return item.dataset.upcoming === '1';
+      return item.dataset.kind === activeFilter;
+    }
+
+    function applyFilters() {
+      const query = (searchInput?.value || '').trim().toLowerCase();
+      let visible = 0;
+
+      items.forEach((item) => {
+        const searchable = (item.dataset.search || '').toLowerCase();
+        const matchesSearch = !query || searchable.includes(query);
+        const shouldShow = matchesSearch && itemMatchesFilter(item);
+        item.classList.toggle('d-none', !shouldShow);
+        if (shouldShow) visible += 1;
+      });
+
+      // Each holiday exists twice: one table row and one mobile card.
+      const realVisible = window.innerWidth >= 768 ? visible : visible;
+      const correctedVisible = Math.ceil(realVisible / 2);
+      if (visibleCount) visibleCount.textContent = correctedVisible;
+      if (noResults) noResults.classList.toggle('d-none', correctedVisible !== 0);
+    }
+
+    searchInput?.addEventListener('input', applyFilters);
+
+    filterButtons.forEach((button) => {
+      button.addEventListener('click', function () {
+        filterButtons.forEach((btn) => btn.classList.remove('active'));
+        this.classList.add('active');
+        activeFilter = this.dataset.filter || 'all';
+        applyFilters();
+      });
+    });
+
+    window.addEventListener('resize', applyFilters);
+    applyFilters();
+  })();
+</script>
 {% endblock %}

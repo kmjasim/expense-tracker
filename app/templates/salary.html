@@ -1,564 +1,744 @@
 {% extends "base.html" %}
+{% set page_slug = "salary" %}
+
 {% block styles %}
 <style>
-  .net-card {
-    background: linear-gradient(180deg, rgba(13,110,253,.08), rgba(255,255,255,0));
+  :root {
+    --salary-ink: #14213d;
+    --salary-muted: #64748b;
+    --salary-line: rgba(15, 23, 42, .09);
+    --salary-soft: rgba(255,255,255,.78);
+    --salary-radius: 26px;
+    --salary-shadow: 0 22px 55px rgba(15, 23, 42, .09);
   }
-    /* Table row highlights */
-  tr.row-weekend td { background-color: rgba(13,110,253,.07) !important; }   /* blue-ish */
-  tr.row-holiday td { background-color: rgba(255,193,7,.15) !important; }    /* yellow-ish */
-  tr.row-leave td   { background-color: rgba(220,53,69,.10) !important; }    /* red-ish */
 
-  /* make badges nicer */
+  .salary-page {
+    color: var(--salary-ink);
+  }
+
+  .salary-hero {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,.75);
+    border-radius: 32px;
+    background:
+      radial-gradient(circle at top left, rgba(99,102,241,.30), transparent 34%),
+      radial-gradient(circle at 76% 8%, rgba(14,165,233,.22), transparent 30%),
+      linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #0f766e 100%);
+    box-shadow: 0 26px 70px rgba(15, 23, 42, .20);
+    color: #fff;
+  }
+
+  .salary-hero::after {
+    content: "";
+    position: absolute;
+    width: 280px;
+    height: 280px;
+    right: -90px;
+    bottom: -120px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.12);
+  }
+
+  .salary-hero > * {
+    position: relative;
+    z-index: 2;
+  }
+
+  .salary-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    padding: .42rem .75rem;
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 999px;
+    background: rgba(255,255,255,.10);
+    color: rgba(255,255,255,.86);
+    font-size: .78rem;
+    font-weight: 700;
+    letter-spacing: .02em;
+  }
+
+  .salary-filter-card,
+  .salary-panel,
+  .salary-stat,
+  .salary-net-card,
+  .salary-table-card {
+    border: 1px solid var(--salary-line);
+    border-radius: var(--salary-radius);
+    background: var(--salary-soft);
+    box-shadow: var(--salary-shadow);
+    backdrop-filter: blur(12px);
+  }
+
+  .salary-filter-card {
+    background: rgba(255,255,255,.12);
+    border-color: rgba(255,255,255,.22);
+  }
+
+  .salary-filter-card .form-select,
+  .salary-filter-card .btn {
+    border-radius: 14px;
+  }
+
+  .salary-stat {
+    position: relative;
+    overflow: hidden;
+    transition: transform .18s ease, box-shadow .18s ease;
+  }
+
+  .salary-stat:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 28px 70px rgba(15,23,42,.12);
+  }
+
+  .salary-stat::after {
+    content: "";
+    position: absolute;
+    inset: auto -40px -55px auto;
+    width: 130px;
+    height: 130px;
+    border-radius: 50%;
+    background: rgba(13,110,253,.08);
+  }
+
+  .salary-stat-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(13,110,253,.10);
+    color: #0d6efd;
+    font-size: 1.15rem;
+  }
+
+  .salary-stat-title {
+    color: var(--salary-muted);
+    font-size: .78rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+
+  .salary-stat-value {
+    font-size: clamp(1.25rem, 2vw, 1.65rem);
+    font-weight: 850;
+    letter-spacing: -.03em;
+  }
+
+  .salary-net-card {
+    position: relative;
+    overflow: hidden;
+    min-height: 100%;
+    background:
+      radial-gradient(circle at top right, rgba(34,197,94,.18), transparent 30%),
+      linear-gradient(180deg, #ffffff, #f8fafc);
+  }
+
+  .salary-net-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 7px;
+    background: linear-gradient(90deg, #2563eb, #14b8a6, #22c55e);
+  }
+
+  .salary-net-amount {
+    font-size: clamp(1.5rem, 3vw, 3rem);
+    font-weight: 900;
+    letter-spacing: -.055em;
+    color: #0f766e;
+  }
+
+  .salary-mini-line {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: .72rem 0;
+    border-bottom: 1px dashed rgba(15,23,42,.12);
+  }
+
+  .salary-mini-line:last-child {
+    border-bottom: 0;
+  }
+
+  .salary-section-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .salary-section-title h5 {
+    margin: 0;
+    font-weight: 850;
+    letter-spacing: -.025em;
+  }
+
+  .salary-section-title p {
+    margin: .2rem 0 0;
+    color: var(--salary-muted);
+    font-size: .875rem;
+  }
+
+  .salary-tabs {
+    background: #f1f5f9;
+    border-radius: 18px;
+    padding: .35rem;
+  }
+
+  .salary-tabs .nav-link {
+    color: #475569;
+    border-radius: 14px;
+    font-weight: 700;
+  }
+
+  .salary-tabs .nav-link.active {
+    background: #fff;
+    color: #0f172a;
+    box-shadow: 0 10px 30px rgba(15,23,42,.08);
+  }
+
+  .salary-soft-box {
+    border: 1px solid rgba(15,23,42,.08);
+    border-radius: 20px;
+    background: linear-gradient(180deg, #ffffff, #f8fafc);
+    padding: 1rem;
+  }
+
+  .salary-leave-tile {
+    border: 1px solid rgba(15,23,42,.08);
+    border-radius: 20px;
+    padding: 1rem;
+    background: #fff;
+  }
+
+  .salary-leave-tile .label {
+    color: var(--salary-muted);
+    font-size: .78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .salary-leave-tile .value {
+    font-size: 1.45rem;
+    font-weight: 850;
+    letter-spacing: -.03em;
+  }
+
+  .salary-table-card .table {
+    margin-bottom: 0;
+  }
+
+  .salary-table-card thead th {
+    border: 0;
+    color: #64748b;
+    background: #f8fafc;
+    font-size: .74rem;
+    text-transform: uppercase;
+    letter-spacing: .045em;
+    white-space: nowrap;
+  }
+
+  .salary-table-card tbody td {
+    border-color: rgba(15,23,42,.07);
+    vertical-align: middle;
+  }
+
+  .salary-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .32rem .58rem;
+    border-radius: 999px;
+    font-size: .74rem;
+    font-weight: 800;
+  }
+
+  .pill-weekend { color: #1d4ed8; background: rgba(59,130,246,.12); }
+  .pill-holiday { color: #92400e; background: rgba(245,158,11,.17); }
+  .pill-paid { color: #047857; background: rgba(16,185,129,.13); }
+  .pill-unpaid { color: #b91c1c; background: rgba(239,68,68,.12); }
+
+  tr.row-weekend td { background-color: rgba(13,110,253,.045) !important; }
+  tr.row-holiday td { background-color: rgba(255,193,7,.11) !important; }
+  tr.row-leave td   { background-color: rgba(220,53,69,.075) !important; }
+
   .badge-soft {
-    font-weight: 600;
+    font-weight: 700;
     border: 1px solid rgba(0,0,0,.08);
+  }
+
+  .salary-mobile-log {
+    display: none;
+  }
+
+  .salary-log-card {
+    border: 1px solid rgba(15,23,42,.08);
+    border-radius: 20px;
+    background: #fff;
+    padding: 1rem;
+    box-shadow: 0 12px 35px rgba(15,23,42,.06);
+  }
+
+  .salary-chart-shell {
+    border: 1px solid rgba(15,23,42,.08);
+    border-radius: 24px;
+    background: #fff;
+    padding: 1rem;
+  }
+
+  @media (max-width: 991.98px) {
+    .salary-hero {
+      border-radius: 24px;
+    }
+    .salary-filter-card {
+      margin-top: 1rem;
+    }
+  }
+
+  @media (max-width: 767.98px) {
+    .salary-page {
+      padding-inline: .15rem;
+    }
+    .salary-desktop-log {
+      display: none;
+    }
+    .salary-mobile-log {
+      display: grid;
+      gap: .75rem;
+    }
+    .salary-tabs {
+      overflow-x: auto;
+      flex-wrap: nowrap;
+    }
+    .salary-tabs .nav-link {
+      white-space: nowrap;
+    }
+    .salary-section-title {
+      flex-direction: column;
+    }
   }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <div>
-    <h4 class="mb-0">Salary Tracker</h4>
-    <div class="text-muted small">Month view (coming next)</div>
-  </div>
+<div class="salary-page">
 
-  <form class="d-flex gap-2" method="get">
-    <select class="form-select form-select-sm" name="month" style="width: 110px;">
-      {% for m in range(1, 13) %}
-        <option value="{{ m }}" {% if m == month %}selected{% endif %}>{{ "%02d"|format(m) }}</option>
-      {% endfor %}
-    </select>
-
-    <select class="form-select form-select-sm" name="year" style="width: 120px;">
-      {% for y in range(year-2, year+5) %}
-        <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
-      {% endfor %}
-    </select>
-
-    <button class="btn btn-sm btn-primary">Go</button>
-<button
-  type="button"
-  class="btn btn-sm btn-outline-dark"
-  data-bs-toggle="modal"
-  data-bs-target="#downloadModal">
-  <i class="bi bi-download me-1"></i> Download
-</button>
-
-
-
-  </form>
-</div>
-
-<div class="row g-3 align-items-stretch mt-1">
-  <!-- LEFT: 3 cards top + 3 cards bottom -->
-  <div class="col-lg-9">
-    <div class="row g-3">
-
-      <!-- 1) Base Salary -->
-      <div class="col-md-4">
-        <div class="card shadow-sm border-0 h-100">
-          <div class="card-body">
-            <div class="text-muted small">Base Salary</div>
-            <div class="fs-4 fw-semibold text-primary">
-              {{ base_salary_str }}
-            </div>
-            <div class="small text-muted">
-              Fixed monthly
-            </div>
-          </div>
+  <!-- Hero / Month selector -->
+  <section class="salary-hero p-4 p-lg-5 mb-4">
+    <div class="row g-4 align-items-center">
+      <div class="col-lg-7">
+        <div class="salary-eyebrow mb-3">
+          <i class="bi bi-wallet2"></i>
+          Payroll control center
         </div>
+        <h1 class="display-6 fw-bold mb-2">Salary Tracker</h1>
+        <p class="mb-0 text-white-50">
+          Review monthly salary, overtime, leave, deductions, and daily work logs in one clean view.
+        </p>
       </div>
 
-      <!-- 2) Overtime (weekday OT) -->
-      <div class="col-md-4">
-        <div class="card shadow-sm border-0 h-100">
-          <div class="card-body">
-            <div class="text-muted small">Overtime</div>
-            <div class="fs-4 fw-semibold text-success">
-              {{ overtime_pay_str }}
+      <div class="col-lg-5">
+        <form class="salary-filter-card p-3" method="get">
+          <div class="row g-2 align-items-end">
+            <div class="col-6">
+              <label class="form-label small text-white-50 mb-1">Month</label>
+              <select class="form-select form-select-sm" name="month">
+                {% for m in range(1, 13) %}
+                  <option value="{{ m }}" {% if m == month %}selected{% endif %}>{{ "%02d"|format(m) }}</option>
+                {% endfor %}
+              </select>
             </div>
-            <div class="small text-muted">
-              Hours: <span class="fw-semibold">{{ overtime_hours_str }}</span>
+            <div class="col-6">
+              <label class="form-label small text-white-50 mb-1">Year</label>
+              <select class="form-select form-select-sm" name="year">
+                {% for y in range(year-2, year+5) %}
+                  <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+              </select>
             </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 3) Weekend/Holiday -->
-      <div class="col-md-4">
-        <div class="card shadow-sm border-0 h-100">
-          <div class="card-body">
-            <div class="text-muted small">Weekend / Holiday Work</div>
-            <div class="fs-4 fw-semibold text-success">
-              {{ weekend_holiday_pay_str }}
+            <div class="col-6">
+              <button class="btn btn-light btn-sm w-100 fw-semibold">
+                <i class="bi bi-search me-1"></i> View Month
+              </button>
             </div>
-            <div class="small text-muted">
-              Days: <span class="fw-semibold">{{ weekend_holiday_days }}</span>
-              · Hours: <span class="fw-semibold">{{ weekend_holiday_hours_str }}</span>
+            <div class="col-6">
+              <button type="button" class="btn btn-outline-light btn-sm w-100 fw-semibold" data-bs-toggle="modal" data-bs-target="#downloadModal">
+                <i class="bi bi-download me-1"></i> Download
+              </button>
             </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 4) Allowance -->
-      <div class="col-md-3">
-        <div class="card shadow-sm border-0 h-100">
-          <div class="card-body">
-            <div class="text-muted small">Allowance</div>
-            <div class="fs-4 fw-semibold text-success">
-              {{ allowance_str }}
-            </div>
-            <div class="small text-muted">
-              Optional additions
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 5) Deductions -->
-      <div class="col-md-3">
-        <div class="card shadow-sm border-0 h-100">
-          <div class="card-body">
-            <div class="text-muted small">Deductions (Insurance / Tax)</div>
-            <div class="fs-4 fw-semibold text-danger">
-              {{ deductions_str }}
-            </div>
-            <div class="small text-muted">
-              Insurance + tax + others
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 6) Leave + Penalty (grouped) -->
-      <div class="col-md-3">
-        <div class="card shadow-sm border-0 h-100">
-          <div class="card-body">
-            <div class="text-muted small">Leave Deduction + Penalty</div>
-            <div class="fs-4 fw-semibold text-danger">
-              {{ leave_total_deduction_str }}
-            </div>
-            <div class="small text-muted">
-              Leave days: <span class="fw-semibold">{{ leave_days }}</span>
-              · Penalty days: <span class="fw-semibold">{{ penalty_days }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="col-md-3">
-        <div class="card shadow-sm border-0 h-100">
-          <div class="card-body">
-            <div class="text-muted small">Paid Annual Leave</div>
-            <div class="fs-4 fw-semibold text-success">
-              {{ paid_leave_used_year }} / {{ paid_leave_total_available }} days
-            </div>
-            <div class="small text-muted">
-              Yearly: <span class="fw-semibold">{{ paid_leave_yearly_limit }}</span>
-              · Carried: <span class="fw-semibold">{{ paid_leave_carried }}</span>
-              · Remaining: <span class="fw-semibold">{{ paid_leave_remaining_year }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- RIGHT: Net Salary (spans 2 rows visually) -->
-  <div class="col-lg-3">
-    <div class="card shadow-sm border-0 h-100 net-card">
-      <div class="card-body d-flex flex-column justify-content-between">
-        <div>
-          <div class="text-muted small">Net Salary (Estimated)</div>
-
-          {# If you later pass net_salary_value as a number, we’ll auto color it.
-             For now it’s just placeholder. #}
-          <div class="display-6 fw-bold net-amount text-primary">
-            {{ net_salary_str }}
-          </div>
-          <div class="text-muted small mt-3">
-            Gross salary:
-            <span class="fw-bold text-primary">{{ gross_salary_str }}</span>
-          </div>
-        </div>
-
-        <div class="mt-3 pt-3 border-top">
-          <div class="d-flex justify-content-between small">
-            <span class="text-muted">Gross add-ons</span>
-            <span class="text-success fw-semibold">{{ gross_additions_str }}</span>
-          </div>
-          <div class="d-flex justify-content-between small">
-            <span class="text-muted">Total deductions</span>
-            <span class="text-danger fw-semibold">{{ total_deductions_str }}</span>
-          </div>
-          <div class="d-flex justify-content-between small">
-            <span class="text-muted">Short deduction:(<span class="text-danger">{{ (short_minutes/60) | round(2) }}h</span>)</span>
-            <span class="text-danger fw-semibold">{{ "{:,}".format(short_hours_deduction|int) }}₩</span>
-             
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-<div class="accordion mt-3" id="salaryAdjustAccordion">
-  <div class="accordion-item shadow-sm">
-    <h2 class="accordion-header">
-      <button
-        class="accordion-button collapsed"
-        type="button"
-        data-bs-toggle="collapse"
-        data-bs-target="#salaryAdjustCollapse"
-        aria-expanded="false"
-        aria-controls="salaryAdjustCollapse"
-      >
-        <div class="d-flex w-100 justify-content-between align-items-center">
-          <span class="fw-semibold">Allowances &amp; Deductions</span>
-          <span class="text-muted small ms-2">Monthly lines (보험/세금/수당)</span>
-        </div>
-      </button>
-    </h2>
-
-    <div
-      id="salaryAdjustCollapse"
-      class="accordion-collapse collapse"
-      data-bs-parent="#salaryAdjustAccordion"
-    >
-      <div class="accordion-body">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-  <div class="text-muted small">
-    Tip: copy last month, then edit only what changed.
-  </div>
-
-  <form method="post" action="{{ url_for('main.salary_adjust_copy_prev') }}">
-    {% if csrf_token is defined %}
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    {% endif %}
-    <input type="hidden" name="year" value="{{ year }}">
-    <input type="hidden" name="month" value="{{ month }}">
-    <button class="btn btn-sm btn-outline-secondary">
-      <i class="bi bi-copy me-1"></i> Copy from previous month
-    </button>
-  </form>
-</div>
-
-        <!-- Add line -->
-        <form class="row g-2" method="post" action="{{ url_for('main.salary_adjust_add') }}">
-          {% if csrf_token is defined %}
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          {% endif %}
-
-          <input type="hidden" name="year" value="{{ year }}">
-          <input type="hidden" name="month" value="{{ month }}">
-
-          <div class="col-md-3">
-            <label class="form-label small">Type</label>
-            <select class="form-select form-select-sm" name="kind" required>
-              <option value="allowance">Allowance (+)</option>
-              <option value="deduction">Deduction (−)</option>
-            </select>
-          </div>
-
-          <div class="col-md-6">
-            <label class="form-label small">Label</label>
-            <input class="form-control form-control-sm" name="label" placeholder="e.g., Health Insurance" required>
-          </div>
-
-          <div class="col-md-3">
-            <label class="form-label small">Amount (KRW)</label>
-            <input type="number" class="form-control form-control-sm" name="amount" min="0" required>
-          </div>
-
-          <div class="col-12 d-flex justify-content-end">
-            <button class="btn btn-sm btn-primary">Add</button>
           </div>
         </form>
+      </div>
+    </div>
+  </section>
 
-        <hr class="my-3">
+  <!-- KPI Grid -->
+  <div class="row g-3 align-items-stretch mb-4">
+    <div class="col-xl-9">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <div class="salary-stat h-100 p-3">
+            <div class="d-flex justify-content-between align-items-start gap-3">
+              <div>
+                <div class="salary-stat-title">Base Salary</div>
+                <div class="salary-stat-value text-primary mt-2">{{ base_salary_str }}</div>
+                <div class="small text-muted">Fixed monthly</div>
+              </div>
+              <div class="salary-stat-icon"><i class="bi bi-bank"></i></div>
+            </div>
+          </div>
+        </div>
 
-        <!-- List lines -->
-        <div class="table-responsive">
+        <div class="col-md-4">
+          <div class="salary-stat h-100 p-3">
+            <div class="d-flex justify-content-between align-items-start gap-3">
+              <div>
+                <div class="salary-stat-title">Overtime</div>
+                <div class="salary-stat-value text-success mt-2">{{ overtime_pay_str }}</div>
+                <div class="small text-muted">Hours: <span class="fw-semibold">{{ overtime_hours_str }}</span></div>
+              </div>
+              <div class="salary-stat-icon"><i class="bi bi-clock-history"></i></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="salary-stat h-100 p-3">
+            <div class="d-flex justify-content-between align-items-start gap-3">
+              <div>
+                <div class="salary-stat-title">Weekend / Holiday</div>
+                <div class="salary-stat-value text-success mt-2">{{ weekend_holiday_pay_str }}</div>
+                <div class="small text-muted">{{ weekend_holiday_days }} days · {{ weekend_holiday_hours_str }} hours</div>
+              </div>
+              <div class="salary-stat-icon"><i class="bi bi-calendar2-week"></i></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-3 col-sm-6">
+          <div class="salary-stat h-100 p-3">
+            <div class="salary-stat-title">Allowance</div>
+            <div class="salary-stat-value text-success mt-2">{{ allowance_str }}</div>
+            <div class="small text-muted">Optional additions</div>
+          </div>
+        </div>
+
+        <div class="col-md-3 col-sm-6">
+          <div class="salary-stat h-100 p-3">
+            <div class="salary-stat-title">Deductions</div>
+            <div class="salary-stat-value text-danger mt-2">{{ deductions_str }}</div>
+            <div class="small text-muted">Insurance, tax, others</div>
+          </div>
+        </div>
+
+        <div class="col-md-3 col-sm-6">
+          <div class="salary-stat h-100 p-3">
+            <div class="salary-stat-title">Leave + Penalty</div>
+            <div class="salary-stat-value text-danger mt-2">{{ leave_total_deduction_str }}</div>
+            <div class="small text-muted">Leave {{ leave_days }} · Penalty {{ penalty_days }}</div>
+          </div>
+        </div>
+
+        <div class="col-md-3 col-sm-6">
+          <div class="salary-stat h-100 p-3">
+            <div class="salary-stat-title">Paid Annual Leave</div>
+            <div class="salary-stat-value text-success mt-2">{{ paid_leave_used_year }} / {{ paid_leave_total_available }}</div>
+            <div class="small text-muted">Remaining: <span class="fw-semibold">{{ paid_leave_remaining_year }}</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-3">
+      <div class="salary-net-card h-100 p-4">
+        <div class="small fw-bold text-muted text-uppercase">Net Salary Estimate</div>
+        <div class="salary-net-amount mt-2">{{ net_salary_str }}</div>
+        <div class="small text-muted">Gross salary: <span class="fw-bold text-primary">{{ gross_salary_str }}</span></div>
+
+        <div class="mt-4">
+          <div class="salary-mini-line">
+            <span class="text-muted">Gross add-ons</span>
+            <span class="text-success fw-bold">{{ gross_additions_str }}</span>
+          </div>
+          <div class="salary-mini-line">
+            <span class="text-muted">Total deductions</span>
+            <span class="text-danger fw-bold">{{ total_deductions_str }}</span>
+          </div>
+          <div class="salary-mini-line">
+            <span class="text-muted">Short deduction <span class="text-danger">({{ (short_minutes/60) | round(2) }}h)</span></span>
+            <span class="text-danger fw-bold">{{ "{:,}".format(short_hours_deduction|int) }}₩</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Management Tabs -->
+  <div class="salary-panel p-3 p-lg-4 mb-4">
+    <div class="salary-section-title">
+      <div>
+        <h5>Monthly Controls</h5>
+        <p>Add adjustments, apply leave, update paid leave, or save a daily work entry.</p>
+      </div>
+    </div>
+
+    <ul class="nav nav-pills salary-tabs mb-4" id="salaryControlTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="adjust-tab" data-bs-toggle="pill" data-bs-target="#adjust-pane" type="button" role="tab">
+          <i class="bi bi-sliders me-1"></i> Allowances & Deductions
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="leave-tab" data-bs-toggle="pill" data-bs-target="#leave-pane" type="button" role="tab">
+          <i class="bi bi-calendar-x me-1"></i> Long Leave
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="paid-tab" data-bs-toggle="pill" data-bs-target="#paid-pane" type="button" role="tab">
+          <i class="bi bi-shield-check me-1"></i> Paid Leave Balance
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="entry-tab" data-bs-toggle="pill" data-bs-target="#entry-pane" type="button" role="tab">
+          <i class="bi bi-pencil-square me-1"></i> Daily Entry
+        </button>
+      </li>
+    </ul>
+
+    <div class="tab-content">
+      <!-- Allowances and deductions -->
+      <div class="tab-pane fade show active" id="adjust-pane" role="tabpanel" aria-labelledby="adjust-tab">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+          <div class="small text-muted">Tip: copy last month, then edit only what changed.</div>
+          <form method="post" action="{{ url_for('main.salary_adjust_copy_prev') }}">
+            {% if csrf_token is defined %}
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            {% endif %}
+            <input type="hidden" name="year" value="{{ year }}">
+            <input type="hidden" name="month" value="{{ month }}">
+            <button class="btn btn-sm btn-outline-secondary rounded-pill">
+              <i class="bi bi-copy me-1"></i> Copy previous month
+            </button>
+          </form>
+        </div>
+
+        <div class="salary-soft-box mb-3">
+          <form class="row g-2" method="post" action="{{ url_for('main.salary_adjust_add') }}">
+            {% if csrf_token is defined %}
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            {% endif %}
+            <input type="hidden" name="year" value="{{ year }}">
+            <input type="hidden" name="month" value="{{ month }}">
+
+            <div class="col-md-3">
+              <label class="form-label small fw-semibold">Type</label>
+              <select class="form-select form-select-sm" name="kind" required>
+                <option value="allowance">Allowance (+)</option>
+                <option value="deduction">Deduction (−)</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Label</label>
+              <input class="form-control form-control-sm" name="label" placeholder="e.g., Health Insurance" required>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-semibold">Amount (KRW)</label>
+              <input type="number" class="form-control form-control-sm" name="amount" min="0" required>
+            </div>
+            <div class="col-12 d-flex justify-content-end">
+              <button class="btn btn-sm btn-primary rounded-pill px-4">Add Line</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="table-responsive salary-table-card overflow-hidden">
           <table class="table table-sm align-middle">
             <thead>
-              <tr class="text-muted small">
-                <th style="width:140px;">Type</th>
+              <tr>
+                <th style="width:150px;">Type</th>
                 <th>Label</th>
-                <th class="text-end" style="width:160px;">Amount</th>
-                <th class="text-end" style="width:110px;">Action</th>
+                <th class="text-end" style="width:170px;">Amount</th>
+                <th class="text-end" style="width:230px;">Action</th>
               </tr>
             </thead>
-
             <tbody class="small">
               {% for a in adjustments %}
                 <tr data-adj-id="{{ a.id }}">
-                <td class="cell-kind">
+                  <td class="cell-kind">
                     {% if a.kind == "allowance" %}
-                    <span class="badge text-bg-success">Allowance</span>
+                      <span class="badge text-bg-success">Allowance</span>
                     {% else %}
-                    <span class="badge text-bg-danger">Deduction</span>
+                      <span class="badge text-bg-danger">Deduction</span>
                     {% endif %}
-                </td>
-
-                <td class="cell-label text-muted">{{ a.label }}</td>
-
-                <td class="cell-amount text-end fw-semibold {% if a.kind == 'allowance' %}text-success{% else %}text-danger{% endif %}">
-                    {% if a.kind == "allowance" %}+{% else %}-{% endif %}
-                    {{ "{:,}".format(a.amount|int) }}₩
-                </td>
-
-                <td class="text-end">
-                <div class="d-inline-flex align-items-center gap-1">
-
-                    <button type="button" class="btn btn-sm btn-outline-primary btn-edit">
-                    Edit
-                    </button>
-
-                    <button type="button" class="btn btn-sm btn-outline-secondary btn-cancel d-none">
-                    Cancel
-                    </button>
-
-                    <button type="button" class="btn btn-sm btn-primary btn-save d-none">
-                    Save
-                    </button>
-
-                    <form method="post"
-                        action="{{ url_for('main.salary_adjust_delete', adj_id=a.id) }}"
-                        class="d-inline">
-                    {% if csrf_token is defined %}
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    {% endif %}
-                    <input type="hidden" name="year" value="{{ year }}">
-                    <input type="hidden" name="month" value="{{ month }}">
-                    <button class="btn btn-sm btn-outline-danger">
-                        Delete
-                    </button>
-                    </form>
-
-                </div>
-                </td>
-
-
-                <!-- hidden edit UI template (will be injected by JS) -->
-                <template class="edit-template">
+                  </td>
+                  <td class="cell-label text-muted">{{ a.label }}</td>
+                  <td class="cell-amount text-end fw-semibold {% if a.kind == 'allowance' %}text-success{% else %}text-danger{% endif %}">
+                    {% if a.kind == "allowance" %}+{% else %}-{% endif %}{{ "{:,}".format(a.amount|int) }}₩
+                  </td>
+                  <td class="text-end">
+                    <div class="d-inline-flex align-items-center gap-1 flex-wrap justify-content-end">
+                      <button type="button" class="btn btn-sm btn-outline-primary btn-edit">Edit</button>
+                      <button type="button" class="btn btn-sm btn-outline-secondary btn-cancel d-none">Cancel</button>
+                      <button type="button" class="btn btn-sm btn-primary btn-save d-none">Save</button>
+                      <form method="post" action="{{ url_for('main.salary_adjust_delete', adj_id=a.id) }}" class="d-inline">
+                        {% if csrf_token is defined %}
+                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        {% endif %}
+                        <input type="hidden" name="year" value="{{ year }}">
+                        <input type="hidden" name="month" value="{{ month }}">
+                        <button class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this adjustment?');">Delete</button>
+                      </form>
+                    </div>
+                  </td>
+                  <template class="edit-template">
                     <td>
-                    <select class="form-select form-select-sm inp-kind">
+                      <select class="form-select form-select-sm inp-kind">
                         <option value="allowance" {% if a.kind=='allowance' %}selected{% endif %}>Allowance (+)</option>
                         <option value="deduction" {% if a.kind=='deduction' %}selected{% endif %}>Deduction (−)</option>
-                    </select>
+                      </select>
                     </td>
-                    <td>
-                    <input class="form-control form-control-sm inp-label" value="{{ a.label }}">
-                    </td>
-                    <td>
-                    <input type="number" min="0" class="form-control form-control-sm inp-amount text-end" value="{{ a.amount|int }}">
-                    </td>
-                </template>
+                    <td><input class="form-control form-control-sm inp-label" value="{{ a.label }}"></td>
+                    <td><input type="number" min="0" class="form-control form-control-sm inp-amount text-end" value="{{ a.amount|int }}"></td>
+                  </template>
                 </tr>
-
               {% else %}
                 <tr>
-                  <td colspan="4" class="text-muted text-center py-3">No allowances/deductions added for this month.</td>
+                  <td colspan="4" class="text-center text-muted py-4">No allowances/deductions added for this month.</td>
                 </tr>
               {% endfor %}
             </tbody>
           </table>
         </div>
-
       </div>
-    </div>
-  </div>
-</div>
 
-<div class="accordion mt-3" id="salaryLeaveAccordion">
-  <div class="accordion-item shadow-sm">
-    <h2 class="accordion-header">
-      <button
-        class="accordion-button collapsed"
-        type="button"
-        data-bs-toggle="collapse"
-        data-bs-target="#salaryLeaveCollapse"
-        aria-expanded="false"
-        aria-controls="salaryLeaveCollapse"
-      >
-        <div class="d-flex w-100 justify-content-between align-items-center">
-          <span class="fw-semibold">Long Leave</span>
-          <span class="text-muted small ms-2">Apply leave for a date range (skips weekends + holidays)</span>
+      <!-- Long leave -->
+      <div class="tab-pane fade" id="leave-pane" role="tabpanel" aria-labelledby="leave-tab">
+        <div class="row g-3">
+          <div class="col-lg-7">
+            <div class="salary-soft-box h-100">
+              <h6 class="fw-bold mb-3">Apply leave range</h6>
+              <form class="row g-2" method="post" action="{{ url_for('main.salary_long_leave_apply') }}">
+                {% if csrf_token is defined %}
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                {% endif %}
+                <div class="col-md-4">
+                  <label class="form-label small fw-semibold">Start date</label>
+                  <input type="date" class="form-control form-control-sm" name="start_date" value="{{ today.isoformat() }}" required>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label small fw-semibold">End date</label>
+                  <input type="date" class="form-control form-control-sm" name="end_date" value="{{ today.isoformat() }}" required>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label small fw-semibold">Leave Type</label>
+                  <select class="form-select form-select-sm" name="leave_type" required>
+                    <option value="paid">Paid Annual Leave</option>
+                    <option value="unpaid">Unpaid Leave</option>
+                  </select>
+                </div>
+                <div class="col-md-9">
+                  <label class="form-label small fw-semibold">Note</label>
+                  <input type="text" class="form-control form-control-sm" name="note" placeholder="e.g., Vacation / Bangladesh trip">
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="overwrite" id="overwriteLeave">
+                    <label class="form-check-label small" for="overwriteLeave">Overwrite</label>
+                  </div>
+                </div>
+                <div class="col-12 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                  <div class="small text-muted">Skips weekends and holidays. Overwrite replaces existing entries in that range.</div>
+                  <button class="btn btn-sm btn-danger rounded-pill px-4">Apply Leave Range</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div class="col-lg-5">
+            <div class="salary-soft-box h-100">
+              <h6 class="fw-bold mb-3">Remove leave range</h6>
+              <form class="row g-2" method="post" action="{{ url_for('main.salary_long_leave_remove') }}">
+                {% if csrf_token is defined %}
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                {% endif %}
+                <div class="col-md-6">
+                  <label class="form-label small fw-semibold">Start date</label>
+                  <input type="date" class="form-control form-control-sm" name="start_date" value="{{ today.isoformat() if today is defined else '' }}" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small fw-semibold">End date</label>
+                  <input type="date" class="form-control form-control-sm" name="end_date" value="{{ today.isoformat() if today is defined else '' }}" required>
+                </div>
+                <div class="col-12 d-flex flex-wrap justify-content-between align-items-center gap-2 mt-2">
+                  <div class="small text-muted">Only removes full-day leave logs.</div>
+                  <button class="btn btn-sm btn-outline-danger rounded-pill px-4">Remove Leave Range</button>
+                </div>
+              </form>
+            </div>
+          </div>
         </div>
-      </button>
-    </h2>
-
-    <div
-      id="salaryLeaveCollapse"
-      class="accordion-collapse collapse"
-      data-bs-parent="#salaryLeaveAccordion"
-    >
-      <div class="accordion-body">
-
-        <form class="row g-2" method="post" action="{{ url_for('main.salary_long_leave_apply') }}">
-          {% if csrf_token is defined %}
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          {% endif %}
-
-          <div class="col-md-3">
-            <label class="form-label small">Start date</label>
-            <input type="date" class="form-control form-control-sm" name="start_date"
-                   value="{{ today.isoformat() }}" required>
-          </div>
-
-          <div class="col-md-3">
-            <label class="form-label small">End date</label>
-            <input type="date" class="form-control form-control-sm" name="end_date"
-                   value="{{ today.isoformat() }}" required>
-          </div>
-          <div class="col-md-2">
-            <label class="form-label small">Leave Type</label>
-            <select class="form-select form-select-sm" name="leave_type" required>
-              <option value="paid">Paid Annual Leave</option>
-              <option value="unpaid">Unpaid Leave</option>
-            </select>
-          </div>
-          <div class="col-md-3">
-            <label class="form-label small">Note (optional)</label>
-            <input type="text" class="form-control form-control-sm" name="note"
-                   placeholder="e.g., Vacation / Bangladesh trip">
-          </div>
-
-          <div class="col-md-2 d-flex align-items-end">
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" name="overwrite" id="overwriteLeave">
-              <label class="form-check-label small" for="overwriteLeave">
-                Overwrite
-              </label>
-            </div>
-          </div>
-
-          <div class="col-12 d-flex justify-content-between align-items-center">
-            <div class="small text-muted">
-              Overwrite will replace existing entries in that range (use carefully).
-            </div>
-            <button class="btn btn-sm btn-danger">
-              Apply Leave Range
-            </button>
-            
-          </div>
-        </form>
-<hr class="my-3">
-        <!-- Remove leave range -->
-
-<form class="row g-2" method="post" action="{{ url_for('main.salary_long_leave_remove') }}">
-  {% if csrf_token is defined %}
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-  {% endif %}
-
-  <div class="col-md-3">
-    <label class="form-label small">Start date</label>
-    <input type="date" class="form-control form-control-sm" name="start_date"
-           value="{{ today.isoformat() if today is defined else '' }}" required>
-  </div>
-
-  <div class="col-md-3">
-    <label class="form-label small">End date</label>
-    <input type="date" class="form-control form-control-sm" name="end_date"
-           value="{{ today.isoformat() if today is defined else '' }}" required>
-  </div>
-
-  <div class="col-12 d-flex justify-content-between align-items-center">
-    <div class="small text-muted">
-      Only removes logs that were marked as full-day leave.
-    </div>
-    <button class="btn btn-sm btn-outline-danger">
-      Remove Leave Range
-    </button>
-  </div>
-</form>
-
       </div>
-    </div>
-  </div>
-</div>
-<div class="accordion mt-3" id="paidLeaveAccordion">
-  <div class="accordion-item shadow-sm">
-    <h2 class="accordion-header">
-      <button class="accordion-button collapsed" type="button"
-              data-bs-toggle="collapse"
-              data-bs-target="#paidLeaveCollapse">
-        <div class="d-flex w-100 justify-content-between align-items-center">
-          <span class="fw-semibold">Paid Leave Balance</span>
-          <span class="text-muted small ms-2">
-            Used {{ paid_leave_balance.used_leave }} / {{ paid_leave_balance.yearly_leave + paid_leave_balance.carried_leave }} days
-          </span>
-        </div>
-      </button>
-    </h2>
 
-    <div id="paidLeaveCollapse" class="accordion-collapse collapse">
-      <div class="accordion-body">
-
-        <form class="row g-2 mb-3" method="post" action="{{ url_for('main.paid_leave_update') }}">
-          {% if csrf_token is defined %}
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          {% endif %}
-
-          <input type="hidden" name="month" value="{{ month }}">
-
-          <div class="col-md-3">
-            <label class="form-label small">Year</label>
-            <input type="number" class="form-control form-control-sm" name="year" value="{{ year }}" required>
-          </div>
-
-          <div class="col-md-3">
-            <label class="form-label small">Yearly Leave</label>
-            <input type="number" class="form-control form-control-sm" name="yearly_leave"
-                   value="{{ paid_leave_balance.yearly_leave }}" min="0" required>
-          </div>
-
-          <div class="col-md-3">
-            <label class="form-label small">Carried Leave</label>
-            <input type="number" class="form-control form-control-sm" name="carried_leave"
-                   value="{{ paid_leave_balance.carried_leave }}" min="0" required>
-          </div>
-
-          <div class="col-md-3 d-flex align-items-end justify-content-end">
-            <button class="btn btn-sm btn-primary">
-              Save Leave Balance
-            </button>
-          </div>
-        </form>
-
-        <div class="row g-2 mb-3">
-          <div class="col-md-3">
-            <div class="border rounded-3 p-2">
-              <div class="text-muted small">Yearly</div>
-              <div class="fw-bold">{{ paid_leave_balance.yearly_leave }}</div>
+      <!-- Paid leave balance -->
+      <div class="tab-pane fade" id="paid-pane" role="tabpanel" aria-labelledby="paid-tab">
+        {% set paid_leave_total = paid_leave_balance.yearly_leave + paid_leave_balance.carried_leave %}
+        <div class="row g-3 align-items-stretch mb-3">
+          <div class="col-md-3 col-6">
+            <div class="salary-leave-tile h-100">
+              <div class="label">Yearly</div>
+              <div class="value">{{ paid_leave_balance.yearly_leave }}</div>
             </div>
           </div>
-
-          <div class="col-md-3">
-            <div class="border rounded-3 p-2">
-              <div class="text-muted small">Carried</div>
-              <div class="fw-bold">{{ paid_leave_balance.carried_leave }}</div>
+          <div class="col-md-3 col-6">
+            <div class="salary-leave-tile h-100">
+              <div class="label">Carried</div>
+              <div class="value">{{ paid_leave_balance.carried_leave }}</div>
             </div>
           </div>
-
-          <div class="col-md-3">
-            <div class="border rounded-3 p-2">
-              <div class="text-muted small">Used</div>
-              <div class="fw-bold text-danger">{{ paid_leave_balance.used_leave }}</div>
+          <div class="col-md-3 col-6">
+            <div class="salary-leave-tile h-100">
+              <div class="label">Used</div>
+              <div class="value text-danger">{{ paid_leave_balance.used_leave }}</div>
             </div>
           </div>
-
-          <div class="col-md-3">
-            <div class="border rounded-3 p-2">
-              <div class="text-muted small">Remaining</div>
-              <div class="fw-bold text-success">{{ paid_leave_balance.remaining_leave }}</div>
+          <div class="col-md-3 col-6">
+            <div class="salary-leave-tile h-100">
+              <div class="label">Remaining</div>
+              <div class="value text-success">{{ paid_leave_balance.remaining_leave }}</div>
             </div>
           </div>
         </div>
 
-        <div class="table-responsive">
+        <div class="salary-soft-box mb-3">
+          <form class="row g-2" method="post" action="{{ url_for('main.paid_leave_update') }}">
+            {% if csrf_token is defined %}
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            {% endif %}
+            <input type="hidden" name="month" value="{{ month }}">
+            <div class="col-md-3">
+              <label class="form-label small fw-semibold">Year</label>
+              <input type="number" class="form-control form-control-sm" name="year" value="{{ year }}" required>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-semibold">Yearly Leave</label>
+              <input type="number" class="form-control form-control-sm" name="yearly_leave" value="{{ paid_leave_balance.yearly_leave }}" min="0" required>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-semibold">Carried Leave</label>
+              <input type="number" class="form-control form-control-sm" name="carried_leave" value="{{ paid_leave_balance.carried_leave }}" min="0" required>
+            </div>
+            <div class="col-md-3 d-flex align-items-end justify-content-end">
+              <button class="btn btn-sm btn-primary rounded-pill px-4">Save Balance</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="table-responsive salary-table-card overflow-hidden">
           <table class="table table-sm align-middle">
             <thead>
               <tr>
@@ -576,145 +756,76 @@
                 </tr>
               {% else %}
                 <tr>
-                  <td colspan="3" class="text-center text-muted py-3">
-                    No paid leave used in {{ year }}.
-                  </td>
+                  <td colspan="3" class="text-center text-muted py-4">No paid leave used in {{ year }}.</td>
                 </tr>
               {% endfor %}
             </tbody>
           </table>
         </div>
-
       </div>
-    </div>
-  </div>
-</div>
-<div class="accordion mt-3" id="salaryEntryAccordion">
-  <div class="accordion-item shadow-sm">
-    <h2 class="accordion-header">
-      <button
-        class="accordion-button collapsed"
-        type="button"
-        data-bs-toggle="collapse"
-        data-bs-target="#salaryEntryCollapse"
-        aria-expanded="false"
-        aria-controls="salaryEntryCollapse"
-      >
-        <div class="d-flex w-100 justify-content-between align-items-center">
-          <span class="fw-semibold">Daily Entry</span>
-          <span class="text-muted small ms-2">
-            IN / OUT · Lunch · Leave
-          </span>
-        </div>
-      </button>
-    </h2>
 
-    <div
-      id="salaryEntryCollapse"
-      class="accordion-collapse collapse"
-      data-bs-parent="#salaryEntryAccordion"
-    >
-      <div class="accordion-body">
-
-        <form class="row g-2" method="post" action="{{ url_for('main.salary_log_save') }}">
-          {% if csrf_token is defined %}
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          {% endif %}
-
-          <div class="col-md-3">
-            <label class="form-label small">Date</label>
-            <input
-            type="date"
-            class="form-control form-control-sm"
-            name="work_date"
-            value="{{ today.isoformat() }}"
-            required
-            >
-          </div>
-
-          <div class="col-md-2">
-            <label class="form-label small">IN</label>
-            <input
-            type="text"
-            class="form-control form-control-sm timepicker"
-            name="in_time"
-            placeholder="07:00"
-            autocomplete="off"
-            >
-          </div>
-
-          <div class="col-md-2">
-            <label class="form-label small">OUT</label>
-            <input
-            type="text"
-            class="form-control form-control-sm timepicker"
-            name="out_time"
-            placeholder="18:00"
-            autocomplete="off"
-            >
-          </div>
-
-          <div class="col-md-2">
-            <label class="form-label small">Lunch (min)</label>
-            <input
-              type="number"
-              class="form-control form-control-sm"
-              name="lunch_minutes"
-              value="{{ default_lunch_minutes }}"
-              min="0"
-            >
-          </div>
-
-          <div class="col-md-3 d-flex align-items-end">
-            <div class="form-check">
-              <input
-                class="form-check-input"
-                type="checkbox"
-                name="is_full_day_leave"
-                id="fullLeave"
-              >
-              <label class="form-check-label small" for="fullLeave">
-                Full-day leave
-              </label>
+      <!-- Daily entry -->
+      <div class="tab-pane fade" id="entry-pane" role="tabpanel" aria-labelledby="entry-tab">
+        <div class="salary-soft-box">
+          <form class="row g-2" method="post" action="{{ url_for('main.salary_log_save') }}">
+            {% if csrf_token is defined %}
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            {% endif %}
+            <div class="col-md-3">
+              <label class="form-label small fw-semibold">Date</label>
+              <input type="date" class="form-control form-control-sm" name="work_date" value="{{ today.isoformat() }}" required>
             </div>
-          </div>
-          <div class="col-md-3">
-            <label class="form-label small">Leave Type</label>
-            <select class="form-select form-select-sm" name="leave_type">
-              <option value="paid">Paid Annual Leave</option>
-              <option value="unpaid" selected>Unpaid Leave</option>
-            </select>
-          </div>
-
-          <div class="col-12">
-            <input
-              type="text"
-              class="form-control form-control-sm"
-              name="note"
-              placeholder="Note (optional)"
-            >
-          </div>
-
-          <div class="col-12 d-flex justify-content-end">
-            <button class="btn btn-sm btn-success">
-              Save Day
-            </button>
-          </div>
-        </form>
-
+            <div class="col-md-2">
+              <label class="form-label small fw-semibold">IN</label>
+              <input type="text" class="form-control form-control-sm timepicker" name="in_time" placeholder="07:00" autocomplete="off">
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small fw-semibold">OUT</label>
+              <input type="text" class="form-control form-control-sm timepicker" name="out_time" placeholder="18:00" autocomplete="off">
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small fw-semibold">Lunch (min)</label>
+              <input type="number" class="form-control form-control-sm" name="lunch_minutes" value="{{ default_lunch_minutes }}" min="0">
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="is_full_day_leave" id="fullLeave">
+                <label class="form-check-label small" for="fullLeave">Full-day leave</label>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-semibold">Leave Type</label>
+              <select class="form-select form-select-sm" name="leave_type">
+                <option value="paid">Paid Annual Leave</option>
+                <option value="unpaid" selected>Unpaid Leave</option>
+              </select>
+            </div>
+            <div class="col-md-9">
+              <label class="form-label small fw-semibold">Note</label>
+              <input type="text" class="form-control form-control-sm" name="note" placeholder="Note (optional)">
+            </div>
+            <div class="col-12 d-flex justify-content-end">
+              <button class="btn btn-sm btn-success rounded-pill px-4">Save Day</button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
-<div class="card shadow-sm mt-3">
-  <div class="card-body">
-    <h6 class="mb-2">This Month Logs</h6>
+  <!-- Logs -->
+  <div class="salary-table-card p-3 p-lg-4 mb-4">
+    <div class="salary-section-title">
+      <div>
+        <h5>This Month Logs</h5>
+        <p>Weekend, holiday, paid leave, and unpaid leave are highlighted automatically.</p>
+      </div>
+    </div>
 
-    <div class="table-responsive">
-      <table class="table table-sm align-middle table-striped table-bordered">
-        <thead class="table-dark">
-          <tr class="text-muted small">
+    <div class="table-responsive salary-desktop-log overflow-hidden rounded-4 border">
+      <table class="table table-sm align-middle table-striped">
+        <thead>
+          <tr>
             <th>Date</th>
             <th>IN</th>
             <th>OUT</th>
@@ -726,112 +837,107 @@
             <th>Note</th>
           </tr>
         </thead>
-<tbody class="small">
-  {% for d in days %}
-    {% set l = log_by_date.get(d) %}
-    {% set dstr = d.isoformat() %}
-    {% set isWeekend = d.weekday() >= 5 %}
-    {% set isHoliday = dstr in holiday_dates %}
-    {% set isLeave = l and l.is_full_day_leave %}
-    {% set leaveType = l.leave_type if l and l.leave_type else "unpaid" %}
-    {% set isPaidLeave = isLeave and leaveType == "paid" %}
-
-    <tr class="
-      {% if isLeave %}row-leave
-      {% elif isHoliday %}row-holiday
-      {% elif isWeekend %}row-weekend
-      {% endif %}
-    ">
-      <!-- Date + badges -->
-      <td>
-        {{ d.strftime("%Y-%m-%d") }}
-        <span class="text-muted">({{ d.strftime("%a") }})</span>
-
-        {% if isHoliday %}
-          <span class="badge badge-soft text-bg-warning ms-1">Holiday</span>
-        {% elif isWeekend %}
-          <span class="badge badge-soft text-bg-primary ms-1">Weekend</span>
-        {% endif %}
-        {% if isPaidLeave %}
-          <span class="badge badge-soft text-bg-success ms-1">Paid Leave</span>
-        {% elif isLeave %}
-          <span class="badge badge-soft text-bg-danger ms-1">Unpaid Leave</span>
-        {% endif %}
-      </td>
-
-      <!-- IN -->
-      <td>
-        {{ l.in_time.strftime("%H:%M") if l and l.in_time else "—" }}
-      </td>
-
-      <!-- OUT -->
-      <td>
-        {{ l.out_time.strftime("%H:%M") if l and l.out_time else "—" }}
-      </td>
-
-      <!-- Lunch -->
-      <td>
-        {{ l.lunch_minutes if l else 0 }}
-      </td>
-
-      <!-- Worked -->
-      <td>
-        {{ (((l.worked_minutes or 0) if l else 0) / 60) | round(1) }}
-      </td>
-
-      <!-- Regular -->
-      <td>
-        {{ (((l.regular_minutes or 0) if l else 0) / 60) | round(1) }}
-      </td>
-
-      <!-- Overtime -->
-      {% set otm = (l.overtime_minutes or 0) if l else 0 %}
-      <td class="fw-semibold {% if otm > 0 %}text-success{% endif %}">
-        {{ (otm / 60) | round(1) }}
-      </td>
-
-      <!-- Leave -->
-      <td>
-        {% if isPaidLeave %}
-          <span class="fw-semibold text-success">Paid</span>
-        {% elif isLeave %}
-          <span class="fw-semibold text-danger">Unpaid</span>
-        {% else %}
-          <span class="text-muted">No</span>
-        {% endif %}
-      </td>
-
-      <!-- Note -->
-      <td class="text-muted">
-        {{ l.note if l and l.note else "" }}
-      </td>
-    </tr>
-
-  {% endfor %}
-</tbody>
-
+        <tbody class="small">
+          {% for d in days %}
+            {% set l = log_by_date.get(d) %}
+            {% set dstr = d.isoformat() %}
+            {% set isWeekend = d.weekday() >= 5 %}
+            {% set isHoliday = dstr in holiday_dates %}
+            {% set isLeave = l and l.is_full_day_leave %}
+            {% set leaveType = l.leave_type if l and l.leave_type else "unpaid" %}
+            {% set isPaidLeave = isLeave and leaveType == "paid" %}
+            <tr class="{% if isLeave %}row-leave{% elif isHoliday %}row-holiday{% elif isWeekend %}row-weekend{% endif %}">
+              <td>
+                <span class="fw-semibold">{{ d.strftime("%Y-%m-%d") }}</span>
+                <span class="text-muted">({{ d.strftime("%a") }})</span>
+                {% if isHoliday %}
+                  <span class="salary-pill pill-holiday ms-1">Holiday</span>
+                {% elif isWeekend %}
+                  <span class="salary-pill pill-weekend ms-1">Weekend</span>
+                {% endif %}
+                {% if isPaidLeave %}
+                  <span class="salary-pill pill-paid ms-1">Paid Leave</span>
+                {% elif isLeave %}
+                  <span class="salary-pill pill-unpaid ms-1">Unpaid Leave</span>
+                {% endif %}
+              </td>
+              <td>{{ l.in_time.strftime("%H:%M") if l and l.in_time else "—" }}</td>
+              <td>{{ l.out_time.strftime("%H:%M") if l and l.out_time else "—" }}</td>
+              <td>{{ l.lunch_minutes if l else 0 }}</td>
+              <td>{{ (((l.worked_minutes or 0) if l else 0) / 60) | round(1) }}</td>
+              <td>{{ (((l.regular_minutes or 0) if l else 0) / 60) | round(1) }}</td>
+              {% set otm = (l.overtime_minutes or 0) if l else 0 %}
+              <td class="fw-semibold {% if otm > 0 %}text-success{% endif %}">{{ (otm / 60) | round(1) }}</td>
+              <td>
+                {% if isPaidLeave %}
+                  <span class="fw-semibold text-success">Paid</span>
+                {% elif isLeave %}
+                  <span class="fw-semibold text-danger">Unpaid</span>
+                {% else %}
+                  <span class="text-muted">No</span>
+                {% endif %}
+              </td>
+              <td class="text-muted">{{ l.note if l and l.note else "" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
       </table>
     </div>
-  </div>
-</div>
-<div class="card shadow-sm mt-4">
-  <div class="card-body">
-    <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
-      <div>
-        <div class="fw-semibold">Salary Summary</div>
-        <div class="text-muted small">Gross vs Net (year trend + selected period)</div>
-      </div>
 
-      <div class="d-flex gap-2 align-items-end">
+    <div class="salary-mobile-log">
+      {% for d in days %}
+        {% set l = log_by_date.get(d) %}
+        {% set dstr = d.isoformat() %}
+        {% set isWeekend = d.weekday() >= 5 %}
+        {% set isHoliday = dstr in holiday_dates %}
+        {% set isLeave = l and l.is_full_day_leave %}
+        {% set leaveType = l.leave_type if l and l.leave_type else "unpaid" %}
+        {% set isPaidLeave = isLeave and leaveType == "paid" %}
+        {% set otm = (l.overtime_minutes or 0) if l else 0 %}
+        <div class="salary-log-card">
+          <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+            <div>
+              <div class="fw-bold">{{ d.strftime("%Y-%m-%d") }}</div>
+              <div class="small text-muted">{{ d.strftime("%A") }}</div>
+            </div>
+            <div class="d-flex flex-wrap justify-content-end gap-1">
+              {% if isHoliday %}<span class="salary-pill pill-holiday">Holiday</span>{% endif %}
+              {% if isWeekend %}<span class="salary-pill pill-weekend">Weekend</span>{% endif %}
+              {% if isPaidLeave %}<span class="salary-pill pill-paid">Paid</span>{% elif isLeave %}<span class="salary-pill pill-unpaid">Unpaid</span>{% endif %}
+            </div>
+          </div>
+          <div class="row g-2 small">
+            <div class="col-4"><span class="text-muted">IN</span><div class="fw-semibold">{{ l.in_time.strftime("%H:%M") if l and l.in_time else "—" }}</div></div>
+            <div class="col-4"><span class="text-muted">OUT</span><div class="fw-semibold">{{ l.out_time.strftime("%H:%M") if l and l.out_time else "—" }}</div></div>
+            <div class="col-4"><span class="text-muted">Lunch</span><div class="fw-semibold">{{ l.lunch_minutes if l else 0 }}m</div></div>
+            <div class="col-4"><span class="text-muted">Worked</span><div class="fw-semibold">{{ (((l.worked_minutes or 0) if l else 0) / 60) | round(1) }}h</div></div>
+            <div class="col-4"><span class="text-muted">Regular</span><div class="fw-semibold">{{ (((l.regular_minutes or 0) if l else 0) / 60) | round(1) }}h</div></div>
+            <div class="col-4"><span class="text-muted">OT</span><div class="fw-semibold {% if otm > 0 %}text-success{% endif %}">{{ (otm / 60) | round(1) }}h</div></div>
+          </div>
+          {% if l and l.note %}
+            <div class="small text-muted mt-2 pt-2 border-top">{{ l.note }}</div>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Salary Summary Chart -->
+  <div class="salary-panel p-3 p-lg-4 mb-4">
+    <div class="d-flex flex-wrap gap-3 justify-content-between align-items-start mb-3">
+      <div>
+        <h5 class="fw-bold mb-1">Salary Summary</h5>
+        <div class="text-muted small">Gross vs Net trend by selected year or month.</div>
+      </div>
+      <div class="d-flex flex-wrap gap-2 align-items-end">
         <div>
           <label class="form-label small mb-1">Year</label>
           <select id="sumYear" class="form-select form-select-sm">
-          {% for y in range(year-3, year+2) %}
-            <option value="{{ y }}" {% if y==year %}selected{% endif %}>{{ y }}</option>
-          {% endfor %}
+            {% for y in range(year-3, year+2) %}
+              <option value="{{ y }}" {% if y==year %}selected{% endif %}>{{ y }}</option>
+            {% endfor %}
           </select>
         </div>
-
         <div>
           <label class="form-label small mb-1">Month</label>
           <select id="sumMonth" class="form-select form-select-sm">
@@ -841,93 +947,71 @@
             {% endfor %}
           </select>
         </div>
-
-        <button id="sumApply" class="btn btn-sm btn-primary">
-          Apply
-        </button>
+        <button id="sumApply" class="btn btn-sm btn-primary rounded-pill px-4">Apply</button>
       </div>
     </div>
 
     <div class="row g-3 align-items-stretch">
-      <!-- Left: chart (80% width inside column) -->
       <div class="col-lg-8">
-        <div class="d-flex justify-content-center">
-          <div style="width:80%;">
-            <canvas id="salaryLineChart" height="170"></canvas>
-          </div>
+        <div class="salary-chart-shell h-100">
+          <canvas id="salaryLineChart" height="170"></canvas>
         </div>
       </div>
-
-      <!-- Right: text summary -->
       <div class="col-lg-4">
-        <div class="border rounded-3 p-3 h-100 bg-light">
-          <div class="fw-semibold mb-2">Selected Summary</div>
-
-          <div class="d-flex justify-content-between small mb-2">
-            <span class="text-muted" id="sumLabel">—</span>
-          </div>
-
-          <div class="d-flex justify-content-between mb-2">
+        <div class="salary-soft-box h-100">
+          <div class="fw-bold mb-2">Selected Summary</div>
+          <div class="small text-muted mb-3" id="sumLabel">—</div>
+          <div class="salary-mini-line">
             <span class="text-muted">Gross</span>
-            <span class="fw-semibold" id="sumGross">—</span>
+            <span class="fw-bold" id="sumGross">—</span>
           </div>
-
-          <div class="d-flex justify-content-between">
+          <div class="salary-mini-line">
             <span class="text-muted">Net</span>
-            <span class="fw-semibold" id="sumNet">—</span>
+            <span class="fw-bold" id="sumNet">—</span>
           </div>
-
-          <hr class="my-3">
-
-          <div class="small text-muted">
-            Gross = Base + OT + Weekend/Holiday + Allowance
-          </div>
+          <div class="small text-muted mt-3">Gross = Base + OT + Weekend/Holiday + Allowance.</div>
         </div>
       </div>
     </div>
+  </div>
 
+  <!-- Download Modal -->
+  <div class="modal fade" id="downloadModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <form class="modal-content border-0 rounded-4 overflow-hidden" method="get" action="{{ url_for('main.salary_download_pdf') }}">
+        <div class="modal-header border-0 bg-light">
+          <div>
+            <h5 class="modal-title fw-bold">Download Salary Report</h5>
+            <div class="small text-muted">Payslip or daily logs as one PDF file.</div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Type</label>
+            <select class="form-select form-select-sm" name="kind" required>
+              <option value="payslip">Payslip (PDF)</option>
+              <option value="logs">Daily Logs Table (PDF)</option>
+            </select>
+          </div>
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label small fw-semibold">From</label>
+              <input type="month" class="form-control form-control-sm" name="from" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label small fw-semibold">To</label>
+              <input type="month" class="form-control form-control-sm" name="to" required>
+            </div>
+          </div>
+          <div class="form-text small text-muted mt-2">One PDF file. One page per month.</div>
+        </div>
+        <div class="modal-footer border-0">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Download</button>
+        </div>
+      </form>
+    </div>
   </div>
 </div>
-<div class="modal fade" id="downloadModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
-    <form class="modal-content" method="get" action="{{ url_for('main.salary_download_pdf') }}">
-      <div class="modal-header">
-        <h5 class="modal-title">Download</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-
-      <div class="modal-body">
-        <div class="mb-3">
-          <label class="form-label small">Type</label>
-          <select class="form-select form-select-sm" name="kind" required>
-            <option value="payslip">Payslip (PDF)</option>
-            <option value="logs">Daily Logs Table (PDF)</option>
-          </select>
-        </div>
-
-        <div class="row g-2">
-          <div class="col-6">
-            <label class="form-label small">From</label>
-            <input type="month" class="form-control form-control-sm" name="from" required>
-          </div>
-          <div class="col-6">
-            <label class="form-label small">To</label>
-            <input type="month" class="form-control form-control-sm" name="to" required>
-          </div>
-        </div>
-
-        <div class="form-text small text-muted mt-2">
-          One PDF file. One page per month.
-        </div>
-      </div>
-
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="submit" class="btn btn-primary">Download</button>
-
-      </div>
-    </form>
-  </div>
-</div>
-
 {% endblock %}
