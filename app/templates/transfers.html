@@ -591,16 +591,149 @@
         </div>
 
         <div class="tabbar" role="tablist" aria-label="Transfer type">
-          <button type="button" class="tab-btn active" data-tab="intl" role="tab" aria-controls="tab-intl" aria-selected="false">
+          <button type="button" class="tab-btn active" data-tab="intl" role="tab" aria-controls="tab-intl" aria-selected="true">
             <i class="bi bi-send me-1"></i> International
           </button>
-          <button type="button" class="tab-btn" data-tab="local" role="tab" aria-controls="tab-local" aria-selected="true">
+          <button type="button" class="tab-btn" data-tab="local" role="tab" aria-controls="tab-local" aria-selected="false">
             <i class="bi bi-house-door me-1"></i> Local
           </button>
 
         </div>
       </div>
+  <!-- ================= INTERNATIONAL TAB ================= -->
+      <section class="tab-panel" id="tab-intl" role="tabpanel">
+        <form action="{{ url_for('main.transfers_international') }}" method="post" class="form-flow">
+          <div class="form-section">
+            <div class="section-title"><span class="step-dot">1</span> KRW Source Account</div>
+            <div class="account-rail">
+              <div class="rail" id="rail-intl-from">
+                {% for a in krw_accounts if a.type != 'credit' %}
+                <div class="account-card"
+                     data-rail-group="intl-from"
+                     data-account-id="{{ a.id }}"
+                     data-currency="KRW">
+                  <div class="brand">{{ a.type.value|upper }}</div>
+                  <div class="balance">₩ {{ '{:,.0f}'.format(a.initial_balance or 0) }}</div>
+                  <div class="detail">{{ a.name }}</div>
+                </div>
+                {% endfor %}
+              </div>
+              <div class="rail-controls bottom-right">
+                <button type="button" class="rail-btn prev" data-rail="intl-from">‹</button>
+                <button type="button" class="rail-btn next" data-rail="intl-from">›</button>
+              </div>
+              <input type="hidden" name="from_account_id" id="intl-from-id">
+            </div>
+          </div>
 
+          <div class="form-section">
+            <div class="section-title"><span class="step-dot">2</span> Remittance details</div>
+            <div class="row g-3">
+              <div class="col-12 col-md-6">
+                <label class="form-label">Date</label>
+                <div class="input-icon-wrap">
+                  <i class="bi bi-calendar-event"></i>
+                  <input type="date" name="date" class="form-control" value="{{ current_date }}" required>
+                </div>
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label">Amount Sent KRW</label>
+                <div class="input-icon-wrap">
+                  <i class="bi bi-currency-won"></i>
+                  <input type="number" step="0.01" name="amount_sent_krw" class="form-control" placeholder="0" required>
+                </div>
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label">Amount Received BDT</label>
+                <div class="input-icon-wrap">
+                  <i class="bi bi-cash"></i>
+                  <input type="number" step="0.01" name="amount_received_bdt" class="form-control" placeholder="0" required>
+                </div>
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label">Service</label>
+                <div class="input-icon-wrap">
+                  <i class="bi bi-building"></i>
+                  <input type="text" name="service_name" class="form-control" placeholder="Wise / bKash / Nagad">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <div class="section-title"><span class="step-dot">3</span> Receiver</div>
+            <div class="smart-toggle mb-3">
+              <input class="form-check-input" type="checkbox" id="chk-self" name="recipient_is_self">
+              <div>
+                <label class="form-check-label" for="chk-self">Recipient is myself</label>
+                <p>When checked, choose one of your BDT receiving accounts below.</p>
+              </div>
+            </div>
+
+            <div id="self-bdt-wrap" class="d-none mb-3">
+              <div class="section-title small">My BDT Receiving Account</div>
+              <div class="account-rail small-rail">
+                <div class="rail" id="rail-intl-to">
+                  {% for a in bdt_accounts if a.type != 'credit' %}
+                  <div class="account-card"
+                       data-rail-group="intl-to"
+                       data-account-id="{{ a.id }}"
+                       data-currency="{{ a.currency.value }}">
+                    <div class="brand">{{ a.type.value|upper }}</div>
+                    <div class="balance">৳ {{ '{:,.0f}'.format(a.initial_balance or 0) }}</div>
+                    <div class="detail">{{ a.name }}</div>
+                  </div>
+                  {% endfor %}
+                </div>
+                <div class="rail-controls top-right">
+                  <button type="button" class="rail-btn prev" data-rail="intl-to">‹</button>
+                  <button type="button" class="rail-btn next" data-rail="intl-to">›</button>
+                </div>
+                <input type="hidden" name="to_account_id_bdt" id="intl-to-id">
+              </div>
+            </div>
+
+            <div id="recipient-wrap">
+              <div class="row g-3">
+                <div class="col-12 col-md-6">
+                  <label class="form-label">Recipient</label>
+                  <div class="input-icon-wrap">
+                    <i class="bi bi-person"></i>
+                    <select name="recipient_id" class="form-select" id="recipient_id">
+                      <option value="">— None —</option>
+                      {% for r in recipients %}
+                        <option value="{{ r.id }}">{{ r.name }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                </div>
+                <div class="col-12 col-md-6">
+                  <label class="form-label">Custom recipient</label>
+                  <div class="input-icon-wrap">
+                    <i class="bi bi-pencil-square"></i>
+                    <input type="text" name="recipient_name" id="recipient_name" class="form-control" placeholder="Custom recipient name optional">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <div class="section-title"><span class="step-dot">4</span> Note & save</div>
+            <label class="form-label">Note</label>
+            <div class="input-icon-wrap">
+              <i class="bi bi-chat-left-text"></i>
+              <input type="text" name="note" class="form-control" placeholder="Optional note">
+            </div>
+          </div>
+
+          <div class="actions">
+            <a href="{{ url_for('main.transfers_page') }}" class="btn btn-light">Cancel</a>
+            <button class="btn btn-primary"><i class="bi bi-check2-circle me-1"></i> Save International Transfer</button>
+          </div>
+        </form>
+      </section>
+    </section>
       <!-- ================= LOCAL TAB ================= -->
       <section class="tab-panel show" id="tab-local" role="tabpanel">
         <form action="{{ url_for('main.transfers_domestic') }}" method="post" class="form-flow">
@@ -744,140 +877,7 @@
         </form>
       </section>
 
-      <!-- ================= INTERNATIONAL TAB ================= -->
-      <section class="tab-panel" id="tab-intl" role="tabpanel">
-        <form action="{{ url_for('main.transfers_international') }}" method="post" class="form-flow">
-          <div class="form-section">
-            <div class="section-title"><span class="step-dot">1</span> KRW Source Account</div>
-            <div class="account-rail">
-              <div class="rail" id="rail-intl-from">
-                {% for a in krw_accounts if a.type != 'credit' %}
-                <div class="account-card"
-                     data-rail-group="intl-from"
-                     data-account-id="{{ a.id }}"
-                     data-currency="KRW">
-                  <div class="brand">{{ a.type.value|upper }}</div>
-                  <div class="balance">₩ {{ '{:,.0f}'.format(a.initial_balance or 0) }}</div>
-                  <div class="detail">{{ a.name }}</div>
-                </div>
-                {% endfor %}
-              </div>
-              <div class="rail-controls bottom-right">
-                <button type="button" class="rail-btn prev" data-rail="intl-from">‹</button>
-                <button type="button" class="rail-btn next" data-rail="intl-from">›</button>
-              </div>
-              <input type="hidden" name="from_account_id" id="intl-from-id">
-            </div>
-          </div>
-
-          <div class="form-section">
-            <div class="section-title"><span class="step-dot">2</span> Remittance details</div>
-            <div class="row g-3">
-              <div class="col-12 col-md-6">
-                <label class="form-label">Date</label>
-                <div class="input-icon-wrap">
-                  <i class="bi bi-calendar-event"></i>
-                  <input type="date" name="date" class="form-control" value="{{ current_date }}" required>
-                </div>
-              </div>
-              <div class="col-12 col-md-6">
-                <label class="form-label">Amount Sent KRW</label>
-                <div class="input-icon-wrap">
-                  <i class="bi bi-currency-won"></i>
-                  <input type="number" step="0.01" name="amount_sent_krw" class="form-control" placeholder="0" required>
-                </div>
-              </div>
-              <div class="col-12 col-md-6">
-                <label class="form-label">Amount Received BDT</label>
-                <div class="input-icon-wrap">
-                  <i class="bi bi-cash"></i>
-                  <input type="number" step="0.01" name="amount_received_bdt" class="form-control" placeholder="0" required>
-                </div>
-              </div>
-              <div class="col-12 col-md-6">
-                <label class="form-label">Service</label>
-                <div class="input-icon-wrap">
-                  <i class="bi bi-building"></i>
-                  <input type="text" name="service_name" class="form-control" placeholder="Wise / bKash / Nagad">
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="form-section">
-            <div class="section-title"><span class="step-dot">3</span> Receiver</div>
-            <div class="smart-toggle mb-3">
-              <input class="form-check-input" type="checkbox" id="chk-self" name="recipient_is_self">
-              <div>
-                <label class="form-check-label" for="chk-self">Recipient is myself</label>
-                <p>When checked, choose one of your BDT receiving accounts below.</p>
-              </div>
-            </div>
-
-            <div id="self-bdt-wrap" class="d-none mb-3">
-              <div class="section-title small">My BDT Receiving Account</div>
-              <div class="account-rail small-rail">
-                <div class="rail" id="rail-intl-to">
-                  {% for a in bdt_accounts if a.type != 'credit' %}
-                  <div class="account-card"
-                       data-rail-group="intl-to"
-                       data-account-id="{{ a.id }}"
-                       data-currency="{{ a.currency.value }}">
-                    <div class="brand">{{ a.type.value|upper }}</div>
-                    <div class="balance">৳ {{ '{:,.0f}'.format(a.initial_balance or 0) }}</div>
-                    <div class="detail">{{ a.name }}</div>
-                  </div>
-                  {% endfor %}
-                </div>
-                <div class="rail-controls top-right">
-                  <button type="button" class="rail-btn prev" data-rail="intl-to">‹</button>
-                  <button type="button" class="rail-btn next" data-rail="intl-to">›</button>
-                </div>
-                <input type="hidden" name="to_account_id_bdt" id="intl-to-id">
-              </div>
-            </div>
-
-            <div id="recipient-wrap">
-              <div class="row g-3">
-                <div class="col-12 col-md-6">
-                  <label class="form-label">Recipient</label>
-                  <div class="input-icon-wrap">
-                    <i class="bi bi-person"></i>
-                    <select name="recipient_id" class="form-select" id="recipient_id">
-                      <option value="">— None —</option>
-                      {% for r in recipients %}
-                        <option value="{{ r.id }}">{{ r.name }}</option>
-                      {% endfor %}
-                    </select>
-                  </div>
-                </div>
-                <div class="col-12 col-md-6">
-                  <label class="form-label">Custom recipient</label>
-                  <div class="input-icon-wrap">
-                    <i class="bi bi-pencil-square"></i>
-                    <input type="text" name="recipient_name" id="recipient_name" class="form-control" placeholder="Custom recipient name optional">
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="form-section">
-            <div class="section-title"><span class="step-dot">4</span> Note & save</div>
-            <label class="form-label">Note</label>
-            <div class="input-icon-wrap">
-              <i class="bi bi-chat-left-text"></i>
-              <input type="text" name="note" class="form-control" placeholder="Optional note">
-            </div>
-          </div>
-
-          <div class="actions">
-            <a href="{{ url_for('main.transfers_page') }}" class="btn btn-light">Cancel</a>
-            <button class="btn btn-primary"><i class="bi bi-check2-circle me-1"></i> Save International Transfer</button>
-          </div>
-        </form>
-      </section>
-    </section>
+    
 
     <section class="recipient-stack glass-card" id="recipient-section">
       <div class="recipient-card-head">

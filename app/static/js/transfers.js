@@ -1,16 +1,35 @@
 /* static/js/transfers.js */
 (function(){
-  // ---------------- Tabs ----------------
-  document.querySelectorAll('.tab-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-      btn.classList.add('active');
-      const tab = btn.dataset.tab;
-      document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('show'));
-      document.querySelector('#tab-' + tab)?.classList.add('show');
-    });
+
+// ---------------- Tabs ----------------
+function activateTab(btn) {
+  if (!btn) return;
+
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.remove('active');
+    b.setAttribute('aria-selected', 'false');
   });
 
+  document.querySelectorAll('.tab-panel').forEach(p => {
+    p.classList.remove('show');
+  });
+
+  btn.classList.add('active');
+  btn.setAttribute('aria-selected', 'true');
+
+  const tab = btn.dataset.tab;
+  document.querySelector('#tab-' + tab)?.classList.add('show');
+}
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => activateTab(btn));
+});
+
+// IMPORTANT: initialize correct panel on page load
+activateTab(document.querySelector('.tab-btn.active'));
+
+
+// ... rest of your existing code
   // ---------------- Rails (arrows) ----------------
   function getRail(group){ return document.getElementById('rail-' + group); }
   function scrollRail(group, dir){

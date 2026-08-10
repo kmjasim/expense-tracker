@@ -512,8 +512,54 @@
     </ul>
 
     <div class="tab-content">
+            <!-- Daily entry -->
+      <div class="tab-pane fade show active" id="entry-pane" role="tabpanel" aria-labelledby="entry-tab">
+        <div class="salary-soft-box">
+          <form class="row g-2" method="post" action="{{ url_for('main.salary_log_save') }}">
+            {% if csrf_token is defined %}
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            {% endif %}
+            <div class="col-md-3">
+              <label class="form-label small fw-semibold">Date</label>
+              <input type="date" class="form-control form-control-sm" name="work_date" value="{{ today.isoformat() }}" required>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small fw-semibold">IN</label>
+              <input type="text" class="form-control form-control-sm timepicker" name="in_time" placeholder="07:00" autocomplete="off">
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small fw-semibold">OUT</label>
+              <input type="text" class="form-control form-control-sm timepicker" name="out_time" placeholder="18:00" autocomplete="off">
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small fw-semibold">Lunch (min)</label>
+              <input type="number" class="form-control form-control-sm" name="lunch_minutes" value="{{ default_lunch_minutes }}" min="0">
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="is_full_day_leave" id="fullLeave">
+                <label class="form-check-label small" for="fullLeave">Full-day leave</label>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small fw-semibold">Leave Type</label>
+              <select class="form-select form-select-sm" name="leave_type">
+                <option value="paid">Paid Annual Leave</option>
+                <option value="unpaid" selected>Unpaid Leave</option>
+              </select>
+            </div>
+            <div class="col-md-9">
+              <label class="form-label small fw-semibold">Note</label>
+              <input type="text" class="form-control form-control-sm" name="note" placeholder="Note (optional)">
+            </div>
+            <div class="col-12 d-flex justify-content-end">
+              <button class="btn btn-sm btn-success rounded-pill px-4">Save Day</button>
+            </div>
+          </form>
+        </div>
+      </div>
       <!-- Allowances and deductions -->
-      <div class="tab-pane fade show active" id="adjust-pane" role="tabpanel" aria-labelledby="adjust-tab">
+      <div class="tab-pane fade " id="adjust-pane" role="tabpanel" aria-labelledby="adjust-tab">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
           <div class="small text-muted">Tip: copy last month, then edit only what changed.</div>
           <form method="post" action="{{ url_for('main.salary_adjust_copy_prev') }}">
@@ -765,52 +811,7 @@
         </div>
       </div>
 
-      <!-- Daily entry -->
-      <div class="tab-pane fade" id="entry-pane" role="tabpanel" aria-labelledby="entry-tab">
-        <div class="salary-soft-box">
-          <form class="row g-2" method="post" action="{{ url_for('main.salary_log_save') }}">
-            {% if csrf_token is defined %}
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            {% endif %}
-            <div class="col-md-3">
-              <label class="form-label small fw-semibold">Date</label>
-              <input type="date" class="form-control form-control-sm" name="work_date" value="{{ today.isoformat() }}" required>
-            </div>
-            <div class="col-md-2">
-              <label class="form-label small fw-semibold">IN</label>
-              <input type="text" class="form-control form-control-sm timepicker" name="in_time" placeholder="07:00" autocomplete="off">
-            </div>
-            <div class="col-md-2">
-              <label class="form-label small fw-semibold">OUT</label>
-              <input type="text" class="form-control form-control-sm timepicker" name="out_time" placeholder="18:00" autocomplete="off">
-            </div>
-            <div class="col-md-2">
-              <label class="form-label small fw-semibold">Lunch (min)</label>
-              <input type="number" class="form-control form-control-sm" name="lunch_minutes" value="{{ default_lunch_minutes }}" min="0">
-            </div>
-            <div class="col-md-3 d-flex align-items-end">
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" name="is_full_day_leave" id="fullLeave">
-                <label class="form-check-label small" for="fullLeave">Full-day leave</label>
-              </div>
-            </div>
-            <div class="col-md-3">
-              <label class="form-label small fw-semibold">Leave Type</label>
-              <select class="form-select form-select-sm" name="leave_type">
-                <option value="paid">Paid Annual Leave</option>
-                <option value="unpaid" selected>Unpaid Leave</option>
-              </select>
-            </div>
-            <div class="col-md-9">
-              <label class="form-label small fw-semibold">Note</label>
-              <input type="text" class="form-control form-control-sm" name="note" placeholder="Note (optional)">
-            </div>
-            <div class="col-12 d-flex justify-content-end">
-              <button class="btn btn-sm btn-success rounded-pill px-4">Save Day</button>
-            </div>
-          </form>
-        </div>
-      </div>
+
     </div>
   </div>
 
