@@ -1,6 +1,8 @@
 from datetime import date, timedelta, datetime
 from io import BytesIO, StringIO
 import csv
+from decimal import Decimal
+from xml.sax.saxutils import escape
 from math import ceil
 
 from flask import (
@@ -79,7 +81,7 @@ from sqlalchemy.orm import selectinload
 
 # Optional PDF deps (guarded)
 try:
-    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.pagesizes import A4, landscape
     from reportlab.lib.units import mm
     from reportlab.lib import colors
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
@@ -103,6 +105,141 @@ def _is_bdt_transfer_to_others(row) -> bool:
     if not _is_transfer(row):
         return False
     return _recipient_label_for_bdt(row) != "Self"
+
+def _bdt_recipient_identity(row):
+    """Group historical recipient snapshots consistently with the filter."""
+    return _bdt_recipient_name_identity(row.recipient_name)
+
+
+def _bdt_recipient_name_identity(recipient_name):
+    name = (recipient_name or "").strip()
+    if not name:
+        return "missing:", "No recipient"
+    if _recipient_is_self(name):
+        return "self:", "Self"
+    return "name:" + name.lower(), name
+
+
+def _bdt_recipient_key_expr():
+    name = func.lower(func.trim(func.coalesce(TransactionBDT.recipient_name, "")))
+    return case(
+        (name == "", literal("missing:")),
+        (name.in_(["self", "myself"]), literal("self:")),
+        else_=literal("name:") + name,
+    )
+
+
+def _filter_bdt_recipient(query, recipient_key):
+    if recipient_key:
+        return query.filter(_bdt_recipient_key_expr() == recipient_key)
+    return query
+
+
+def _bdt_recipient_groups(rows):
+    """Use Decimal throughout; preserve the app's existing BDT sent-money rule."""
+    groups = {}
+    for row in rows:
+        key, name = _bdt_recipient_identity(row)
+        group = groups.setdefault(key, {
+            "key": key, "name": name, "rows": [],
+            "sent": Decimal("0"), "received": Decimal("0"),
+        })
+        group["rows"].append(row)
+        amount = Decimal(str(row.amount or 0))
+        if _is_bdt_sent_to_other_recipient(row):
+            group["sent"] += abs(amount)
+        elif amount > 0:
+            group["received"] += amount
+        elif amount < 0:
+            group["sent"] += abs(amount)
+    return sorted(groups.values(), key=lambda g: (-g["sent"], g["name"].lower()))
+
+
+def _bdt_export_detail(row):
+    return [
+        row.date.isoformat(), _txn_type_value(row),
+        row.account.name if row.account else "",
+        _bdt_recipient_identity(row)[1], row.note or "",
+        str(row.amount or 0), "Pending" if row.is_pending else "Completed",
+    ]
+
+
+def _csv_safe(value):
+    # Prevent spreadsheet formulas in user-controlled text, without changing amounts.
+    if isinstance(value, str) and value.lstrip().startswith(("=", "+", "-", "@")):
+        return "'" + value
+    return value
+
+
+def _write_bdt_report_csv(writer, rows):
+    groups = _bdt_recipient_groups(rows)
+    header = ["Date", "Type", "Account", "Recipient", "Note", "Amount (BDT)", "Status"]
+
+    def detail(row):
+        values = _bdt_export_detail(row)
+        writer.writerow([_csv_safe(v) if i != 5 else v for i, v in enumerate(values)])
+
+    writer.writerow(["BDT Transactions"])
+    writer.writerow(header)
+    for row in rows:
+        detail(row)
+    writer.writerow([])
+    writer.writerow(["Recipient totals - all filtered transactions"])
+    writer.writerow(["Recipient", "Transactions", "Total sent (BDT)", "Total received (BDT)"])
+    for group in groups:
+        writer.writerow([_csv_safe(group["name"]), len(group["rows"]),
+                         str(group["sent"]), str(group["received"])])
+    writer.writerow([])
+    writer.writerow(["Recipient transaction breakdown"])
+    for group in groups:
+        writer.writerow([_csv_safe(group["name"])])
+        writer.writerow(header)
+        for row in group["rows"]:
+            detail(row)
+        writer.writerow([])
+
+
+def _append_bdt_recipient_pdf(story, rows, normal, width):
+    """PDF equivalent of the recipient accordion, with every detail expanded."""
+    groups = _bdt_recipient_groups(rows)
+    heading = ParagraphStyle("RecipientHeading", parent=normal, keepWithNext=True,
+                             spaceBefore=8, spaceAfter=6)
+
+    def para(value):
+        return Paragraph(escape(str(value)), normal)
+
+    def table(data, ratios):
+        tbl = Table([[para(v) for v in row] for row in data],
+                    colWidths=[width * r for r in ratios], repeatRows=1)
+        tbl.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#e2e8f0")),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#cbd5e1")),
+            ("TOPPADDING", (0, 0), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ]))
+        story.append(tbl)
+
+    story.append(Spacer(0, 16))
+    story.append(Paragraph("Recipient totals - all filtered transactions", heading))
+    data = [["Recipient", "Transactions", "Sent (BDT)", "Received (BDT)"]]
+    for group in groups:
+        data.append([group["name"], len(group["rows"]),
+                     f'{group["sent"]:,.2f}', f'{group["received"]:,.2f}'])
+    table(data, [.37, .15, .24, .24])
+    for group in groups:
+        story.append(Spacer(0, 12))
+        story.append(Paragraph(escape(group["name"]) + " - transaction breakdown", heading))
+        data = [["Date / Type", "Account / Status", "Note", "Amount (BDT)"]]
+        for row in group["rows"]:
+            data.append([
+                row.date.isoformat() + " / " + _txn_type_value(row),
+                (row.account.name if row.account else "-") + " / " +
+                ("Pending" if row.is_pending else "Completed"),
+                row.note or "-", f'{Decimal(str(row.amount or 0)):,.2f}',
+            ])
+        table(data, [.24, .24, .32, .20])
+
 
 # ----- Formatting helpers -----
 def _pick_pdf_font() -> str:
@@ -160,7 +297,7 @@ def _page_decor(canvas, doc, FONT_NAME: str):
 
     canvas.restoreState()
 
-from reportlab.lib.pagesizes import A4
+from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.units import mm
 from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
@@ -189,7 +326,7 @@ def build_transaction_report_pdf(cur: str, rows, from_str: str, to_str: str):
 
     buf = BytesIO()
     doc = SimpleDocTemplate(
-        buf, pagesize=A4,
+        buf, pagesize=landscape(A4) if cur == "BDT" else A4,
         leftMargin=15*mm, rightMargin=15*mm,
         topMargin=22*mm, bottomMargin=20*mm
     )
@@ -229,17 +366,17 @@ def build_transaction_report_pdf(cur: str, rows, from_str: str, to_str: str):
     # ----- Cards section -----
     if cur == "BDT":
         total_sent_to_others = sum(
-            abs(float(t.amount or 0))
+            abs(Decimal(str(t.amount or 0)))
             for t in rows
             if _is_bdt_sent_to_other_recipient(t)
         )
 
         total_received_self = sum(
-            float(t.amount or 0)
+            Decimal(str(t.amount or 0))
             for t in rows
             if _txn_type_value(t) == "transfer_international"
             and _recipient_is_self(t.recipient_name)
-            and float(t.amount or 0) > 0
+            and Decimal(str(t.amount or 0)) > 0
         )
 
         card1 = Table(
@@ -414,7 +551,7 @@ def build_transaction_report_pdf(cur: str, rows, from_str: str, to_str: str):
     for t in rows:
         date_str = t.date.isoformat()
         label = _cat_or_recipient(cur, t)
-        note_para = Paragraph(t.note or "—", styles["Muted"])
+        note_para = Paragraph(escape(t.note or "—"), styles["Muted"])
 
         amt = float(t.amount or 0)
 
@@ -432,14 +569,23 @@ def build_transaction_report_pdf(cur: str, rows, from_str: str, to_str: str):
 
         data.append([
             Paragraph(date_str, normal),
-            Paragraph(label, normal),
+            Paragraph(escape(label), normal),
             note_para,
             amt_para
         ])
 
+    widths = (.14, .30, .39, .17)
+    if cur == "BDT":
+        data = [[Paragraph(escape(v), styles["TH"]) for v in
+                 ["Date", "Type", "Account", "Recipient", "Note", "Amount (BDT)", "Status"]]]
+        for row in rows:
+            values = _bdt_export_detail(row)
+            values[5] = f"{Decimal(str(row.amount or 0)):,.2f}"
+            data.append([Paragraph(escape(str(v)), normal) for v in values])
+        widths = (.09, .12, .12, .14, .28, .15, .10)
     tbl = Table(
         data,
-        colWidths=[28*mm, 60*mm, 82*mm, 30*mm],
+        colWidths=[doc.width * r for r in widths],
         repeatRows=1, splitByRow=True
     )
     tbl.setStyle(TableStyle([
@@ -457,6 +603,8 @@ def build_transaction_report_pdf(cur: str, rows, from_str: str, to_str: str):
         ("ALIGN",      (-1,1), (-1,-1), "RIGHT"),
     ]))
     story.append(tbl)
+    if cur == "BDT":
+        _append_bdt_recipient_pdf(story, rows, normal, doc.width)
 
     # Footer (page number + timestamp)
     def _page_decor(canvas, doc, FONT_NAME_):
@@ -654,7 +802,7 @@ def _kpis(model, start, end, q, category_id, account_id):
 from sqlalchemy import func, case, and_, not_
 from ..models import TransactionBDT, TxnType
 
-def _kpis_bdt(start, end, q, category_id, account_id):
+def _kpis_bdt(start, end, q, category_id, account_id, recipient_key=""):
     qset = (
         db.session.query(TransactionBDT)
         .filter(
@@ -677,6 +825,8 @@ def _kpis_bdt(start, end, q, category_id, account_id):
 
     if account_id:
         qset = qset.filter(TransactionBDT.account_id == account_id)
+
+    qset = _filter_bdt_recipient(qset, recipient_key)
 
     sq = qset.with_entities(
         TransactionBDT.amount.label("amount"),
@@ -748,10 +898,11 @@ def _kpis_bdt(start, end, q, category_id, account_id):
 # ... after computing krw_from_str/to etc.
 from urllib.parse import urlencode
 
-def _export_url(cur, fmt, q, category_id, account_id, from_str, to_str):
+def _export_url(cur, fmt, q, category_id, account_id, from_str, to_str, recipient_key=""):
     base = url_for("main.transactions_export", cur=cur, fmt=fmt)
     qs = urlencode({
         "q": q or "",
+        "recipient": recipient_key or "",
         "category_id": category_id or "",
         "account_id": account_id or "",
         "from": from_str or "",
@@ -818,7 +969,8 @@ def transactions_page():
 
     # ---------------- BDT filters ----------------
     bdt_q           = request.args.get("bdt_q") or ""
-    bdt_category_id = request.args.get("bdt_category_id", type=int)
+    bdt_category_id = None  # BDT uses the recipient filter instead.
+    bdt_recipient = request.args.get("bdt_recipient", "").strip()
     bdt_account_id  = request.args.get("bdt_account_id", type=int)
     bdt_from        = request.args.get("bdt_from")
     bdt_to          = request.args.get("bdt_to")
@@ -851,6 +1003,23 @@ def transactions_page():
     bdt_query = _base_for_table(TransactionBDT, bdt_start, bdt_end,
                                 bdt_q, bdt_category_id, bdt_account_id)
 
+    bdt_query = _filter_bdt_recipient(bdt_query, bdt_recipient)
+    # Group ALL filtered rows before pagination; exports use the same helper/query.
+    bdt_all_rows = bdt_query.all()
+    bdt_recipient_groups = _bdt_recipient_groups(bdt_all_rows)
+    # Use recipient names actually stored in this user's transaction history,
+    # including historical names and Self, without assuming Recipient model fields.
+    recipient_names = (db.session.query(TransactionBDT.recipient_name)
+                       .filter(TransactionBDT.user_id == current_user.id,
+                               TransactionBDT.is_deleted.is_(False),
+                               TransactionBDT.type != TxnType.refund)
+                       .distinct().all())
+    options = {}
+    for (name,) in recipient_names:
+        key, label = _bdt_recipient_name_identity(name)
+        options.setdefault(key, label)
+    bdt_recipients = sorted(options.items(), key=lambda item: item[1].lower())
+
     # ---------------- Pagination (KRW) ----------------
     krw_page = max(request.args.get("krw_page", 1, type=int), 1)
     krw_per_page = 10
@@ -865,25 +1034,23 @@ def transactions_page():
     # ---------------- Pagination (BDT) ----------------
     bdt_page = max(request.args.get("bdt_page", 1, type=int), 1)
     bdt_per_page = 10
-    bdt_total = bdt_query.count()
+    bdt_total = len(bdt_all_rows)
     bdt_pages = max(1, ceil(bdt_total / bdt_per_page)) if bdt_per_page else 1
 
-    bdt_rows = (bdt_query
-                .offset((bdt_page - 1) * bdt_per_page)
-                .limit(bdt_per_page)
-                .all())
+    bdt_page = min(bdt_page, bdt_pages)
+    bdt_rows = bdt_all_rows[(bdt_page - 1) * bdt_per_page:bdt_page * bdt_per_page]
 
     # ---------------- KPIs ----------------
     # (exclude refunds from IN; exclude “credit card settlement” from OUT)
     kpi_krw = _kpis(TransactionKRW, krw_start, krw_end,
                     krw_q, krw_category_id, krw_account_id)
-    kpi_bdt = _kpis_bdt(bdt_start, bdt_end, bdt_q, bdt_category_id, bdt_account_id)
+    kpi_bdt = _kpis_bdt(bdt_start, bdt_end, bdt_q, bdt_category_id, bdt_account_id, bdt_recipient)
 
     # ---------------- export URLs ----------------
     krw_csv_url = _export_url("KRW", "csv", krw_q, krw_category_id, krw_account_id, krw_from_str, krw_to_str)
     krw_pdf_url = _export_url("KRW", "pdf", krw_q, krw_category_id, krw_account_id, krw_from_str, krw_to_str)
-    bdt_csv_url = _export_url("BDT", "csv", bdt_q, bdt_category_id, bdt_account_id, bdt_from_str, bdt_to_str)
-    bdt_pdf_url = _export_url("BDT", "pdf", bdt_q, bdt_category_id, bdt_account_id, bdt_from_str, bdt_to_str)
+    bdt_csv_url = _export_url("BDT", "csv", bdt_q, bdt_category_id, bdt_account_id, bdt_from_str, bdt_to_str, bdt_recipient)
+    bdt_pdf_url = _export_url("BDT", "pdf", bdt_q, bdt_category_id, bdt_account_id, bdt_from_str, bdt_to_str, bdt_recipient)
 
     return render_template(
         "transactions.html",
@@ -894,6 +1061,9 @@ def transactions_page():
         krw_from_str=krw_from_str, krw_to_str=krw_to_str,
         accounts_krw=accounts_krw, krw_rows=krw_rows, kpi_krw=kpi_krw,
         krw_page=krw_page, krw_per_page=krw_per_page, krw_total=krw_total, krw_pages=krw_pages,
+
+        bdt_recipient=bdt_recipient, bdt_recipients=bdt_recipients,
+        bdt_recipient_groups=bdt_recipient_groups,
 
         # BDT state
         bdt_q=bdt_q, bdt_category_id=bdt_category_id, bdt_account_id=bdt_account_id,
@@ -925,7 +1095,7 @@ def transactions_export(cur, fmt):
 
     # Parse filters (mirror your page)
     q           = request.args.get("q") or ""
-    category_id = request.args.get("category_id", type=int)
+    category_id = request.args.get("category_id", type=int) if cur == "KRW" else None
     account_id  = request.args.get("account_id", type=int)
     from_str    = request.args.get("from")  # YYYY-MM-DD
     to_str      = request.args.get("to")    # YYYY-MM-DD
@@ -936,25 +1106,30 @@ def transactions_export(cur, fmt):
     qset = (_base_for_table(Model, start, end, q, category_id, account_id)
             .options(selectinload(Model.account), selectinload(Model.recipient))
             .order_by(Model.date.desc(), Model.id.desc()))
+    if cur == "BDT":
+        qset = _filter_bdt_recipient(qset, request.args.get("recipient", "").strip())
     rows = qset.all()
 
     # CSV
     if fmt == "csv":
         si = StringIO()
         writer = csv.writer(si)
-        writer.writerow(["Date", "Type", "Account", "Recipient/Category", "Note", "Amount", "Pending", "Deleted"])
-        for t in rows:
-            label = _cat_or_recipient(cur, t)
-            writer.writerow([
-                t.date.isoformat(),
-                (t.type.value if hasattr(t.type, "value") else str(t.type)),
-                (t.account.name if t.account else ""),
-                label,
-                (t.note or ""),
-                f"{t.amount}",
-                "yes" if t.is_pending else "no",
-                "yes" if t.is_deleted else "no",
-            ])
+        if cur == "BDT":
+            _write_bdt_report_csv(writer, rows)
+        else:
+            writer.writerow(["Date", "Type", "Account", "Recipient/Category", "Note", "Amount", "Pending", "Deleted"])
+            for t in rows:
+                label = _cat_or_recipient(cur, t)
+                writer.writerow([
+                    t.date.isoformat(),
+                    (t.type.value if hasattr(t.type, "value") else str(t.type)),
+                    (t.account.name if t.account else ""),
+                    label,
+                    (t.note or ""),
+                    f"{t.amount}",
+                    "yes" if t.is_pending else "no",
+                    "yes" if t.is_deleted else "no",
+                ])
         output = si.getvalue().encode("utf-8")
         filename = f"{cur}_transactions_{from_str or 'start'}_{to_str or 'today'}.csv"
         return Response(output, mimetype="text/csv",

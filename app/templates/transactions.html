@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 {% set page_title = "Transactions" %}
 {% set page_slug  = "transactions" %}
+{% set active_tab = request.args.get('tab', 'bdt' if request.args.get('bdt_page') else 'krw') %}
+{% if active_tab not in ['krw', 'bdt', 'send'] %}{% set active_tab = 'krw' %}{% endif %}
 
 {% macro category_options(selected_id) -%}
   <option value="">All Categories</option>
@@ -565,17 +567,17 @@
   <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-3">
     <ul class="nav nav-pills tx-tabs" id="txTabs" role="tablist">
       <li class="nav-item" role="presentation">
-        <button class="nav-link active" id="krw-tab" data-bs-toggle="pill" data-bs-target="#krw-pane" type="button" role="tab">
+        <button class="nav-link{{ ' active' if active_tab == 'krw' else '' }}" id="krw-tab" data-bs-toggle="pill" data-bs-target="#krw-pane" type="button" role="tab">
           <i class="bi bi-cash-stack me-1"></i>KRW
         </button>
       </li>
       <li class="nav-item" role="presentation">
-        <button class="nav-link" id="bdt-tab" data-bs-toggle="pill" data-bs-target="#bdt-pane" type="button" role="tab">
+        <button class="nav-link{{ ' active' if active_tab == 'bdt' else '' }}" id="bdt-tab" data-bs-toggle="pill" data-bs-target="#bdt-pane" type="button" role="tab">
           <i class="bi bi-bank me-1"></i>BDT
         </button>
       </li>
       <li class="nav-item" role="presentation">
-        <button class="nav-link" id="send-tab" data-bs-toggle="pill" data-bs-target="#send-pane" type="button" role="tab">
+        <button class="nav-link{{ ' active' if active_tab == 'send' else '' }}" id="send-tab" data-bs-toggle="pill" data-bs-target="#send-pane" type="button" role="tab">
           <i class="bi bi-graph-up-arrow me-1"></i>Remittance
         </button>
       </li>
@@ -587,7 +589,7 @@
   </div>
 
   <div class="tab-content" id="txTabsContent">
-    <div class="tab-pane fade show active" id="krw-pane" role="tabpanel" aria-labelledby="krw-tab" tabindex="0">
+    <div class="tab-pane fade{{ ' show active' if active_tab == 'krw' else '' }}" id="krw-pane" role="tabpanel" aria-labelledby="krw-tab" tabindex="0">
       <div class="section-card mb-4" id="krw-table">
         <div class="section-head">
           <div class="d-flex flex-column flex-xl-row justify-content-between gap-3">
@@ -606,7 +608,8 @@
           </div>
         </div>
 
-        <form class="filter-card m-3" method="get" action="{{ url_for('main.transactions_page') }}">
+        <form class="filter-card m-3" method="get" action="{{ url_for('main.transactions_page', _anchor='krw-table') }}">
+          <input type="hidden" name="tab" value="krw">
           <div class="row g-3 align-items-end">
             <div class="col-12 col-md-6 col-xl-3">
               <label class="form-label">Search</label>
@@ -646,7 +649,7 @@
             </div>
 
             <input type="hidden" name="bdt_q" value="{{ bdt_q or '' }}">
-            <input type="hidden" name="bdt_category_id" value="{{ bdt_category_id or '' }}">
+            <input type="hidden" name="bdt_recipient" value="{{ bdt_recipient or '' }}">
             <input type="hidden" name="bdt_account_id" value="{{ bdt_account_id or '' }}">
             <input type="hidden" name="bdt_from" value="{{ bdt_from_str|default('') }}">
             <input type="hidden" name="bdt_to" value="{{ bdt_to_str|default('') }}">
@@ -734,7 +737,7 @@
             {% elif active %}
               <li class="page-item active" aria-current="page"><span class="page-link">{{ lbl }}</span></li>
             {% else %}
-              <li class="page-item"><a class="page-link" href="{{ url_for('main.transactions_page', krw_page=p, krw_q=krw_q, krw_category_id=krw_category_id, krw_account_id=krw_account_id, krw_from=krw_from_str, krw_to=krw_to_str, bdt_q=bdt_q, bdt_category_id=bdt_category_id, bdt_account_id=bdt_account_id, bdt_from=bdt_from_str, bdt_to=bdt_to_str) }}#krw-table">{{ lbl }}</a></li>
+              <li class="page-item"><a class="page-link" href="{{ url_for('main.transactions_page', tab='krw', krw_page=p, krw_q=krw_q, krw_category_id=krw_category_id, krw_account_id=krw_account_id, krw_from=krw_from_str, krw_to=krw_to_str, bdt_q=bdt_q, bdt_recipient=bdt_recipient, bdt_account_id=bdt_account_id, bdt_from=bdt_from_str, bdt_to=bdt_to_str) }}#krw-table">{{ lbl }}</a></li>
             {% endif %}
           {%- endmacro %}
 
@@ -759,7 +762,7 @@
       </div>
     </div>
 
-    <div class="tab-pane fade" id="bdt-pane" role="tabpanel" aria-labelledby="bdt-tab" tabindex="0">
+    <div class="tab-pane fade{{ ' show active' if active_tab == 'bdt' else '' }}" id="bdt-pane" role="tabpanel" aria-labelledby="bdt-tab" tabindex="0">
       <div class="section-card mb-4" id="bdt-table">
         <div class="section-head">
           <div class="d-flex flex-column flex-xl-row justify-content-between gap-3">
@@ -777,15 +780,21 @@
           </div>
         </div>
 
-        <form class="filter-card m-3" method="get" action="{{ url_for('main.transactions_page') }}">
+        <form class="filter-card m-3" method="get" action="{{ url_for('main.transactions_page', _anchor='bdt-table') }}">
+          <input type="hidden" name="tab" value="bdt">
           <div class="row g-3 align-items-end">
             <div class="col-12 col-md-6 col-xl-3">
               <label class="form-label">Search</label>
               <input type="search" class="form-control" name="bdt_q" placeholder="Search transaction (BDT)" value="{{ bdt_q or '' }}">
             </div>
             <div class="col-12 col-md-6 col-xl-2">
-              <label class="form-label">Category</label>
-              <select class="form-select" name="bdt_category_id">{{ category_options(bdt_category_id) }}</select>
+              <label class="form-label" for="bdtRecipient">Recipient</label>
+              <select class="form-select" id="bdtRecipient" name="bdt_recipient">
+                <option value="">All recipients</option>
+                {% for key, name in bdt_recipients %}
+                  <option value="{{ key }}" {{ 'selected' if bdt_recipient == key else '' }}>{{ name }}</option>
+                {% endfor %}
+              </select>
             </div>
             <div class="col-12 col-md-6 col-xl-2">
               <label class="form-label">Account</label>
@@ -901,7 +910,7 @@
             {% elif active %}
               <li class="page-item active" aria-current="page"><span class="page-link">{{ lbl }}</span></li>
             {% else %}
-              <li class="page-item"><a class="page-link" href="{{ url_for('main.transactions_page', bdt_page=p, bdt_q=bdt_q, bdt_category_id=bdt_category_id, bdt_account_id=bdt_account_id, bdt_from=bdt_from_str, bdt_to=bdt_to_str, krw_q=krw_q, krw_category_id=krw_category_id, krw_account_id=krw_account_id, krw_from=krw_from_str, krw_to=krw_to_str) }}#bdt-table">{{ lbl }}</a></li>
+              <li class="page-item"><a class="page-link" href="{{ url_for('main.transactions_page', tab='bdt', bdt_page=p, bdt_q=bdt_q, bdt_recipient=bdt_recipient, bdt_account_id=bdt_account_id, bdt_from=bdt_from_str, bdt_to=bdt_to_str, krw_q=krw_q, krw_category_id=krw_category_id, krw_account_id=krw_account_id, krw_from=krw_from_str, krw_to=krw_to_str) }}#bdt-table">{{ lbl }}</a></li>
             {% endif %}
           {%- endmacro %}
 
@@ -924,9 +933,69 @@
           </nav>
         {% endif %}
       </div>
+      <section class="section-card mb-4" id="bdt-recipient-totals">
+        <div class="section-head d-flex flex-wrap justify-content-between align-items-center gap-3">
+          <div>
+            <h5 class="section-title">Recipient totals</h5>
+            <div class="section-subtitle">All filtered transactions across every page. Expand a recipient to see their transactions.</div>
+            <div class="tiny">Sent follows your existing BDT report rules. Pending transactions are included and marked below.</div>
+          </div>
+          <div class="d-flex gap-2">
+            <a class="btn btn-sm btn-soft-light" href="{{ bdt_csv_url }}">Download CSV</a>
+            <a class="btn btn-sm btn-soft-light" href="{{ bdt_pdf_url }}">Download PDF</a>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="table align-middle mb-0">
+            <thead><tr><th>Recipient</th><th>Transactions</th><th class="text-end">Total sent</th><th class="text-end">Total received</th></tr></thead>
+            <tbody>
+              {% for group in bdt_recipient_groups %}
+                <tr>
+                  <td><button class="btn btn-link text-start text-decoration-none p-0 fw-semibold collapsed"
+                    type="button" data-bs-toggle="collapse" data-bs-target="#bdtRecipient{{ loop.index }}"
+                    aria-expanded="false" aria-controls="bdtRecipient{{ loop.index }}">
+                    <i class="bi bi-chevron-down me-2" aria-hidden="true"></i>{{ group.name }}
+                  </button></td>
+                  <td>{{ group.rows|length }}</td>
+                  <td class="text-end fw-bold text-danger">৳{{ '{:,.2f}'.format(group.sent) }}</td>
+                  <td class="text-end fw-bold text-success">৳{{ '{:,.2f}'.format(group.received) }}</td>
+                </tr>
+                <tr>
+                  <td colspan="4" class="p-0 border-0">
+                    <div class="collapse" id="bdtRecipient{{ loop.index }}" data-bs-parent="#bdt-recipient-totals">
+                      <div class="p-3 bg-light">
+                        <div class="table-responsive">
+                          <table class="table table-sm align-middle mb-0">
+                            <caption class="visually-hidden">Transactions for {{ group.name }}</caption>
+                            <thead><tr><th>Date</th><th>Type</th><th>Account</th><th>Note</th><th class="text-end">Amount</th><th>Status</th></tr></thead>
+                            <tbody>
+                              {% for t in group.rows %}
+                                <tr>
+                                  <td class="text-nowrap">{{ t.date.strftime('%Y-%m-%d') }}</td>
+                                  <td>{{ t.type.value|replace('_', ' ')|title }}</td>
+                                  <td>{{ t.account.name if t.account else '—' }}</td>
+                                  <td style="min-width: 150px; overflow-wrap: anywhere;">{{ t.note or '—' }}</td>
+                                  <td class="text-end text-nowrap">৳{{ '{:,.2f}'.format(t.amount) }}</td>
+                                  <td>{{ status_badge(t, False) }}</td>
+                                </tr>
+                              {% endfor %}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              {% else %}
+                <tr><td colspan="4" class="text-center text-muted py-4">No recipients found for these filters.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
 
-    <div class="tab-pane fade" id="send-pane" role="tabpanel" aria-labelledby="send-tab" tabindex="0">
+    <div class="tab-pane fade{{ ' show active' if active_tab == 'send' else '' }}" id="send-pane" role="tabpanel" aria-labelledby="send-tab" tabindex="0">
       <section id="send-overview" class="section-card overflow-hidden">
         <div class="section-head">
           <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-end gap-3">
@@ -1079,7 +1148,11 @@
     const tabBtn = document.querySelector(tabSelector);
     if (tabBtn) bootstrap.Tab.getOrCreateInstance(tabBtn).show();
   }
-  activateTabFromHash();
+  if (document.readyState === 'complete') {
+    activateTabFromHash();
+  } else {
+    window.addEventListener('load', activateTabFromHash, { once: true });
+  }
   window.addEventListener('hashchange', activateTabFromHash);
 
   // Quick search only filters the rows currently loaded on the page.
