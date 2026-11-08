@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% block styles %}{{ super() }}<link rel="stylesheet" href="{{ url_for('static', filename='css/reports.css') }}">{% endblock %}
+{% macro pick(name, label, items) %}
+<div class="col-md-4"><label class="form-label" for="report-{{ name }}">{{ label }}</label>
+<select id="report-{{ name }}" name="{{ name }}" class="form-select" multiple size="4">
+{% for key, title in items %}<option value="{{ key }}" {{ 'selected' if key|string in f.get(name, []) else '' }}>{{ title }}</option>{% endfor %}
+</select></div>
+{% endmacro %}
+{% macro detail_table(records) %}
+<div class="table-responsive"><table class="table table-hover align-middle report-table"><thead><tr>
+{% for key, title in columns %}<th>{{ title }}</th>{% endfor %}</tr></thead><tbody>
+{% for row in records %}<tr>{% for key, title in columns %}<td class="{{ 'text-end text-nowrap' if key in ['amount', 'fee_amount', 'sent_krw', 'received_bdt', 'fx_rate'] else '' }}">
+{% if key in ['amount', 'fee_amount', 'sent_krw', 'received_bdt'] and row[key] is not none %}{{ '{:,.2f}'.format(row[key]) }}{% else %}{{ row[key] if row[key] is not none else '—' }}{% endif %}
+</td>{% endfor %}</tr>{% else %}<tr><td colspan="{{ columns|length }}" class="text-center text-muted py-5">No matching transactions. Adjust your filters.</td></tr>{% endfor %}
+</tbody></table></div>
+{% endmacro %}
+{% block content %}
+<div class="report-explorer">
+<header class="report-hero mb-4"><div><div class="text-uppercase small mb-2">Your money, clearly explained</div><h1 class="h3 mb-2">Reports &amp; Data Explorer</h1><p class="mb-0">Explore spending, family remittances and transfers to your own accounts.</p></div><i class="bi bi-sliders2 display-5" aria-hidden="true"></i></header>
+<form method="get" action="{{ url_for('main.explorer_page') }}" id="report-form" class="card report-card mb-4">
+<div class="card-body p-4">
+<div class="d-flex justify-content-between gap-2 mb-3"><h2 class="h5 mb-0">Build your report</h2><a href="{{ url_for('main.explorer_page') }}">Reset filters</a></div>
+<div class="row g-3">
+<div class="col-md-4"><label for="report-view" class="form-label">Report</label><select id="report-view" class="form-select" name="view">{% for key, title in views.items() %}<option value="{{ key }}" {{ 'selected' if f.get('view', 'all') == key else '' }}>{{ title }}</option>{% endfor %}</select></div>
+<div class="col-md-2"><label for="report-currency" class="form-label">Currency</label><select id="report-currency" class="form-select" name="currency">{% for key, title in [('both','KRW & BDT'),('KRW','KRW'),('BDT','BDT')] %}<option value="{{ key }}" {{ 'selected' if f.get('currency','both')==key else '' }}>{{ title }}</option>{% endfor %}</select></div>
+<div class="col-md-3"><label for="report-from" class="form-label">From</label><input type="date" class="form-control" id="report-from" name="from" value="{{ f.get('from','') }}"></div>
+<div class="col-md-3"><label for="report-to" class="form-label">To</label><input type="date" class="form-control" id="report-to" name="to" value="{{ f.get('to','') }}"></div>
+<div class="col-12 d-flex gap-2 align-items-center"><button type="button" class="btn btn-sm btn-outline-secondary" id="report-all-time">All time</button><span class="small text-muted">Blank dates include all available history.</span></div>
+<div class="col-12"><label for="report-q" class="form-label">Search notes, recipients, categories, accounts or services</label><input id="report-q" class="form-control" type="search" name="q" maxlength="300" value="{{ f.get('q','') }}" placeholder="Example: groceries, school, Mother…"></div>
+<div class="col-md-4"><label class="form-label" for="report-accounts">Accounts</label><select id="report-accounts" class="form-select" name="accounts" multiple size="4">{% for a in options.accounts %}<option value="{{ a.id }}" {{ 'selected' if a.id|string in f.get('accounts',[]) else '' }}>{{ a.name }} · {{ a.currency.value }}{{ ' (inactive)' if not a.is_active else '' }}</option>{% endfor %}</select></div>
+<div class="col-md-4"><label class="form-label" for="report-categories">Categories</label><select id="report-categories" class="form-select" name="categories" multiple size="4">{% for c in options.categories %}<option value="{{ c.id }}" {{ 'selected' if c.id|string in f.get('categories',[]) else '' }}>{{ (c.parent_name ~ ' / ') if c.parent_name else '' }}{{ c.name }}</option>{% endfor %}</select></div>
+{{ pick('recipients','Recipients (select your family members)', options.recipients) }}
+<div class="col-12 small text-muted">No selection means all. On a computer, hold Ctrl / Cmd to select multiple items or deselect one.</div>
+<div class="col-12"><label for="report-children" class="form-label">Category scope</label><select id="report-children" name="children" class="form-select w-auto"><option value="1" {{ 'selected' if f.get('children',true) else '' }}>Include child categories</option><option value="0" {{ 'selected' if not f.get('children',true) else '' }}>Selected categories only</option></select></div>
+</div>
+<details class="mt-4 report-section"><summary>More filters</summary><div class="row g-3 mt-1">
+{{ pick('types','Transaction types', [('income','Income'),('expense','Expense'),('transfer_domestic','Domestic transfer'),('transfer_international','International transfer'),('refund','Refund'),('fee','Fee'),('adjustment','Adjustment')]) }}
+<div class="col-md-4"><label for="report-countries" class="form-label">Recipient countries (current profile)</label><select name="countries" id="report-countries" class="form-select" multiple size="4">{% for c in options.countries %}<option {{ 'selected' if c in f.get('countries',[]) else '' }}>{{ c }}</option>{% endfor %}</select></div>
+<div class="col-md-4"><label for="report-services" class="form-label">Services</label><select name="services" id="report-services" class="form-select" multiple size="4">{% for c in options.services %}<option {{ 'selected' if c in f.get('services',[]) else '' }}>{{ c }}</option>{% endfor %}</select></div>
+{{ pick('account_types','Account types', [('bank','Bank'),('credit','Credit card'),('cash','Cash'),('mobile_wallet','Mobile wallet')]) }}
+{{ pick('methods','Methods', [('bank','Bank'),('mobile_wallet','Mobile wallet'),('cash','Cash'),('other','Other')]) }}
+{% for name, label, items, default in [('status','Status',[('all','Completed + pending'),('completed','Completed only'),('pending','Pending only')],'all'),('direction','Account movement',[('all','Incoming + outgoing'),('in','Incoming only'),('out','Outgoing only')],'all'),('target','Transfer destination',[('all','Any'),('own','Own accounts'),('other','Other recipients'),('unknown','Unknown')],'all'),('deleted','Deleted records',[('exclude','Exclude deleted'),('include','Include deleted'),('only','Deleted only')],'exclude')] %}
+<div class="col-md-4"><label class="form-label" for="report-{{ name }}">{{ label }}</label><select id="report-{{ name }}" name="{{ name }}" class="form-select">{% for key, title in items %}<option value="{{ key }}" {{ 'selected' if f.get(name,default)==key else '' }}>{{ title }}</option>{% endfor %}</select></div>{% endfor %}
+<div class="col-md-4"><label for="report-min" class="form-label">Minimum absolute amount</label><input id="report-min" class="form-control" name="min" type="number" min="0" step="0.01" value="{{ f.get('min','') }}"></div>
+<div class="col-md-4"><label for="report-max" class="form-label">Maximum absolute amount</label><input id="report-max" class="form-control" name="max" type="number" min="0" step="0.01" value="{{ f.get('max','') }}"></div>
+<div class="col-12 small text-muted">Amount bounds apply separately in each transaction's currency. Transfers with insufficient evidence are marked Unknown.</div>
+</div></details>
+<details class="mt-3 report-section" {{ 'open' if f.get('rules') else '' }}><summary>Advanced conditions</summary>
+<p class="small text-muted mt-2">Combine up to 12 conditions. These conditions also respect the filters above. Numeric fields use their recorded currency; date fields use YYYY-MM-DD.</p>
+<div class="d-flex gap-2 mb-3"><select name="rule_mode" class="form-select w-auto" aria-label="Combine advanced conditions"><option value="all" {{ 'selected' if f.get('rule_mode','all')=='all' else '' }}>Match ALL conditions (AND)</option><option value="any" {{ 'selected' if f.get('rule_mode')=='any' else '' }}>Match ANY condition (OR)</option></select><button class="btn btn-outline-primary" type="button" id="report-add-rule">Add condition</button></div>
+<div id="report-rules"></div><input type="hidden" name="rules" id="report-rules-json" value="{{ rules_json }}">
+<noscript><p>JavaScript is needed to edit advanced conditions. The other filters work without it.</p></noscript>
+</details>
+<div class="row g-3 mt-2">
+{% for name, title in [('group_by','Group by'),('then_by','Then by')] %}<div class="col-md-4"><label for="report-{{ name }}" class="form-label">{{ title }}</label><select name="{{ name }}" id="report-{{ name }}" class="form-select">{% if name=='then_by' %}<option value="">No second grouping</option>{% endif %}{% for key, label in group_options.items() %}<option value="{{ key }}" {{ 'selected' if f.get(name,'recipient' if name=='group_by' else '')==key else '' }}>{{ label }}</option>{% endfor %}</select></div>{% endfor %}
+<div class="col-md-4"><label for="report-sort" class="form-label">Sort transactions</label><select class="form-select" name="sort" id="report-sort">{% for key,title in [('newest','Newest first'),('oldest','Oldest first'),('largest','Largest absolute amount'),('smallest','Smallest absolute amount')] %}<option value="{{ key }}" {{ 'selected' if f.get('sort','newest')==key else '' }}>{{ title }}</option>{% endfor %}</select></div>
+</div>
+<details class="report-section mt-3"><summary>Table &amp; download columns</summary><div class="row g-2 pt-3">{% set selected = columns|map(attribute=0)|list %}{% for key,title in all_columns %}<label class="col-sm-4 col-lg-3"><input type="checkbox" name="columns" value="{{ key }}" {{ 'checked' if key in selected else '' }}> {{ title }}</label>{% endfor %}</div></details>
+<button class="btn btn-primary px-4 mt-4" type="submit"><i class="bi bi-funnel me-2"></i>Generate report</button>
+</div></form>
+{% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endif %}
+{% if report %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3"><div><h2 class="h4 mb-1">Your results</h2><span class="text-muted">{{ report.count }} matching transaction records · totals cover every matching page</span></div><div class="d-flex gap-2"><a class="btn btn-outline-primary" href="{{ link('main.explorer_export',fmt='csv') }}">Download CSV</a><a class="btn btn-primary" href="{{ link('main.explorer_export',fmt='pdf') }}">Download PDF</a></div></div>
+<p class="small text-muted">Downloads use the last generated report. After changing filters, select Generate report before downloading.</p>
+<div class="row g-3 mb-3">{% for cur,t in report.totals.items() %}<div class="col-xl-6"><section class="card report-card h-100"><div class="card-body p-4"><h3 class="h5">{{ cur }} overview</h3><div class="row g-3 mt-1">{% for key,title in [('spending','Spending before refunds'),('refunds','Purchase refunds'),('net_spending','Net spending'),('inflow','Recorded inflow'),('outflow','Recorded outflow'),('net','Recorded net movement')] %}<div class="col-6"><div class="small text-muted">{{ title }}</div><div class="fs-5 fw-semibold">{{ '{:,.2f}'.format(t[key]) }}</div></div>{% endfor %}</div></div></section></div>{% endfor %}</div>
+<div class="alert alert-light border small">Spending includes expense/fee records and excludes card settlements. Refunds reduce net spending. Recorded inflows and outflows include transfer legs and external recipient records; they are not a spending total. Pending records are included when selected. Recorded fees are not added again.</div>
+{% set rem=report.remittances %}{% if rem.count %}<section class="card report-card mb-4"><div class="card-body p-4"><h3 class="h5">International remittances · {{ rem.count }} linked groups / unlinked records</h3><div class="row g-3 mt-1"><div class="col-md-6"><div class="small text-muted">Recorded principal sent (KRW)</div><div class="h3">{{ '{:,.2f}'.format(rem.sent) }}</div></div><div class="col-md-6"><div class="small text-muted">Recorded recipient amount (BDT)</div><div class="h3">{{ '{:,.2f}'.format(rem.received) }}</div></div></div><p class="small text-muted mb-0">Recorded metadata is counted once per transfer group across both currencies. These amounts are not added to the account totals.</p>{% for cur,amt in rem.fees.items() %}<div class="small">Recorded fee metadata: {{ cur }} {{ '{:,.2f}'.format(amt) }}</div>{% endfor %}{% if rem.missing or rem.conflicts or rem.unlinked %}<div class="alert alert-warning mt-3 mb-0">Missing metadata fields: {{ rem.missing }}. Conflicting fields excluded from totals: {{ rem.conflicts }}. Unlinked records: {{ rem.unlinked }} (may represent duplicate transfer legs).</div>{% endif %}</div></section>{% endif %}
+<section class="card report-card mb-4" id="report-groups"><div class="card-body p-4"><h3 class="h5 mb-3">Grouped results · {{ group_options[f.group_by] }}{% if f.then_by %} / {{ group_options[f.then_by] }}{% endif %}</h3>
+<p class="small text-muted">Each currency stays separate. Expand a group to see its full matching records.</p>
+{% for g in groups %}<details class="report-group mb-2"><summary><span>{{ g.name }}{% if g.secondary %} / {{ g.secondary }}{% endif %}<small class="d-block text-muted mt-1">{{ g.currency }} · {{ g.count }} records</small></span><span class="text-end small">Recorded outflow <strong class="d-block fs-6">{{ '{:,.2f}'.format(g.outflow) }}</strong>Inflow {{ '{:,.2f}'.format(g.inflow) }} · Net spending {{ '{:,.2f}'.format(g.net_spending) }}{% if g.remittances.count %}<span class="d-block mt-1 text-primary">{{ 'Remitted KRW' if g.currency=='KRW' else 'Recipient BDT' }}: {{ '{:,.2f}'.format(g.remittances.sent if g.currency=='KRW' else g.remittances.received) }}</span>{% endif %}</span></summary><div class="p-3">{{ detail_table(g.rows) }}</div></details>{% else %}<p class="text-muted">No groups to show.</p>{% endfor %}
+{% if group_pages>1 %}<nav aria-label="Group pages" class="d-flex gap-3 align-items-center mt-3">{% if group_page>1 %}<a href="{{ link('main.explorer_page',group_page=group_page-1) }}#report-groups">Previous groups</a>{% endif %}<span>Group page {{ group_page }} / {{ group_pages }}</span>{% if group_page<group_pages %}<a href="{{ link('main.explorer_page',group_page=group_page+1) }}#report-groups">Next groups</a>{% endif %}</nav>{% endif %}</div></section>
+<section class="card report-card" id="report-transactions"><div class="card-body p-4"><h3 class="h5">Matching transactions</h3><p class="small text-muted">25 records per page. Both downloads contain all matching records and group totals.</p>{{ detail_table(rows) }}
+<nav class="d-flex flex-wrap gap-3 align-items-center mt-3" aria-label="Transaction pages">{% if page>1 %}<a href="{{ link('main.explorer_page',page=1) }}#report-transactions">First</a><a href="{{ link('main.explorer_page',page=page-1) }}#report-transactions">Previous</a>{% endif %}<span>Page {{ page }} / {{ pages }}</span>{% if page<pages %}<a href="{{ link('main.explorer_page',page=page+1) }}#report-transactions">Next</a><a href="{{ link('main.explorer_page',page=pages) }}#report-transactions">Last</a>{% endif %}</nav>
+</div></section>
+<details class="report-section mt-3"><summary>Applied filters</summary><dl class="mt-3">{% for label,text in filter_labels %}<dt>{{ label }}</dt><dd>{{ text }}</dd>{% endfor %}</dl></details>
+{% endif %}
+</div>
+<script id="report-rule-fields" type="application/json">{{ rule_fields|tojson }}</script>
+{% endblock %}

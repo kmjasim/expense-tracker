@@ -1,0 +1,1 @@
+{% if pages>1 %}<nav class="simple-pagination" aria-label="Report detail pages">{% if page>1 %}<a href="{{ simple_link(page=page-1) }}#payment-details">← Previous</a>{% endif %}<span>Page {{ page }} of {{ pages }}</span>{% if page<pages %}<a href="{{ simple_link(page=page+1) }}#payment-details">Next →</a>{% endif %}</nav>{% endif %}

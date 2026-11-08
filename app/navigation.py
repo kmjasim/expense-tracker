@@ -90,4 +90,9 @@ MENU = [
     "icon": "bi bi-graph-up-arrow",
     "endpoint": "main.expense_analysis",
 },
+{
+    "label": "Reports & Data Explorer",
+    "icon": "bi bi-sliders2",
+    "endpoint": "main.reports_page",
+},
 ]
