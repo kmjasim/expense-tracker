@@ -145,6 +145,27 @@ def _percentage(amount, maximum):
     return float(min(Decimal('100'), abs(amount) / maximum * 100)) if maximum else 0
 
 
+def _overview_transfer_amounts(rows):
+    """Cash-outflow view, separately for each native currency.
+
+    Debits count, including moves to own accounts. A positive BDT leg on the
+    synthetic external-recipient account represents a payout, not own income.
+    Prefer a debit when the same currency/group also has a payout representation.
+    """
+    transfers=[r for r in rows if r['type'] in ('transfer_domestic','transfer_international') and not r['settlement']]
+    def group(r): return (r['currency'],r['transfer_group'] or r['key'])
+    debit_groups={group(r) for r in transfers if r['amount']<0}
+    amounts={r['key']:-r['amount'] for r in transfers if r['amount']<0}
+    paid_groups=set()
+    for r in transfers:
+        if (r['currency']=='BDT' and r['type']=='transfer_international'
+                and r['amount']>0 and r['target']=='other'
+                and group(r) not in debit_groups and group(r) not in paid_groups):
+            amounts[r['key']]=r['amount']
+            paid_groups.add(group(r))
+    return amounts
+
+
 def build_insights(uid, f):
     options = choices(uid)
     options['people'], aliases = recipient_options(options)
@@ -188,14 +209,16 @@ def build_insights(uid, f):
                     categories=[], people=by_person, warnings=warnings, options=options,
                     title=dict(options['people']).get(f['recipient'], 'All recipients'),
                     count=len(events), record_count=sum(len(e['records']) for e in events))
-    income, gross, refunds = ZERO, ZERO, ZERO
+    income, gross, refunds, transfer_total = ZERO, ZERO, ZERO, ZERO
+    transfer_amounts=_overview_transfer_amounts(rows) if f['mode']=='overview' else {}
     monthly = defaultdict(lambda:dict(income=ZERO,spending=ZERO,refunds=ZERO))
     categories = defaultdict(lambda:dict(gross=ZERO,refunds=ZERO,count=0))
     financial = []
     for r in rows:
         if r['settlement']: continue
         is_income = r['type']=='income' and r['amount']>0
-        is_spending = r['type'] in ('expense','fee') and r['amount']<0
+        transfer_amount=transfer_amounts.get(r['key'],ZERO)
+        is_spending = (r['type'] in ('expense','fee') and r['amount']<0) or transfer_amount>0
         is_refund = r['type']=='refund' and r['amount']>0
         if f['mode']=='category' and is_income: continue
         if not (is_income or is_spending or is_refund): continue
@@ -204,10 +227,12 @@ def build_insights(uid, f):
         if is_income:
             income += r['amount'];m['income'] += r['amount']
         else:
-            key = (r['category_id'], r['category'])
+            key = (('transfer:'+r['type']), 'International transfers' if r['type']=='transfer_international' else 'Domestic transfers') if transfer_amount else (r['category_id'],r['category'])
             cat = categories[key];cat['count'] += 1
             if is_spending:
-                gross -= r['amount'];m['spending'] -= r['amount'];cat['gross'] -= r['amount']
+                spent=transfer_amount or -r['amount']
+                gross += spent;m['spending'] += spent;cat['gross'] += spent
+                transfer_total += transfer_amount
             else:
                 refunds += r['amount'];m['refunds'] += r['amount'];cat['refunds'] += r['amount']
     cats = [dict(name=name,net=c['gross']-c['refunds'],**c) for (_,name),c in categories.items()]
@@ -219,7 +244,7 @@ def build_insights(uid, f):
     for m in months:
         m['income_width']=_percentage(m['income'],largest);m['spending_width']=_percentage(m['net_spending'],largest)
     totals=dict(income=income,gross=gross,refunds=refunds,spending=gross-refunds,balance=income-gross+refunds,
-                count=len(financial),review=0)
+                count=len(financial),review=0,transfers=transfer_total)
     title=MODES[f['mode']]
     if f['mode']=='category' and f['category']:
         selected=next((c['name'] for c in options['categories'] if str(c['id'])==f['category']), 'Selected category')

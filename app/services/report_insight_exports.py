@@ -14,7 +14,7 @@ SUMMARY = {
                   ('total_krw','Total KRW sent / paid'),('total_bdt','Total BDT delivered'),
                   ('count','Confirmed payments'),('review','Payments excluded for review')],
     'overview': [('income','Income'),('gross','Spending before refunds'),('refunds','Refunds'),
-                 ('spending','Net spending'),('balance','Income minus spending')],
+                 ('spending','Net spending'),('transfers','Transfers included in spending'),('balance','Income minus spending')],
     'category': [('gross','Spending before refunds'),('refunds','Refunds'),('spending','Net spending')],
 }
 RAW = [('key','Record ID'),('date','Date'),('type','Type'),('currency','Currency'),('account','Account'),
@@ -70,7 +70,7 @@ def csv_export(insight,f):
         write([label for _,label in PAYMENT]+['Review reason'])
         for e in insight['events']:write([e[k] for k,_ in PAYMENT]+['; '.join(e['issues'])])
     else:
-        write(['Transfers and card settlements are excluded from income and spending.'])
+        write(['Spending includes outgoing transfers and BDT payouts to external recipients; own-account credits are not earned income. Card settlements are excluded.' if f['mode']=='overview' else 'Transfers and card settlements are excluded from category spending.'])
         write([]);write(['Month','Income','Spending before refunds','Refunds','Net spending'])
         for m in insight['months']:write([m[k] for k in ('month','income','spending','refunds','net_spending')])
         write([]);write(['Category','Spending before refunds','Refunds','Net spending','Records'])
@@ -208,14 +208,14 @@ def pdf_export(insight, f):
         cur = f['currency']
         if f['mode'] == 'overview':
             cards([('Income', totals['income'], cur + ' | recorded income', True),
-                   ('Net spending', totals['spending'], cur + ' | after purchase refunds', False),
-                   ('Income minus spending', totals['balance'], cur + ' | before transfers and adjustments', False)])
-            table([['Spending before refunds', 'Refunds'], [fmt(totals['gross']), fmt(totals['refunds'])]], [.5, .5], numeric=(0, 1))
+                   ('Net spending', totals['spending'], cur + ' | includes transfers; after refunds', False),
+                   ('Income minus spending', totals['balance'], cur + ' | after transfers; before adjustments', False)])
+            table([['Spending before refunds', 'Refunds', 'Transfers included in spending'], [fmt(totals['gross']), fmt(totals['refunds']), fmt(totals['transfers'])]], [1/3]*3, numeric=(0,1,2))
         else:
             cards([('Net spending', totals['spending'], cur + ' | selected category including children', True),
                    ('Spending before refunds', totals['gross'], cur + ' | expenses and fee transactions', False),
                    ('Refunds', totals['refunds'], cur + ' | card settlements excluded', False)])
-        note = 'Transfers and card repayments are excluded. Net spending includes purchases and fees minus purchase refunds.'
+        note = ('Spending includes outgoing transfers and BDT payouts to external recipients. Own-account credits are not earned income. Card repayments are excluded.' if f['mode']=='overview' else 'Transfers and card repayments are excluded. Net spending includes purchases and fees minus purchase refunds.')
     story.extend([Spacer(0, 9), p(note, small)])
     for warning in insight['warnings']:
         warning_box = Table([[p('REVIEW NOTICE  |  ' + warning, small)]], colWidths=[doc.width])
