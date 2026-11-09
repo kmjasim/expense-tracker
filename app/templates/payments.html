@@ -6,528 +6,134 @@
    ---------------------------- #}
 {% block content %}
 <style>
-  .payments-ui {
-    --pay-bg: #f6f8fb;
-    --pay-card: #ffffff;
-    --pay-ink: #111827;
-    --pay-muted: #6b7280;
-    --pay-border: rgba(15, 23, 42, .09);
-    --pay-soft: rgba(15, 23, 42, .045);
-    --pay-primary: #2563eb;
-    --pay-success: #16a34a;
-    --pay-danger: #dc2626;
-    --pay-warning: #f59e0b;
-    --pay-shadow: 0 18px 45px rgba(15, 23, 42, .08);
-    --pay-radius: 22px;
-  }
 
-  .payments-ui,
-  .payments-sidebar-ui {
-    color: var(--pay-ink);
-  }
-
-  .payments-sidebar-ui.left-pane {
-    min-height: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: .9rem;
-    padding: .85rem;
-    background:
-      radial-gradient(circle at 0% 0%, rgba(37, 99, 235, .10), transparent 32%),
-      linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-    border-radius: 22px;
-    border: 1px solid var(--pay-border);
-  }
-
-  .payments-sidebar-ui .category-panel-head {
-    padding: .95rem;
-    border-radius: 18px;
-    color: #fff !important;
-    background:
-      linear-gradient(135deg, rgba(15, 23, 42, .98), rgba(37, 99, 235, .92)),
-      radial-gradient(circle at 90% 20%, rgba(255,255,255,.28), transparent 32%);
-    box-shadow: 0 12px 28px rgba(15, 23, 42, .16);
-  }
-
-  .payments-sidebar-ui .category-panel-head * {
-    color: #fff !important;
-  }
-
-  .payments-sidebar-ui .left-scroll {
-    background: rgba(255,255,255,.84);
-    border: 1px solid var(--pay-border);
-    border-radius: 18px;
-    padding: .55rem;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.55);
-  }
-
-  .payments-sidebar-ui .btn-add-category {
-    border: 0;
-    border-radius: 16px;
-    padding: .75rem 1rem;
-    background: linear-gradient(135deg, #16a34a, #22c55e);
-    box-shadow: 0 12px 25px rgba(22, 163, 74, .24);
-    font-weight: 700;
-  }
-
-  .payments-ui .pay-hero {
-    position: relative;
-    overflow: hidden;
-    border-radius: 28px;
-    padding: 1.25rem;
-    color: #fff !important;
-    background:
-      radial-gradient(circle at 8% 10%, rgba(96, 165, 250, .50), transparent 28%),
-      radial-gradient(circle at 92% 12%, rgba(34, 197, 94, .28), transparent 26%),
-      linear-gradient(135deg, #0f172a 0%, #1e3a8a 55%, #2563eb 100%);
-    box-shadow: var(--pay-shadow);
-  }
-
-  .payments-ui .pay-hero::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, rgba(0,0,0,.26), rgba(0,0,0,.06));
-    pointer-events: none;
-  }
-
-  .payments-ui .pay-hero > * {
-    position: relative;
-    z-index: 1;
-  }
-
-  .payments-ui .pay-hero,
-  .payments-ui .pay-hero h1,
-  .payments-ui .pay-hero p,
-  .payments-ui .pay-hero span,
-  .payments-ui .pay-hero div,
-  .payments-ui .pay-hero i,
-  .payments-ui .pay-hero .small,
-  .payments-ui .pay-hero .h5,
-  .payments-ui .pay-hero .h4 {
-    color: #fff !important;
-    text-shadow: 0 1px 2px rgba(0,0,0,.28);
-  }
-
-  .payments-ui .hero-stat {
-    background: rgba(255,255,255,.14);
-    border: 1px solid rgba(255,255,255,.22);
-    border-radius: 18px;
-    padding: .8rem .9rem;
-    backdrop-filter: blur(10px);
-  }
-
-  .payments-ui .pay-section-card,
-  .payments-ui .transfer-card,
-  .payments-ui .pay-form-card {
-    background: var(--pay-card);
-    border: 1px solid var(--pay-border);
-    border-radius: var(--pay-radius);
-    box-shadow: var(--pay-shadow);
-  }
-
-  .payments-ui .transfer-card {
-    padding: 0;
-    overflow: hidden;
-  }
-
-  .payments-ui .pay-section-card {
-    padding: 1rem;
-  }
-
-  .payments-ui .payment-form-shell {
-    padding: 1rem;
-  }
-
-  .payments-ui .tool-btn-row {
-    gap: .5rem;
-  }
-
-  .payments-ui .tool-btn-row .btn {
-    border-radius: 14px;
-    font-weight: 650;
-    white-space: nowrap;
-  }
-
-  .payments-ui .account-slider {
-    margin: 0;
-  
-  }
-
-  .payments-ui .slider-viewport {
-    position: relative;
-    width: 100%;
-    background:
-      radial-gradient(circle at 0% 0%, rgba(37, 99, 235, .08), transparent 30%),
-      linear-gradient(180deg, #f8fafc 0%, #fff 100%);
-    border: 1px solid var(--pay-border);
-    border-radius: 22px;
-    padding: 1rem !important;
-    overflow: hidden;
-  }
-
-  .payments-ui .slider-track {
-    display: flex;
-    gap: .9rem;
-    overflow-x: auto;
-    scroll-behavior: smooth;
-    padding-bottom: .35rem;
-    scrollbar-width: thin;
-  }
-
-  .payments-ui .acct-card {
-    position: relative;
-    flex: 0 0 285px;
-    max-width: 285px;
-    border-radius: 22px;
-    cursor: pointer;
-    border: 1px solid rgba(15, 23, 42, .10);
-    background: #fff;
-    box-shadow: 0 12px 28px rgba(15, 23, 42, .07);
-    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
-  }
-
-  .payments-ui .acct-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 18px 34px rgba(15, 23, 42, .11);
-  }
-
-  .payments-ui .acct-card.active {
-    border-color: rgba(37, 99, 235, .9);
-    box-shadow: 0 18px 38px rgba(37, 99, 235, .18);
-  }
-
-  .payments-ui .acct-card.active::after {
-    content: "Selected";
-    position: absolute;
-    right: .8rem;
-    bottom: .75rem;
-    font-size: .68rem;
-    font-weight: 800;
-    color: #1d4ed8;
-    background: rgba(37, 99, 235, .10);
-    border: 1px solid rgba(37, 99, 235, .18);
-    padding: .18rem .5rem;
-    border-radius: 999px;
-  }
-
-  .payments-ui .acct-card.is-inactive {
-    opacity: .62;
-    filter: grayscale(.15);
-  }
-
-  .payments-ui .acct-body {
-    padding: 1rem;
-  }
-
-  .payments-ui .acct-balance {
-    font-size: 1.25rem;
-    letter-spacing: -.02em;
-  }
-
-  .payments-ui .limit-bar {
-    height: 8px;
-    border-radius: 999px;
-    background: rgba(15, 23, 42, .08);
-    overflow: hidden;
-  }
-
-  .payments-ui .limit-bar-fill {
-    height: 100%;
-    border-radius: 999px;
-  }
-
-  .payments-ui .slider-controls.top-right {
-    position: absolute;
-    top: .85rem;
-    right: .85rem;
-    display: flex;
-    gap: .35rem;
-  }
-
-  .payments-ui .slider-nav {
-    width: 34px;
-    height: 34px;
-    border-radius: 999px;
-    display: grid;
-    place-items: center;
-    padding: 0;
-    border: 1px solid var(--pay-border);
-    background: rgba(255,255,255,.92);
-    box-shadow: 0 8px 18px rgba(15, 23, 42, .08);
-    font-size: 1.25rem;
-    line-height: 1;
-  }
-
-  .payments-ui .pay-form-card {
-    padding: 1rem;
-  }
-
-  .payments-ui .form-label {
-    font-size: .78rem;
-    font-weight: 800;
-    color: #475569;
-    margin-bottom: .35rem;
-  }
-
-  .payments-ui .form-control,
-  .payments-ui .form-select,
-  .payments-ui .input-group-text {
-    border-radius: 14px;
-    border-color: rgba(15, 23, 42, .12);
-  }
-
-  .payments-ui .input-group > .input-group-text:first-child {
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
-    font-weight: 800;
-  }
-
-  .payments-ui .input-group > .form-control:last-child {
-    border-top-left-radius: 0;
-    border-bottom-left-radius: 0;
-  }
-
-  .payments-ui .payment-action-footer {
-    position: sticky;
-    bottom: 0;
-    z-index: 3;
-    margin: 1rem -1rem -1rem;
-    padding: .9rem 1rem;
-    background: rgba(255,255,255,.86);
-    backdrop-filter: blur(12px);
-    border-top: 1px solid var(--pay-border);
-  }
-
-  .payments-ui .btn-make-payment {
-    border: 0;
-    border-radius: 16px;
-    padding: .75rem 1.25rem;
-    background: linear-gradient(135deg, #16a34a, #22c55e);
-    box-shadow: 0 12px 25px rgba(22, 163, 74, .22);
-    font-weight: 800;
-  }
-
-  .payments-ui .modal-content {
-    border: 0;
-    border-radius: 24px;
-    box-shadow: 0 22px 60px rgba(15, 23, 42, .18);
-    overflow: hidden;
-  }
-
-  .payments-ui .modal-header,
-  .payments-modal-polish .modal-header {
-    background: linear-gradient(135deg, #0f172a, #1d4ed8);
-    color: #fff;
-  }
-
-  .payments-ui .modal-header *,
-  .payments-modal-polish .modal-header * {
-    color: #fff !important;
-  }
-
-  .payments-modal-polish .modal-content {
-    border: 0;
-    border-radius: 24px;
-    box-shadow: 0 22px 60px rgba(15, 23, 42, .18);
-    overflow: hidden;
-  }
-
-  .payments-modal-polish .form-control,
-  .payments-modal-polish .form-select,
-  .payments-modal-polish .input-group-text {
-    border-radius: 14px;
-  }
-
-  .payments-modal-polish .input-group > .input-group-text:first-child {
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
-    font-weight: 800;
-  }
-
-  .payments-modal-polish .input-group > .form-control:last-child {
-    border-top-left-radius: 0;
-    border-bottom-left-radius: 0;
-  }
-
-  @media (max-width: 767.98px) {
-    .payments-ui .pay-hero {
-      border-radius: 22px;
-      padding: 1rem;
-    }
-
-    .payments-ui .tool-btn-row {
-      width: 100%;
-      display: grid !important;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .payments-ui .tool-btn-row .btn {
-      width: 100%;
-    }
-
-    .payments-ui .acct-card {
-      flex-basis: 82vw;
-      max-width: 82vw;
-    }
-
-    .payments-ui .payment-action-footer {
-      position: static;
-      margin-top: 1rem;
-    }
-
-    .payments-ui .payment-action-footer .btn {
-      flex: 1;
-    }
-  }
-
-
-  .payments-stacked-page {
-    background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
-    min-height: calc(100vh - 70px);
-  }
-
-  .payments-stacked-page .payments-category-section,
-  .payments-stacked-page > .payments-ui {
-    max-width: 1320px;
-    margin-left: auto;
-    margin-right: auto;
-  }
-
-  .payments-category-section .payments-sidebar-ui.left-pane {
-    min-height: 0;
-  }
-
-  .payments-category-section .left-scroll {
-    max-height: 360px;
-    overflow-y: auto;
-  }
-
-  .payments-category-section .btn-add-category {
-    max-width: 260px;
-    margin-left: auto;
-  }
-
-  .payments-category-section .left-scroll > ul,
-  .payments-category-section .left-scroll > .category-tree,
-  .payments-category-section .left-scroll > div {
-    columns: 1;
-  }
-
-  @media (min-width: 992px) {
-    .payments-category-section .payments-sidebar-ui.left-pane {
-      display: grid;
-      grid-template-columns: minmax(260px, 320px) minmax(0, 1fr) auto;
-      align-items: stretch;
-      gap: 1rem;
-    }
-
-    .payments-category-section .category-panel-head {
-      min-height: 100%;
-      display: flex;
-      align-items: center;
-    }
-
-    .payments-category-section .left-scroll {
-      max-height: 290px;
-    }
-
-    .payments-category-section .d-grid.mt-auto {
-      align-self: end;
-      min-width: 190px;
-    }
-  }
-
-  @media (max-width: 991.98px) {
-    .payments-category-section .left-scroll {
-      max-height: 280px;
-    }
-
-    .payments-category-section .btn-add-category {
-      max-width: none;
-    }
-  }
-
-
-  /* --- Stacked layout fix: keep categories and payment as two real blocks --- */
-  .payments-stacked-page {
-    overflow: visible !important;
-  }
-
-  .payments-stacked-page .payments-category-section {
-    display: block !important;
-    position: relative !important;
-    z-index: 2 !important;
-    clear: both !important;
-    margin-bottom: 1.5rem !important;
-  }
-
-  .payments-stacked-page .payments-category-section .payments-sidebar-ui.left-pane {
-    display: block !important;
-    position: relative !important;
-    inset: auto !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    height: auto !important;
-    min-height: 0 !important;
-    overflow: hidden !important;
-    padding: 1rem !important;
-  }
-
-  .payments-stacked-page .payments-category-section .category-panel-head {
-    display: block !important;
-    min-height: 0 !important;
-    margin-bottom: .85rem !important;
-  }
-
-  .payments-stacked-page .payments-category-section .left-scroll {
-    display: block !important;
-    position: relative !important;
-    width: 100% !important;
-    max-height: 320px !important;
-    min-height: 120px !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    margin: 0 !important;
-  }
-
-  .payments-stacked-page .payments-category-section .d-grid.mt-auto {
-    display: grid !important;
-    width: 100% !important;
-    min-width: 0 !important;
-    margin-top: .85rem !important;
-  }
-
-  .payments-stacked-page .payments-category-section .btn-add-category {
-    max-width: none !important;
-    margin-left: 0 !important;
-  }
-
-  .payments-stacked-page > .payments-ui:not(.payments-category-section) {
-    display: block !important;
-    position: relative !important;
-    z-index: 1 !important;
-    clear: both !important;
-  }
-
-  @media (min-width: 992px) {
-    .payments-stacked-page .payments-category-section .payments-sidebar-ui.left-pane {
-      display: block !important;
-      grid-template-columns: none !important;
-    }
-
-    .payments-stacked-page .payments-category-section .left-scroll {
-      max-height: 340px !important;
-    }
-  }
-
-  .payments-stacked-page .payments-category-section {
-    scroll-margin-top: 1rem;
-  }
-
-  .payments-stacked-page .payments-category-section .category-panel-head {
-    min-width: 260px;
-  }
+.payments-stacked-page{--pay-ink:#173543;--pay-muted:#71828d;--pay-border:#e2e9ee;--pay-primary:#168b7d;max-width:1480px;margin:auto;color:var(--pay-ink);padding:4px 8px 28px!important;background:transparent;min-width:0}
+.payments-stacked-page *{box-sizing:border-box}
+.payments-stacked-page .payments-ui{min-width:0;color:var(--pay-ink)}
+.payments-ui .transfer-card{background:transparent;border:0;box-shadow:none;overflow:visible}
+.payments-ui .pay-hero{padding:8px 0 24px;background:none;color:var(--pay-ink);border-radius:0;box-shadow:none}
+.payments-ui .pay-hero h1{font-size:32px;letter-spacing:-.035em;font-weight:750!important;margin:6px 0 8px!important}
+.payments-ui .pay-hero p{font-size:13px;color:var(--pay-muted)}
+.payments-ui .pay-hero .text-uppercase{font-size:10px;letter-spacing:.15em;color:var(--pay-primary);opacity:1!important}
+.payments-ui .hero-stat{padding:10px 16px;border-left:1px solid var(--pay-border);min-width:100px;background:transparent}
+.payments-ui .hero-stat .small{font-size:10px;color:var(--pay-muted);opacity:1!important;margin-bottom:4px}
+.payments-ui .hero-stat .h5{font-size:18px}
+.payments-ui .payment-form-shell{padding:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
+.payments-ui .pay-section-card,.payments-ui .pay-form-card{border:1px solid var(--pay-border);border-radius:15px;background:white;padding:23px;min-width:0;box-shadow:none;margin:0!important}
+.payments-ui h6{font-size:15px;color:var(--pay-ink)}
+.payments-ui .small.text-muted{font-size:11px;color:var(--pay-muted)!important}
+.payments-ui .tool-btn-row{gap:6px;margin-top:6px}
+.payments-ui .tool-btn-row .btn{font-size:11px;padding:7px 10px;border-radius:7px;white-space:nowrap}
+.payments-ui .pay-section-card>.d-flex{flex-direction:column!important;align-items:flex-start!important;gap:16px!important}
+.payments-ui .jp-account-picker{margin:0;width:100%;max-width:100%;min-width:0}
+.payments-ui .jp-account-viewport{position:relative;width:100%;min-width:0;max-width:100%;margin:0;padding:16px 0 0!important;background:none;border:0;border-radius:0;overflow:hidden;flex:1}
+.payments-ui .jp-account-viewport>.d-flex{min-height:32px;padding-right:84px!important;gap:8px;flex-wrap:wrap}
+.payments-ui .jp-account-stack{display:flex;gap:10px;max-height:none;overflow-y:hidden;overflow-x:auto;padding:2px 5px 8px 1px;scrollbar-width:thin;scroll-behavior:smooth}
+.payments-ui .acct-card{display:block;width:100%;max-width:100%;min-width:0;margin:0;border:1px solid var(--pay-border);border-radius:12px;background:#fff;box-shadow:none;cursor:pointer;position:relative;transition:border-color .15s,background .15s;flex:0 0 270px}
+.payments-ui .acct-card:hover{border-color:#89bfb7;background:#f8fcfb;transform:none;box-shadow:none}
+.payments-ui .acct-card.active,.payments-ui .acct-card:has(.acct-radio:checked){border-color:#168b7d;background:#eff8f5;box-shadow:inset 3px 0 #168b7d}
+.payments-ui .acct-body{padding:16px 18px}
+.payments-ui .acct-body>.d-flex:first-child{margin-bottom:10px!important}
+.payments-ui .acct-body>.fw-bold{font-size:13px;margin-bottom:8px!important}
+.payments-ui .acct-balance{font-size:22px;letter-spacing:-.025em;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.payments-ui .acct-balance .small{font-size:10px;letter-spacing:0}
+.payments-ui .acct-balance [data-role=avail]{font-size:21px}
+.payments-ui .acct-card.is-inactive{opacity:.6;filter:grayscale(.3)}
+.payments-ui .limit-bar{height:5px;border-radius:6px;overflow:hidden;background:#e6eeeb}
+.payments-ui .limit-bar-fill{height:100%;max-width:100%;border-radius:6px}
+.payments-ui .slider-controls.top-right{position:absolute;right:0;top:16px;display:flex;gap:5px}
+.payments-ui .slider-nav{display:grid;place-items:center;width:29px;height:29px;padding:0;border:1px solid var(--pay-border);border-radius:7px;font-size:20px;line-height:1;background:white;color:var(--pay-ink);box-shadow:none}
+.payments-ui .form-label{font-size:11px;font-weight:650;color:#526977;margin-bottom:7px}
+.payments-ui .form-control,.payments-ui .form-select,.payments-ui .input-group-text{border-color:#dce5e9;border-radius:8px;font-size:13px;min-height:43px;color:var(--pay-ink)}
+.payments-ui .form-control:focus,.payments-ui .form-select:focus{border-color:#168b7d;box-shadow:0 0 0 3px #168b7d18}
+.payments-ui .input-group-text{background:#f3f8f6;color:#168b7d;font-weight:650}
+.payments-ui .input-group>.input-group-text:first-child{border-radius:8px 0 0 8px}
+.payments-ui .input-group>.form-control:last-child{border-radius:0 8px 8px 0}
+.payments-ui .payment-action-footer{position:static;margin:24px -23px -23px;padding:16px 23px;border-top:1px solid var(--pay-border);background:#fafcfc;border-radius:0 0 15px 15px;gap:8px}
+.payments-ui .payment-action-footer .btn{border-radius:8px!important;font-size:12px;padding:10px 17px}
+.payments-ui .btn-make-payment,.payments-ui .btn-add-category{background:#168b7d;border:1px solid #168b7d;box-shadow:none;color:white;font-weight:650}
+.payments-ui .btn-make-payment:hover,.payments-ui .btn-add-category:hover{background:#10786c;border-color:#10786c}
+.payments-stacked-page .payments-category-section{margin-top:22px!important;margin-bottom:0!important}
+.payments-stacked-page .payments-sidebar-ui.left-pane{position:static;inset:auto;width:100%;height:auto;min-height:0;display:block;padding:22px;border:1px solid var(--pay-border);border-radius:15px;background:white;overflow:visible}
+.payments-sidebar-ui .category-panel-head{background:none;border:0;box-shadow:none;color:var(--pay-ink);padding:0 0 16px;border-bottom:1px solid var(--pay-border);margin-bottom:16px}
+.payments-sidebar-ui .category-panel-head .fw-bold{font-size:15px}
+.payments-sidebar-ui .category-panel-head .small{font-size:11px;color:var(--pay-muted);opacity:1!important}
+.payments-sidebar-ui .category-panel-head .rounded-circle{background:#e9f6f0!important;color:#168b7d}
+.payments-stacked-page .payments-category-section .left-scroll{position:static;display:block;width:100%;max-height:280px;min-height:0;overflow:auto;padding:0;background:transparent;border:0;border-radius:0}
+.payments-stacked-page .payments-category-section .d-grid.mt-auto{display:flex!important;justify-content:flex-end;margin-top:16px!important}
+.payments-ui .btn-add-category{border-radius:8px;padding:9px 15px;font-size:12px}
+.payments-modal-polish .modal-content{border:1px solid #e2e9ee;border-radius:14px;overflow:hidden;box-shadow:0 20px 70px #17354326}
+.payments-modal-polish .modal-header{background:#173b43;color:white;padding:20px}
+.payments-modal-polish .modal-header .modal-title{font-size:18px}
+.payments-modal-polish .modal-header .small{font-size:11px;color:#bbd7d8}
+.payments-modal-polish .modal-body{padding:22px}
+.payments-modal-polish .form-label{font-size:12px;font-weight:600;color:#526977}
+.payments-modal-polish .form-control,.payments-modal-polish .form-select,.payments-modal-polish .input-group-text{border-color:#dce5e9;border-radius:8px;font-size:13px}
+.payments-modal-polish .input-group>.input-group-text:first-child{border-radius:8px 0 0 8px}
+.payments-modal-polish .input-group>.form-control:last-child{border-radius:0 8px 8px 0}
+.payments-modal-polish .modal-footer{background:#fafcfc;border-color:#e2e9ee}
+.payments-modal-polish .modal-footer .btn{border-radius:8px!important;font-size:12px}
+.payments-modal-polish .btn-primary{background:#168b7d;border-color:#168b7d}
+.payments-ui button:focus-visible,.payments-ui .acct-card:focus-within{outline:3px solid #8ccbc2;outline-offset:3px}
+@media(max-width:1199px){.payments-ui .payment-form-shell{grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr)}.payments-ui .pay-section-card,.payments-ui .pay-form-card{padding:18px}.payments-ui .payment-action-footer{margin:24px -18px -18px;padding:15px 18px}.payments-ui .pay-form-card .col-md-6{width:100%}}
+@media(max-width:991px){.payments-ui .payment-form-shell{grid-template-columns:1fr}.payments-ui .pay-form-card .col-md-6{width:50%}.payments-ui .jp-account-stack{display:flex;overflow-x:auto;overflow-y:hidden;max-height:none;padding-bottom:12px}.payments-ui .acct-card{flex:0 0 265px;max-width:265px}.payments-ui .pay-hero h1{font-size:28px}.payments-ui .hero-stat:first-child{border-left:0;padding-left:0}.payments-ui .pay-hero{padding-bottom:20px}}
+@media(max-width:575px){.payments-stacked-page{padding:0 0 24px!important}.payments-ui .pay-hero h1{font-size:27px}.payments-ui .hero-stat{min-width:0;padding:8px 13px}.payments-ui .hero-stat .h5{font-size:16px}.payments-ui .pay-form-card .col-md-6{width:100%}.payments-ui .tool-btn-row{display:flex!important;flex-wrap:wrap}.payments-ui .tool-btn-row .btn{font-size:10px;padding:7px 9px}.payments-ui .acct-card{flex-basis:240px;max-width:240px}.payments-ui .payment-action-footer .btn{flex:1}.payments-stacked-page .payments-sidebar-ui.left-pane{padding:18px}.payments-ui .pay-hero p{max-width:300px;line-height:1.7}.payments-ui .pay-section-card,.payments-ui .pay-form-card{padding:17px}.payments-ui .payment-action-footer{margin:24px -17px -17px;padding:15px 17px}}
+@media(prefers-reduced-motion:reduce){.payments-ui .acct-card{transition:none}.payments-ui .jp-account-stack{scroll-behavior:auto}}
+
+
+/* Account picker: all accounts stay in view. */
+.payments-ui .jp-account-stack{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;overflow:visible!important;max-height:none;padding:4px 0!important}
+.payments-ui .jp-account-viewport{overflow:visible!important}
+.payments-ui .jp-account-viewport>.d-flex{padding-right:0!important}
+.payments-ui .acct-card{width:100%;max-width:100%!important;min-width:0;flex:auto!important;border-radius:14px;overflow:hidden}
+.payments-ui .acct-body{padding:16px 14px}
+.payments-ui .acct-card.active::before{content:'✓';position:absolute;right:12px;bottom:12px;background:#168b7d;color:white;border-radius:50%;width:19px;height:19px;display:grid;place-items:center;font-size:11px}
+.payments-ui .acct-card.active{background:linear-gradient(145deg,#eff9f5,#fff);box-shadow:inset 0 3px #168b7d}
+.payments-ui .acct-balance{font-size:19px;padding-bottom:15px}
+.payments-ui .acct-balance [data-role=avail]{font-size:19px}
+.payments-ui .acct-card:focus{outline:3px solid #8ccbc2;outline-offset:3px}
+.payments-ui .acct-card.dragging{opacity:.45}
+.payments-ui .acct-card .sort-handle{cursor:grab}
+.payments-ui .acct-card.is-inactive{display:none!important}
+.payments-ui .show-inactive .acct-card.is-inactive{display:block!important}
+.payments-ui .jp-selection{background:#173b43;color:#d3e8e6;border-radius:10px;padding:12px 14px;margin:16px 0 0;font-size:11px;line-height:1.6}
+.payments-ui .jp-selection strong{color:white}
+.payments-ui .jp-category-tools{display:flex;gap:10px;align-items:center;margin-bottom:18px;flex-wrap:wrap}
+.payments-ui .jp-category-tools input{max-width:360px;background:#f8fbfa}
+.payments-ui .jp-category-tools .btn{font-size:11px;border-radius:7px}
+.payments-ui .left-scroll>.accordion{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;align-items:start}
+.payments-ui .left-scroll .accordion-item{border:1px solid #e2e9ee!important;border-radius:12px!important;margin:0!important;overflow:hidden;box-shadow:none;background:#fafcfb}
+.payments-ui .left-scroll .accordion-header{margin:0;padding:7px 9px}
+.payments-ui .left-scroll .accordion-button{background:transparent!important;box-shadow:none!important;color:#173543;font-size:12px;border-radius:8px!important;min-height:42px;padding:10px!important}
+.payments-ui .left-scroll .accordion-button:not(.collapsed){color:#168b7d}
+.payments-ui .left-scroll .accordion-button::after{width:13px;height:13px;background-size:13px}
+.payments-ui .left-scroll .accordion-body{border-top:1px solid #e2e9ee;background:#fff;padding:12px!important}
+.payments-ui .left-scroll .category-item-btn{width:100%;border:0;border-radius:7px;background:#f3f8f6;color:#476271;font-size:12px;padding:9px 11px}
+.payments-ui .left-scroll .category-item-btn:hover,.payments-ui .left-scroll .category-item-btn.active{background:#dff2eb;color:#10786b}
+.payments-ui .left-scroll .btn-del{opacity:.55;color:#9b6260;padding:5px;font-size:12px}
+.payments-ui .left-scroll .btn-del:hover{opacity:1;background:#fff0eb}
+.payments-ui .jp-no-results{padding:20px;color:#71828d;text-align:center;font-size:12px}
+.payments-ui [hidden]{display:none!important}
+.payments-ui .jp-manage-summary{cursor:pointer;font-size:11px;color:#168b7d;padding:6px 0 14px}
+@media(min-width:992px) and (max-width:1250px){.payments-ui .jp-account-stack{grid-template-columns:1fr}}
+@media(max-width:991px){.payments-ui .left-scroll>.accordion{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:575px){.payments-ui .jp-account-stack{grid-template-columns:1fr}.payments-ui .left-scroll>.accordion{grid-template-columns:1fr}.payments-ui .jp-category-tools input{max-width:none;width:100%}}
+
+
+/* Stack layout owns its sizing; legacy slider classes are deliberately absent. */
+#accounts-track.jp-account-stack{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:10px!important;grid-auto-flow:row!important;grid-auto-columns:auto!important;width:100%!important;min-width:0!important;max-width:100%!important;height:auto!important;max-height:620px!important;overflow-x:hidden!important;overflow-y:auto!important;padding:3px 5px 5px 3px!important}
+#accounts-track>.acct-card{position:relative!important;inset:auto!important;display:block!important;width:100%!important;max-width:100%!important;min-width:0!important;height:auto!important;min-height:0!important;flex:0 0 auto!important;margin:0!important;border-radius:12px!important;outline:none;box-shadow:0 2px 5px #17354305;transform:none!important}
+#accounts-track>.acct-card .acct-body{height:auto!important;min-height:0!important;padding:16px 18px!important}
+#accounts-track>.acct-card .acct-body>.d-flex:first-child{margin-bottom:9px!important}
+#accounts-track>.acct-card .acct-balance{font-size:23px;padding-bottom:8px;line-height:1.4}
+#accounts-track>.acct-card .acct-balance [data-role=avail]{font-size:23px}
+#accounts-track>.acct-card.active{background:linear-gradient(110deg,#eaf7f1,#fff)!important;border-color:#168b7d!important;box-shadow:inset 4px 0 #168b7d!important}
+#accounts-track>.acct-card.active::before{right:14px;top:14px;bottom:auto;width:20px;height:20px}
+#accounts-track>.acct-card.active .acct-body>.d-flex:first-child{padding-right:28px}
+#accounts-track>.acct-card.is-inactive{display:none!important}
+#accounts-track.show-inactive>.acct-card.is-inactive{display:block!important}
+.payments-ui .jp-account-picker,.payments-ui .jp-account-viewport{display:block!important;min-width:0!important;max-width:100%!important;width:100%!important;height:auto!important;overflow:visible!important}
+@media(max-width:575px){ #accounts-track.jp-account-stack{max-height:480px!important}#accounts-track>.acct-card .acct-body{padding:14px!important}}
 
 </style>
 
@@ -549,9 +155,9 @@
       <div class="pay-hero mb-3">
         <div class="d-flex flex-column flex-xl-row justify-content-between gap-3 align-items-xl-end">
           <div>
-            <div class="small text-uppercase fw-bold opacity-75 mb-1">Finance tracker</div>
-            <h1 class="h3 fw-black fw-bold mb-1">Make a Payment</h1>
-            <p class="mb-0 opacity-90">Select account, category, type, date, and amount in one clean flow.</p>
+            <div class="small text-uppercase fw-bold opacity-75 mb-1">EVERYDAY TRANSACTIONS</div>
+            <h1 class="h3 fw-black fw-bold mb-1">Record a payment</h1>
+            <p class="mb-0 opacity-90">Choose an account. Add the details. Keep your money in view.</p>
           </div>
 
           <div class="d-flex flex-wrap gap-2">
@@ -580,7 +186,7 @@
                   <i class="bi bi-wallet2"></i>
                 </span>
                 <div>
-                  <h6 class="mb-0 fw-bold">Payment Account</h6>
+                  <h6 class="mb-0 fw-bold">1. Choose your account</h6>
                   <div class="small text-muted">Pick the source account or credit card.</div>
                 </div>
               </div>
@@ -614,8 +220,8 @@
             </div>
           </div>
 
-          <div class="account-slider d-flex align-items-center gap-2">
-            <div class="slider-viewport">
+          <div class="jp-account-picker d-flex align-items-center gap-2">
+            <div class="jp-account-viewport">
               <div class="d-flex justify-content-between align-items-center mb-3 pe-5">
                 <div class="small text-muted">
                   <i class="bi bi-circle-fill text-success me-1" style="font-size:.5rem;"></i>
@@ -631,7 +237,7 @@
                 {% endif %}
               </div>
 
-              <div class="slider-track" id="accounts-track">
+              <div class="jp-account-stack" id="accounts-track">
                 {% for a in accounts if a.is_active in [True, 1, '1'] %}
                   {% set curr_code = (a.currency.value if a.currency is not string else a.currency)|string|upper %}
                   {% set type_code = (a.type.value if a.type is not string else a.type)|string|lower %}
@@ -741,13 +347,9 @@
                   </label>
                 {% endfor %}
               </div>
-
-              <div class="slider-controls top-right" aria-hidden="false">
-                <button class="btn slider-nav prev" type="button" aria-label="Previous">‹</button>
-                <button class="btn slider-nav next" type="button" aria-label="Next">›</button>
-              </div>
             </div>
           </div>
+          <p class="jp-selection" id="jpAccountSelection" aria-live="polite">Choose an account above to record your payment.</p>
         </div>
 
         <div class="pay-form-card">
@@ -756,20 +358,20 @@
               <i class="bi bi-receipt"></i>
             </span>
             <div>
-              <h6 class="mb-0 fw-bold">Payment Details</h6>
+              <h6 class="mb-0 fw-bold">2. Add payment details</h6>
               <div class="small text-muted">Fill the transaction information below.</div>
             </div>
           </div>
 
           <div class="row g-3 mb-3">
             <div class="col-12 col-md-6">
-              <label class="form-label">Category</label>
+              <label class="form-label" for="selectCategory">Category</label>
               <select id="selectCategory" class="form-select">
                 <option value="">— Select a category —</option>
               </select>
             </div>
             <div class="col-12 col-md-6">
-              <label class="form-label">Subcategory</label>
+              <label class="form-label" for="selectSubcategory">Subcategory</label>
               <select id="selectSubcategory" class="form-select">
                 <option value="">— Optional subcategory —</option>
               </select>
@@ -812,7 +414,7 @@
               Cancel
             </a>
             <button class="btn btn-success btn-make-payment" type="submit">
-              <i class="bi bi-check2-circle me-1"></i>Make Payment
+              <i class="bi bi-check2-circle me-1"></i>Save payment
             </button>
           </div>
         </div>
@@ -836,8 +438,8 @@
         <i class="bi bi-tags"></i>
       </span>
       <div>
-        <div class="fw-bold">Payment Categories</div>
-        <div class="small opacity-75">Choose where this transaction belongs</div>
+        <div class="fw-bold">Manage categories</div>
+        <div class="small opacity-75">Organize your categories and subcategories here.</div>
       </div>
     </div>
   </div>
@@ -848,10 +450,12 @@
     </div>
   {% endif %}
 
-  <div class="left-scroll">
+  <details open id="jpCategoryManager"><summary class="jp-manage-summary">Browse and manage categories</summary>
+  <div class="jp-category-tools"><label for="jpCategorySearch" class="visually-hidden">Search categories and subcategories</label><input id="jpCategorySearch" type="search" class="form-control" placeholder="Search categories or subcategories…"><span id="jpCategoryCount" class="small text-muted" aria-live="polite"></span></div>
+  <div class="left-scroll" id="jpCategoryTree">
     {% import "macros/category_tree.html" as tree %}
     {{ tree.render(top_categories, active_category_id) }}
-  </div>
+  </div><p class="jp-no-results" id="jpCategoryEmpty" hidden>No matching categories. Try another name.</p></details>
 
   <div class="d-grid mt-auto">
     <button class="btn btn-success btn-add-category btn-sm"
@@ -1013,7 +617,7 @@
               <span class="input-group-text" id="limitCurrencySym">₩</span>
               <input type="number" step="0.01" inputmode="decimal" name="credit_limit" id="limitValue" class="form-control" placeholder="0.00" required>
             </div>
-            <div class="form-text">This sets the available limit now. We can add max vs available later.</div>
+            <div class="form-text">Set the available credit limit for the selected card.</div>
           </div>
         </div>
 
@@ -1163,6 +767,29 @@
   </script>
 
   <script src="{{ url_for('static', filename='js/payments.js') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/accounts_reorder.js') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/slider_nav.js') }}" defer></script>
+
+
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+ const root=document.querySelector('.payments-stacked-page');if(!root)return;
+ const track=root.querySelector('#accounts-track');
+ const cards=[...track.querySelectorAll('.acct-card')];
+ const summary=root.querySelector('#jpAccountSelection');
+ function refresh(){const card=track.querySelector('.acct-radio:checked:not(:disabled)')?.closest('.acct-card');if(!summary)return;summary.replaceChildren();if(!card){summary.textContent='Choose an account above to record your payment.';return;}const name=document.createElement('strong');name.textContent=card.dataset.name;summary.append('Paying with ',name,' · '+card.dataset.currency);}
+ cards.forEach(card=>{card.tabIndex=0;card.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();card.click();}});card.addEventListener('click',()=>setTimeout(refresh,0));});refresh();
+ const search=root.querySelector('#jpCategorySearch'),tree=root.querySelector('#jpCategoryTree');
+ const groups=[...tree.querySelectorAll(':scope > .accordion > .accordion-item')];
+ groups.forEach(group=>{const panel=group.querySelector('.accordion-collapse'),button=group.querySelector('.accordion-button');if(panel&&button){button.classList.toggle('collapsed',!panel.classList.contains('show'));button.setAttribute('aria-expanded',String(panel.classList.contains('show')));}});
+ tree.addEventListener('click',e=>{const button=e.target.closest('.category-item-btn');if(!button)return;const data=Array.isArray(window.CAT_DATA)?window.CAT_DATA:[];const parent=data.find(p=>(p.children||[]).some(c=>String(c.id)===button.dataset.id));if(!parent)return;const category=root.querySelector('#selectCategory'),sub=root.querySelector('#selectSubcategory');category.value=String(parent.id);category.dispatchEvent(new Event('change',{bubbles:true}));sub.value=button.dataset.id;sub.dispatchEvent(new Event('change',{bubbles:true}));});
+ const previous=new Map();
+ search.addEventListener('input',()=>{const q=search.value.trim().toLocaleLowerCase();let visible=0;groups.forEach(group=>{const match=!q||group.textContent.toLocaleLowerCase().includes(q);group.hidden=!match;if(match)visible++;const panel=group.querySelector('.accordion-collapse'),button=group.querySelector('.accordion-button');if(!panel)return;if(q){if(!previous.has(panel))previous.set(panel,panel.classList.contains('show'));if(match){panel.classList.add('show');button?.classList.remove('collapsed');button?.setAttribute('aria-expanded','true');}}else if(previous.has(panel)){const open=previous.get(panel);panel.classList.toggle('show',open);button?.classList.toggle('collapsed',!open);button?.setAttribute('aria-expanded',String(open));previous.delete(panel);}});root.querySelector('#jpCategoryEmpty').hidden=visible>0||!groups.length;root.querySelector('#jpCategoryCount').textContent=visible+' of '+groups.length+' categories';});
+ root.querySelector('#jpCategoryCount').textContent=groups.length+' categories';
+ // Persist drag ordering using both row and column positions in the grid.
+ let dragging=null;
+ cards.forEach(card=>{card.draggable=true;card.addEventListener('dragstart',e=>{dragging=card;card.classList.add('dragging');e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',card.dataset.id);});card.addEventListener('dragend',()=>{card.classList.remove('dragging');dragging=null;});});
+ track.addEventListener('dragover',e=>{if(!dragging)return;e.preventDefault();const target=e.target.closest('.acct-card');if(!target||target===dragging)return;const box=target.getBoundingClientRect();const after=e.clientY>box.top+box.height*.7||(e.clientY>=box.top+box.height*.3&&e.clientX>box.left+box.width/2);track.insertBefore(dragging,after?target.nextSibling:target);});
+ track.addEventListener('drop',async e=>{if(!dragging)return;e.preventDefault();const order=[...track.querySelectorAll('.acct-card')].map(c=>Number(c.dataset.id));try{const response=await fetch(window.REORDER_URL,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':document.querySelector('meta[name="csrf-token"]')?.content||''},body:JSON.stringify({order})});if(!response.ok)throw Error('Order save failed');}catch(error){if(summary)summary.textContent='Account order could not be saved. Refresh before reordering again.';}});
+});
+</script>
 {% endblock %}

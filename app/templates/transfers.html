@@ -15,538 +15,73 @@
 
 {% block extra_css %}
 <style>
-  .transfers-page {
-    --tf-card: rgba(255, 255, 255, .88);
-    --tf-card-solid: #ffffff;
-    --tf-border: rgba(15, 23, 42, .09);
-    --tf-muted: #64748b;
-    --tf-text: #0f172a;
-    --tf-soft: #f8fafc;
-    --tf-brand: #0f766e;
-    --tf-brand-2: #2563eb;
-    --tf-shadow: 0 24px 70px rgba(15, 23, 42, .10);
-    --tf-radius: 28px;
-    color: var(--tf-text);
-    max-width: 1180px;
-    margin: 0 auto;
-  }
 
-  [data-bs-theme="dark"] .transfers-page {
-    --tf-card: rgba(15, 23, 42, .82);
-    --tf-card-solid: #111827;
-    --tf-border: rgba(148, 163, 184, .18);
-    --tf-muted: #94a3b8;
-    --tf-text: #e5edf7;
-    --tf-soft: rgba(30, 41, 59, .8);
-    --tf-shadow: 0 24px 70px rgba(0, 0, 0, .26);
-  }
+.transfers-page{--tf-text:#173543;--tf-muted:#71828d;--tf-border:#e2e9ee;--tf-brand:#168b7d;--tf-soft:#f4f8f6;--tf-card-solid:#fff;color:var(--tf-text);max-width:1480px;margin:auto;padding:4px 8px 24px;min-width:0}
+.transfers-page *{box-sizing:border-box}
+.transfers-page .transfer-hero{padding:8px 0 22px;background:none;border:0;box-shadow:none}
+.transfers-page .hero-eyebrow,.transfers-page .section-kicker,.transfers-page .mini-label{font-size:10px;letter-spacing:.14em;font-weight:700;text-transform:uppercase;color:var(--tf-brand)}
+.transfers-page .hero-title{font-size:32px;font-weight:750;letter-spacing:-.035em;line-height:1.25;margin:7px 0 9px}
+.transfers-page .hero-copy{font-size:13px;color:var(--tf-muted);max-width:650px;line-height:1.7;margin:0}
+.transfers-page .hero-chip-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.transfers-page .hero-chip{display:inline-flex;gap:6px;align-items:center;background:#eef7f3;border:1px solid #dcece5;border-radius:6px;padding:6px 9px;font-size:10px;color:#417b6f;font-weight:600}
+.transfers-page .tf-help{background:#173b43;color:#c0dcdb;border-radius:13px;padding:20px;font-size:11px;line-height:1.8}
+.transfers-page .tf-help strong{display:block;color:#fff;font-size:14px;margin-bottom:6px}
+.transfers-page .transfer-layout-stack{display:grid;gap:22px}
+.transfers-page .glass-card{background:#fff;border:1px solid var(--tf-border);border-radius:15px;box-shadow:none;min-width:0}
+.transfers-page .transfer-card{overflow:hidden}
+.transfers-page .transfer-card-head,.transfers-page .recipient-card-head{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:23px;border-bottom:1px solid var(--tf-border)}
+.transfers-page .transfer-card-head h2,.transfers-page .recipient-card-head h2{font-size:18px;font-weight:700;margin:5px 0 0;letter-spacing:-.02em}
+.transfers-page .transfer-card-head p,.transfers-page .recipient-card-head p{font-size:11px;color:var(--tf-muted);margin:7px 0 0}
+.transfers-page .tabbar{display:flex;gap:4px;padding:4px;border:1px solid var(--tf-border);border-radius:9px;background:#f4f8f6;flex-shrink:0}
+.transfers-page .tab-btn{border:0;background:transparent;color:#71828d;padding:11px 16px;border-radius:6px;font-size:12px;font-weight:650;white-space:nowrap}
+.transfers-page .tab-btn.active{background:#168b7d;color:white;box-shadow:0 2px 5px #168b7d22}
+.transfers-page .tab-panel{display:none;padding:23px}
+.transfers-page .tab-panel.show{display:block}
+.transfers-page .form-flow{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:18px;align-items:start}
+.transfers-page .form-section{border:1px solid var(--tf-border);border-radius:12px;padding:20px;background:white;min-width:0}
+.transfers-page .form-section:first-child{grid-row:span 3;background:#fafcfb}
+.transfers-page .form-section:not(:first-child){grid-column:2}
+.transfers-page .section-title{display:flex;align-items:center;gap:9px;font-weight:650;font-size:13px;margin-bottom:18px;color:var(--tf-text)}
+.transfers-page .section-title.small{font-size:11px;margin-bottom:12px}
+.transfers-page .step-dot{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:8px;background:#e7f4ee;color:#168b7d;font-size:11px;font-weight:750;flex-shrink:0}
+.transfers-page .account-rail{padding:0;border:0;min-width:0;background:transparent}
+.transfers-page .rail{display:flex;flex-direction:column;gap:10px;max-height:540px;overflow-y:auto;overflow-x:hidden;padding:3px;min-width:0}
+.transfers-page .account-card{position:relative;display:flex;flex-direction:column;border:1px solid var(--tf-border);background:white;border-radius:11px;padding:15px 17px;min-width:0;flex:0 0 auto;cursor:pointer;color:var(--tf-text);transition:border-color .15s,background .15s}
+.transfers-page .account-card:hover{border-color:#83bfb3;background:#f7fcf9}
+.transfers-page .account-card.selected{border-color:#168b7d;background:linear-gradient(110deg,#eaf7f1,#fff);box-shadow:inset 3px 0 #168b7d}
+.transfers-page .account-card.selected::after{content:'✓';position:absolute;right:14px;top:14px;width:19px;height:19px;border-radius:50%;background:#168b7d;color:#fff;font-size:11px;display:grid;place-items:center}
+.transfers-page .account-card .brand{font-size:9px;color:#168b7d;letter-spacing:.08em;font-weight:700;align-self:flex-start;padding:4px 7px;background:#eaf6ef;border-radius:5px;max-width:calc(100% - 30px)}
+.transfers-page .account-card .balance{font-size:22px;font-weight:700;letter-spacing:-.025em;margin-top:9px;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.transfers-page .account-card .detail{font-size:11px;color:var(--tf-muted);margin-top:5px;overflow-wrap:anywhere}
+.transfers-page .account-card.disabled{opacity:.4;cursor:not-allowed}
+.transfers-page .account-card.d-none{display:none!important}
+.transfers-page .form-control,.transfers-page .form-select{min-height:43px;border:1px solid #dce5e9;border-radius:8px;font-size:13px;background:#fff;color:var(--tf-text)}
+.transfers-page .form-control:focus,.transfers-page .form-select:focus{border-color:#168b7d;box-shadow:0 0 0 3px #168b7d18}
+.transfers-page .form-label{font-size:11px;font-weight:650;margin-bottom:7px;color:#526977}
+.transfers-page .input-icon-wrap{position:relative}
+.transfers-page .input-icon-wrap>i{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:13px;color:#81948c;pointer-events:none}
+.transfers-page .input-icon-wrap .form-control,.transfers-page .input-icon-wrap .form-select{padding-left:34px}
+.transfers-page .smart-toggle{display:flex;gap:11px;align-items:flex-start;border:1px solid #dcece5;border-radius:9px;background:#f3f9f5;padding:14px}
+.transfers-page .smart-toggle label{font-size:12px;font-weight:650}
+.transfers-page .smart-toggle p{font-size:10px;line-height:1.7;color:var(--tf-muted);margin:4px 0 0}
+.transfers-page .form-check-input:checked{background-color:#168b7d;border-color:#168b7d}
+.transfers-page .accordion-item{border:1px solid var(--tf-border);border-radius:9px!important;overflow:hidden;background:white}
+.transfers-page .accordion-button{font-size:11px;font-weight:650;background:#f8fbf9;color:var(--tf-text);box-shadow:none;padding:14px}
+.transfers-page .accordion-body{padding:14px}
+.transfers-page .actions{display:flex;justify-content:flex-end;gap:9px;grid-column:1/-1;border-top:1px solid var(--tf-border);padding-top:18px}
+.transfers-page .actions .btn{padding:11px 17px;font-size:12px;border-radius:8px;font-weight:600;box-shadow:none}
+.transfers-page .actions .btn-primary{background:#168b7d;border-color:#168b7d;color:white}
+.transfers-page .actions .btn-light{background:#fff;border:1px solid #dce5e9;color:#526977}
+.transfers-page .recipient-body{padding:20px;min-width:0}
+.transfers-page .recipient-body .card{box-shadow:none;transform:none;border:0}
+.transfers-page .recipient-body .btn{font-size:12px;border-radius:7px}
+.transfers-page .recipient-body .table-responsive{overflow-x:auto}
+.transfers-page .empty-help{font-size:11px;color:var(--tf-muted)}
+.transfers-page :focus-visible{outline:3px solid #8ccbc2;outline-offset:3px}
+@media(max-width:991px){.transfers-page .form-flow{grid-template-columns:1fr}.transfers-page .form-section:first-child{grid-row:auto}.transfers-page .form-section:not(:first-child){grid-column:auto}.transfers-page .rail{max-height:320px}.transfers-page .transfer-card-head{align-items:flex-start;flex-direction:column}.transfers-page .hero-title{font-size:28px}}
+@media(max-width:575px){.transfers-page{padding:0 0 24px}.transfers-page .tab-panel,.transfers-page .transfer-card-head,.transfers-page .recipient-card-head,.transfers-page .recipient-body{padding:17px}.transfers-page .form-section{padding:16px}.transfers-page .tabbar{width:100%}.transfers-page .tab-btn{flex:1;padding:11px 9px;font-size:11px}.transfers-page .hero-title{font-size:27px}.transfers-page .actions{flex-wrap:wrap}.transfers-page .actions .btn{flex:1}.transfers-page .recipient-card-head{flex-direction:column;align-items:flex-start}}
+@media(prefers-reduced-motion:reduce){.transfers-page .account-card{transition:none}}
 
-  .transfers-page * {
-    box-sizing: border-box;
-  }
-
-  .transfer-hero {
-    position: relative;
-    overflow: hidden;
-    border: 1px solid var(--tf-border);
-    border-radius: 32px;
-    padding: clamp(1.2rem, 2vw, 1.75rem);
-    background:
-      radial-gradient(circle at 12% 10%, rgba(20, 184, 166, .24), transparent 32%),
-      radial-gradient(circle at 88% 0%, rgba(37, 99, 235, .22), transparent 35%),
-      linear-gradient(135deg, rgba(255,255,255,.92), rgba(248,250,252,.82));
-    box-shadow: var(--tf-shadow);
-  }
-
-  [data-bs-theme="dark"] .transfer-hero {
-    background:
-      radial-gradient(circle at 12% 10%, rgba(20, 184, 166, .18), transparent 32%),
-      radial-gradient(circle at 88% 0%, rgba(96, 165, 250, .18), transparent 35%),
-      linear-gradient(135deg, rgba(15,23,42,.98), rgba(17,24,39,.88));
-  }
-
-  .transfer-hero::after {
-    content: "";
-    position: absolute;
-    inset: auto -10% -55% auto;
-    width: 420px;
-    height: 420px;
-    border-radius: 999px;
-    background: rgba(15, 118, 110, .08);
-    pointer-events: none;
-  }
-
-  .hero-eyebrow,
-  .mini-label,
-  .section-kicker {
-    text-transform: uppercase;
-    letter-spacing: .12em;
-    font-size: .72rem;
-    font-weight: 800;
-    color: var(--tf-muted);
-  }
-
-  .hero-title {
-    font-size: clamp(1.8rem, 4vw, 3.25rem);
-    line-height: 1;
-    letter-spacing: -.05em;
-    margin: .4rem 0 .65rem;
-    font-weight: 900;
-  }
-
-  .hero-copy {
-    max-width: 670px;
-    color: var(--tf-muted);
-    margin: 0;
-    font-size: 1rem;
-  }
-
-  .hero-chip-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: .65rem;
-    margin-top: 1rem;
-  }
-
-  .hero-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: .45rem;
-    border: 1px solid var(--tf-border);
-    border-radius: 999px;
-    background: rgba(255, 255, 255, .68);
-    color: var(--tf-text);
-    padding: .52rem .78rem;
-    font-size: .86rem;
-    font-weight: 700;
-  }
-
-  [data-bs-theme="dark"] .hero-chip {
-    background: rgba(15, 23, 42, .68);
-  }
-
-  .transfer-layout-stack {
-    display: grid;
-    gap: 1rem;
-    margin-top: 1rem;
-  }
-
-  .glass-card {
-    border: 1px solid var(--tf-border);
-    border-radius: var(--tf-radius);
-    background: var(--tf-card);
-    box-shadow: var(--tf-shadow);
-    backdrop-filter: blur(18px);
-  }
-
-  .transfer-card {
-    overflow: hidden;
-  }
-
-  .transfer-card-head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 1.15rem 1.15rem .8rem;
-    border-bottom: 1px solid var(--tf-border);
-  }
-
-  .transfer-card-head h2,
-  .recipient-card-head h2 {
-    margin: 0;
-    font-size: clamp(1.15rem, 2vw, 1.45rem);
-    letter-spacing: -.03em;
-    font-weight: 850;
-  }
-
-  .transfer-card-head p,
-  .recipient-card-head p {
-    margin: .25rem 0 0;
-    color: var(--tf-muted);
-  }
-
-  .tabbar {
-    display: flex;
-    gap: .35rem;
-    border: 1px solid var(--tf-border);
-    border-radius: 999px;
-    padding: .32rem;
-    background: var(--tf-soft);
-    flex: 0 0 auto;
-  }
-
-  .tab-btn {
-    border: 0;
-    border-radius: 999px;
-    background: transparent;
-    color: var(--tf-muted);
-    font-weight: 800;
-    padding: .68rem 1rem;
-    line-height: 1;
-    transition: transform .16s ease, background .16s ease, color .16s ease, box-shadow .16s ease;
-  }
-
-  .tab-btn:hover {
-    transform: translateY(-1px);
-    color: var(--tf-text);
-  }
-
-  .tab-btn.active {
-    color: #fff;
-    background: linear-gradient(135deg, var(--tf-brand), var(--tf-brand-2));
-    box-shadow: 0 12px 26px rgba(15, 118, 110, .22);
-  }
-
-  .tab-panel {
-    display: none;
-    padding: 1.15rem;
-  }
-
-  .tab-panel.show {
-    display: block;
-  }
-
-  .form-flow {
-    display: grid;
-    gap: 1rem;
-  }
-
-  .form-section {
-    position: relative;
-    border: 1px solid var(--tf-border);
-    border-radius: 24px;
-    background: rgba(248, 250, 252, .72);
-    padding: 1rem;
-  }
-
-  [data-bs-theme="dark"] .form-section {
-    background: rgba(15, 23, 42, .58);
-  }
-
-  .section-title {
-    display: flex;
-    align-items: center;
-    gap: .55rem;
-    margin-bottom: .85rem;
-    font-weight: 850;
-    letter-spacing: -.02em;
-  }
-
-  .section-title.small {
-    font-size: .95rem;
-    margin-bottom: .65rem;
-  }
-
-  .step-dot {
-    display: inline-grid;
-    place-items: center;
-    width: 32px;
-    height: 32px;
-    border-radius: 12px;
-    color: #fff;
-    background: linear-gradient(135deg, var(--tf-brand), var(--tf-brand-2));
-    box-shadow: 0 10px 18px rgba(37, 99, 235, .16);
-    font-size: .85rem;
-    font-weight: 900;
-    flex: 0 0 auto;
-  }
-
-  .account-rail {
-    position: relative;
-    overflow: hidden;
-    border-radius: 22px;
-    border: 1px solid var(--tf-border);
-    background: var(--tf-card-solid);
-    padding: .8rem .75rem 3rem;
-  }
-
-  .account-rail.small-rail {
-    padding-bottom: 2.75rem;
-  }
-
-  .rail {
-    display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: minmax(230px, 1fr);
-    gap: .75rem;
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    scrollbar-width: thin;
-    padding-bottom: .2rem;
-  }
-
-  .account-card {
-    scroll-snap-align: start;
-    min-height: 132px;
-    border-radius: 20px;
-    padding: 1rem;
-    border: 1px solid rgba(255,255,255,.22);
-    background:
-      radial-gradient(circle at 100% 0%, rgba(255,255,255,.25), transparent 35%),
-      linear-gradient(135deg, #0f172a, #134e4a 58%, #2563eb);
-    color: white;
-    cursor: pointer;
-    box-shadow: 0 14px 35px rgba(15, 23, 42, .18);
-    transition: transform .16s ease, box-shadow .16s ease, outline-color .16s ease;
-    outline: 3px solid transparent;
-    outline-offset: 3px;
-  }
-
-  .account-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 18px 42px rgba(15, 23, 42, .22);
-  }
-
-  .account-card.active,
-  .account-card.selected,
-  .account-card.is-selected {
-    outline-color: rgba(20, 184, 166, .55);
-  }
-
-  .account-card .brand {
-    display: inline-flex;
-    border-radius: 999px;
-    padding: .28rem .55rem;
-    background: rgba(255,255,255,.17);
-    font-size: .7rem;
-    font-weight: 900;
-    letter-spacing: .08em;
-  }
-
-  .account-card .balance {
-    margin-top: .9rem;
-    font-size: 1.35rem;
-    font-weight: 900;
-    letter-spacing: -.03em;
-  }
-
-  .account-card .detail {
-    opacity: .82;
-    font-size: .9rem;
-    margin-top: .2rem;
-  }
-
-  .rail-controls {
-    position: absolute;
-    display: inline-flex;
-    gap: .4rem;
-    z-index: 2;
-  }
-
-  .rail-controls.bottom-right {
-    right: .75rem;
-    bottom: .72rem;
-  }
-
-  .rail-controls.top-right {
-    right: .75rem;
-    bottom: .65rem;
-  }
-
-  .rail-btn {
-    width: 36px;
-    height: 36px;
-    border-radius: 999px;
-    border: 1px solid var(--tf-border);
-    background: var(--tf-soft);
-    color: var(--tf-text);
-    font-size: 1.25rem;
-    line-height: 1;
-    transition: transform .15s ease, background .15s ease;
-  }
-
-  .rail-btn:hover {
-    transform: translateY(-1px);
-    background: rgba(20, 184, 166, .12);
-  }
-
-  .form-control,
-  .form-select {
-    min-height: 48px;
-    border-radius: 16px;
-    border-color: var(--tf-border);
-    background-color: var(--tf-card-solid);
-  }
-
-  .form-label {
-    font-weight: 800;
-    color: var(--tf-text);
-    font-size: .87rem;
-  }
-
-  .input-icon-wrap {
-    position: relative;
-  }
-
-  .input-icon-wrap > i {
-    position: absolute;
-    left: .9rem;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--tf-muted);
-    z-index: 2;
-  }
-
-  .input-icon-wrap .form-control,
-  .input-icon-wrap .form-select {
-    padding-left: 2.35rem;
-  }
-
-  .accordion-item {
-    border-radius: 22px !important;
-    border: 1px solid var(--tf-border);
-    overflow: hidden;
-    background: var(--tf-card-solid);
-  }
-
-  .accordion-button {
-    font-weight: 850;
-    background: var(--tf-card-solid);
-    color: var(--tf-text);
-  }
-
-  .accordion-button:not(.collapsed) {
-    color: var(--tf-text);
-    background: rgba(20, 184, 166, .10);
-    box-shadow: none;
-  }
-
-  .smart-toggle {
-    display: flex;
-    align-items: flex-start;
-    gap: .8rem;
-    padding: .95rem;
-    border-radius: 20px;
-    border: 1px dashed rgba(15, 118, 110, .35);
-    background: rgba(20, 184, 166, .08);
-  }
-
-  .smart-toggle .form-check-input {
-    width: 1.2rem;
-    height: 1.2rem;
-    margin-top: .18rem;
-  }
-
-  .smart-toggle label {
-    font-weight: 850;
-  }
-
-  .smart-toggle p {
-    margin: .12rem 0 0;
-    color: var(--tf-muted);
-    font-size: .88rem;
-  }
-
-  .actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: .7rem;
-    padding-top: .2rem;
-  }
-
-  .btn-brand,
-  .actions .btn-primary {
-    border: 0;
-    border-radius: 999px;
-    color: #fff;
-    font-weight: 850;
-    padding: .72rem 1.05rem;
-    background: linear-gradient(135deg, var(--tf-brand), var(--tf-brand-2));
-    box-shadow: 0 14px 28px rgba(37, 99, 235, .18);
-  }
-
-  .btn-soft,
-  .actions .btn-light {
-    border: 1px solid var(--tf-border);
-    border-radius: 999px;
-    background: var(--tf-soft);
-    color: var(--tf-text);
-    font-weight: 800;
-    padding: .72rem 1rem;
-  }
-
-  .recipient-stack {
-    overflow: hidden;
-  }
-
-  .recipient-card-head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 1.15rem;
-    border-bottom: 1px solid var(--tf-border);
-  }
-
-  .recipient-body {
-    padding: .45rem;
-  }
-
-  .recipient-body > * {
-    margin-bottom: 0 !important;
-  }
-
-  .recipient-body .card,
-  .recipient-body .list-group,
-  .recipient-body table,
-  .recipient-body .table-responsive {
-    border-radius: 20px;
-  }
-
-  .recipient-body .card {
-    border: 0;
-    box-shadow: none;
-    background: transparent;
-  }
-
-  .empty-help {
-    display: inline-flex;
-    align-items: center;
-    gap: .45rem;
-    color: var(--tf-muted);
-    font-size: .86rem;
-    font-weight: 700;
-  }
-
-  @media (max-width: 767.98px) {
-    .transfer-hero,
-    .transfer-card-head,
-    .tab-panel,
-    .recipient-card-head {
-      padding: 1rem;
-    }
-
-    .transfer-card-head,
-    .recipient-card-head {
-      flex-direction: column;
-    }
-
-    .tabbar {
-      width: 100%;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      border-radius: 18px;
-    }
-
-    .tab-btn {
-      width: 100%;
-      padding: .78rem .8rem;
-    }
-
-    .rail {
-      grid-auto-columns: minmax(205px, 84%);
-    }
-
-    .actions {
-      display: grid;
-      grid-template-columns: 1fr;
-    }
-
-    .actions .btn {
-      width: 100%;
-    }
-  }
 </style>
 {% endblock %}
 
@@ -556,9 +91,9 @@
     <div class="row g-3 align-items-end">
       <div class="col-12 col-lg-8">
         <div class="hero-eyebrow">Money movement</div>
-        <h1 class="hero-title">Transfer money without the messy layout.</h1>
+        <h1 class="hero-title">Move money with clarity.</h1>
         <p class="hero-copy">
-          Choose an account, enter the amount, select a recipient, and save the transfer. The form stays first, and your recipient manager is now stacked neatly at the bottom.
+          Record local transfers and money sent abroad, with your accounts and recipient details in one place.
         </p>
         <div class="hero-chip-row">
           <span class="hero-chip"><i class="bi bi-bank"></i> Local transfers</span>
@@ -567,16 +102,7 @@
         </div>
       </div>
       <div class="col-12 col-lg-4">
-        <div class="glass-card p-3 h-100">
-          <div class="mini-label mb-2">Layout update</div>
-          <div class="d-flex align-items-center gap-3">
-            <span class="step-dot"><i class="bi bi-arrow-down-up"></i></span>
-            <div>
-              <div class="fw-bold">Transfer form on top</div>
-              <div class="text-body-secondary small">Recipient list moved below the transfer section.</div>
-            </div>
-          </div>
-        </div>
+        <div class="tf-help"><strong>Keep every transfer in view.</strong>Choose where the money comes from, enter the amount, and record who receives it.</div>
       </div>
     </div>
   </section>
@@ -601,7 +127,7 @@
         </div>
       </div>
   <!-- ================= INTERNATIONAL TAB ================= -->
-      <section class="tab-panel" id="tab-intl" role="tabpanel">
+      <section class="tab-panel show" id="tab-intl" role="tabpanel">
         <form action="{{ url_for('main.transfers_international') }}" method="post" class="form-flow">
           <div class="form-section">
             <div class="section-title"><span class="step-dot">1</span> KRW Source Account</div>
@@ -617,10 +143,6 @@
                   <div class="detail">{{ a.name }}</div>
                 </div>
                 {% endfor %}
-              </div>
-              <div class="rail-controls bottom-right">
-                <button type="button" class="rail-btn prev" data-rail="intl-from">‹</button>
-                <button type="button" class="rail-btn next" data-rail="intl-from">›</button>
               </div>
               <input type="hidden" name="from_account_id" id="intl-from-id">
             </div>
@@ -685,10 +207,6 @@
                   </div>
                   {% endfor %}
                 </div>
-                <div class="rail-controls top-right">
-                  <button type="button" class="rail-btn prev" data-rail="intl-to">‹</button>
-                  <button type="button" class="rail-btn next" data-rail="intl-to">›</button>
-                </div>
                 <input type="hidden" name="to_account_id_bdt" id="intl-to-id">
               </div>
             </div>
@@ -733,9 +251,8 @@
           </div>
         </form>
       </section>
-    </section>
       <!-- ================= LOCAL TAB ================= -->
-      <section class="tab-panel show" id="tab-local" role="tabpanel">
+      <section class="tab-panel" id="tab-local" role="tabpanel">
         <form action="{{ url_for('main.transfers_domestic') }}" method="post" class="form-flow">
           <div class="form-section">
             <div class="section-title"><span class="step-dot">1</span> Payment Account</div>
@@ -751,10 +268,6 @@
                   <div class="detail">{{ a.name }}</div>
                 </div>
                 {% endfor %}
-              </div>
-              <div class="rail-controls bottom-right" aria-hidden="false">
-                <button type="button" class="rail-btn prev" data-rail="local-from" aria-label="Previous">‹</button>
-                <button type="button" class="rail-btn next" data-rail="local-from" aria-label="Next">›</button>
               </div>
               <input type="hidden" name="from_account_id" id="local-from-id">
               <input type="hidden" name="currency" id="local-currency">
@@ -817,10 +330,6 @@
                         </div>
                         {% endfor %}
                       </div>
-                      <div class="rail-controls top-right">
-                        <button type="button" class="rail-btn prev" data-rail="local-to">‹</button>
-                        <button type="button" class="rail-btn next" data-rail="local-to">›</button>
-                      </div>
                       <input type="hidden" name="to_account_id" id="local-to-id">
                     </div>
                   </div>
@@ -831,7 +340,7 @@
             <div class="smart-toggle mb-3">
               <input class="form-check-input" type="checkbox" id="local-chk-self" name="local_recipient_is_self">
               <div>
-                <label class="form-check-label" for="local-chk-self">Recipient is myself local</label>
+                <label class="form-check-label" for="local-chk-self">Recipient is myself</label>
                 <p>Use this when moving money between your own accounts.</p>
               </div>
             </div>
@@ -879,14 +388,15 @@
 
     
 
+    </section>
     <section class="recipient-stack glass-card" id="recipient-section">
       <div class="recipient-card-head">
         <div>
           <div class="section-kicker">Recipient manager</div>
           <h2>Recipients</h2>
-          <p>Add, search, or manage people and accounts after the transfer form.</p>
+          <p>Keep your frequently used recipients close at hand.</p>
         </div>
-        <span class="empty-help"><i class="bi bi-arrow-up-circle"></i> Transfer section stays above</span>
+        <span class="empty-help"><i class="bi bi-arrow-up-circle"></i> Your saved recipients</span>
       </div>
       <div class="recipient-body">
         {% include "partials/_recipient_list.html" %}
@@ -894,4 +404,15 @@
     </section>
   </div>
 </div>
+{% endblock %}
+{% block extra_js %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded',()=>{
+ document.querySelectorAll('.transfers-page .account-card').forEach(card=>{
+  card.tabIndex=0;card.setAttribute('role','button');
+  card.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();card.click();}});
+ });
+});
+</script>
 {% endblock %}

@@ -1,279 +1,230 @@
-{# templates/index.html #}
+{# app/templates/index.html — scoped dashboard redesign; existing server metrics retained #}
 {% extends "base.html" %}
-
+{% set page_slug = '' %}
+{% set selected_currency = currency|default('KRW') %}
+{% set month_names = ['January','February','March','April','May','June','July','August','September','October','November','December'] %}
+{% block styles %}
+{{ super() }}
+<style>
+.jd-dashboard{--jd-ink:#173543;--jd-muted:#71828d;--jd-teal:#168b7d;--jd-line:#e2e9ee;--jd-coral:#da806d;--jd-blue:#527ed4;--jd-surface:#fff;max-width:1580px;margin:auto;color:var(--jd-ink);font-family:inherit;isolation:isolate;padding:2px 8px 24px}
+.jd-dashboard *{box-sizing:border-box}.jd-dashboard h1,.jd-dashboard h2,.jd-dashboard h3,.jd-dashboard p{margin:0}.jd-dashboard a{text-decoration:none}.jd-dashboard button,.jd-dashboard select{font:inherit}.jd-dashboard button:focus-visible,.jd-dashboard select:focus-visible,.jd-dashboard a:focus-visible{outline:3px solid #8ccbc2;outline-offset:3px}.jd-dashboard .jd-eyebrow{font-size:10px;letter-spacing:.16em;font-weight:750;text-transform:uppercase;color:var(--jd-teal)}.jd-dashboard .jd-header{display:flex;justify-content:space-between;align-items:center;gap:22px;margin-bottom:23px}.jd-dashboard .jd-header h1{font-size:clamp(25px,2.8vw,34px);font-weight:730;letter-spacing:-.035em;line-height:1.3;margin:6px 0}.jd-dashboard .jd-header p{font-size:13px;color:var(--jd-muted)}.jd-dashboard .jd-actions{display:flex;gap:9px;flex-wrap:wrap}.jd-dashboard .jd-button{display:inline-flex;justify-content:center;align-items:center;gap:8px;min-height:41px;padding:10px 15px;border-radius:9px;font-size:12px;font-weight:650;line-height:1.3;border:1px solid var(--jd-line);background:white;color:var(--jd-ink);cursor:pointer;white-space:nowrap}.jd-dashboard .jd-button-primary{background:var(--jd-teal);border-color:var(--jd-teal);color:white}.jd-dashboard .jd-period-bar{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:21px;padding:14px 17px;border:1px solid var(--jd-line);border-radius:12px;background:#fff}.jd-dashboard .jd-period-bar>div{display:flex;gap:9px;align-items:center;font-size:12px}.jd-dashboard .jd-period-bar .jd-period-label{font-weight:650}.jd-dashboard .jd-period-form{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.jd-dashboard select{height:35px;border:1px solid #dce5e9;border-radius:7px;background:#fff;color:var(--jd-ink);padding:5px 25px 5px 9px;font-size:11px;max-width:100%}.jd-dashboard .jd-period-form .jd-button{min-height:35px;padding:7px 12px;font-size:11px}.jd-dashboard .jd-currency-pill{font-size:10px;font-weight:700;letter-spacing:.06em;border:1px solid #d8e9e2;border-radius:5px;padding:4px 7px;color:var(--jd-teal);background:#eff8f4;white-space:nowrap}.jd-dashboard .jd-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:15px;margin-bottom:22px}.jd-dashboard .jd-kpi{border:1px solid var(--jd-line);border-radius:14px;padding:21px 21px 17px;background:#fff;min-width:0;transition:box-shadow .15s ease,transform .15s ease}.jd-dashboard .jd-kpi:hover{box-shadow:0 6px 22px #183b4810;transform:translateY(-2px)}.jd-dashboard .jd-kpi-top{display:flex;align-items:center;justify-content:space-between;gap:10px}.jd-dashboard .jd-kpi-label{font-size:12px;font-weight:600;color:#526977}.jd-dashboard .jd-icon{height:34px;width:34px;border-radius:10px;display:flex;justify-content:center;align-items:center;font-size:16px;background:#e9f6f0;color:var(--jd-teal)}.jd-dashboard .jd-kpi-expenses .jd-icon{color:#c2705d;background:#fdf0e9}.jd-dashboard .jd-kpi-pending .jd-icon{color:#b48c32;background:#fcf6e5}.jd-dashboard .jd-kpi-savings .jd-icon{color:#5679bf;background:#edf2fc}.jd-dashboard .jd-kpi-value{font-size:clamp(21px,2vw,30px);font-weight:740;letter-spacing:-.035em;margin:17px 0 14px;line-height:1.25;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}.jd-dashboard .jd-kpi-change{display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:10px;color:var(--jd-muted)}.jd-dashboard .jd-kpi-change .badge{border-radius:5px;font-size:10px;padding:5px 7px;font-weight:650}.jd-dashboard .jd-kpi-note{font-size:10px;color:var(--jd-muted);line-height:1.5;margin-top:7px;overflow-wrap:anywhere}.jd-dashboard .jd-layout{display:grid;grid-template-columns:minmax(0,1fr) 305px;gap:20px;align-items:start}.jd-dashboard .jd-primary{min-width:0;display:grid;gap:20px}.jd-dashboard .jd-sidebar{display:grid;gap:20px;min-width:0}.jd-dashboard .jd-panel{background:#fff;border:1px solid var(--jd-line);border-radius:15px;min-width:0;padding:23px}.jd-dashboard .jd-panel-head{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:20px}.jd-dashboard .jd-panel h2{font-size:15px;letter-spacing:-.02em;font-weight:700}.jd-dashboard .jd-subtitle{font-size:10px;color:var(--jd-muted);line-height:1.6;margin-top:5px}.jd-dashboard .jd-panel-controls{display:flex;gap:7px;align-items:center}.jd-dashboard .jd-balance-line{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:18px}.jd-dashboard .jd-small-label{font-size:11px;color:var(--jd-muted);display:block}.jd-dashboard .jd-balance{font-size:27px;font-weight:720;letter-spacing:-.035em;margin-top:4px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.jd-dashboard .jd-legend{display:flex;gap:13px;flex-wrap:wrap;color:var(--jd-muted);font-size:10px}.jd-dashboard .jd-legend span{display:inline-flex;align-items:center;gap:5px}.jd-dashboard .jd-dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex:0 0 auto}.jd-dashboard .jd-chart-box{height:265px;position:relative;min-width:0}.jd-dashboard canvas{max-width:100%}.jd-dashboard .jd-ratio{border-top:1px solid #edf1f3;padding-top:17px;margin-top:15px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center}.jd-dashboard .jd-ratio p{font-size:11px;color:var(--jd-muted);line-height:1.8}.jd-dashboard .jd-ratio strong{color:var(--jd-ink);font-weight:650}.jd-dashboard #krwPct{display:inline-flex;align-items:center;justify-content:center;background:#edf7f3;color:var(--jd-teal);border-radius:9px;padding:10px;min-width:60px;font-size:17px;font-weight:750}.jd-dashboard .jd-breakdown-layout{display:grid;grid-template-columns:240px minmax(0,1fr);gap:28px;align-items:start}.jd-dashboard .jd-donut-box{height:195px;position:relative;max-width:230px;margin:auto}.jd-dashboard .jd-breakdown-total{text-align:center;margin-top:19px}.jd-dashboard #expTotal{font-size:26px;font-weight:720;letter-spacing:-.035em;margin-top:5px}.jd-dashboard #expChange{font-size:9px;margin-top:8px}.jd-dashboard .jd-category-list{max-height:290px;overflow:auto;padding-right:4px}.jd-dashboard .jd-category-row{margin-bottom:17px}.jd-dashboard .jd-category-label{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:11px;margin-bottom:8px}.jd-dashboard .jd-category-label>span:first-child{display:flex;align-items:center;gap:8px;min-width:0;overflow-wrap:anywhere}.jd-dashboard .jd-category-label strong{font-weight:650;white-space:nowrap;font-variant-numeric:tabular-nums}.jd-dashboard .jd-category-track{height:5px;border-radius:10px;background:#f0f4f6;overflow:hidden}.jd-dashboard .jd-category-fill{display:block;height:100%;border-radius:10px}.jd-dashboard .jd-score{background:#163d43;border-color:#163d43;color:#fff}.jd-dashboard .jd-score .jd-subtitle,.jd-dashboard .jd-score .jd-small-label{color:#a4c6c8}.jd-dashboard .jd-score .jd-panel-head{margin-bottom:18px}.jd-dashboard .jd-score-icon{color:#9dd4c4;font-size:20px}.jd-dashboard .jd-score-selects{display:flex;gap:7px;margin-bottom:21px}.jd-dashboard .jd-score select{background:#244a50;border-color:#41656a;color:#e9f5f1;flex:1}.jd-dashboard .jd-score select option{color:#173543;background:white}.jd-dashboard .jd-score-number{display:flex;align-items:flex-end;justify-content:space-between;gap:15px;margin-bottom:18px}.jd-dashboard [data-role="fs-score"]{font-size:43px;line-height:1;font-weight:720;letter-spacing:-.055em;color:#b3e8d5}.jd-dashboard [data-role="fs-label"]{font-size:12px;font-weight:600;color:#b3e8d5;margin-bottom:2px}.jd-dashboard .jd-score-track{height:7px;background:#ffffff20;border-radius:10px;overflow:hidden;margin-bottom:13px}.jd-dashboard #financeScoreBar{height:100%;background:#99d7c1;border-radius:10px;transition:width .3s ease}.jd-dashboard #financeScoreBar.poor{background:#e49880}.jd-dashboard #financeScoreBar.fair{background:#e9ca78}.jd-dashboard .jd-score-footnote{font-size:10px;color:#a4c6c8;line-height:1.8}.jd-dashboard .jd-bank-total{font-size:30px;font-weight:740;letter-spacing:-.035em;margin:10px 0 7px;line-height:1.3;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}.jd-dashboard .jd-bank-list{margin-top:19px;border-top:1px solid #edf1f3;max-height:300px;overflow:auto}.jd-dashboard .jd-bank-row{display:flex;align-items:center;gap:10px;padding:15px 0;border-bottom:1px solid #edf1f3;min-width:0}.jd-dashboard .jd-bank-initial{height:34px;width:34px;flex:0 0 auto;border:1px solid #dfebe6;background:#eef7f3;border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--jd-teal);font-size:9px;font-weight:750;text-transform:uppercase}.jd-dashboard .jd-bank-name{font-size:11px;font-weight:600;overflow-wrap:anywhere}.jd-dashboard .jd-bank-type{font-size:9px;color:var(--jd-muted);margin-top:3px}.jd-dashboard .jd-bank-amount{font-size:12px;font-weight:700;white-space:nowrap;margin-left:auto;font-variant-numeric:tabular-nums}.jd-dashboard .jd-bank-caption{font-size:10px;color:var(--jd-muted);line-height:1.7;overflow-wrap:anywhere}.jd-dashboard .jd-empty{font-size:12px;color:var(--jd-muted);padding:25px 10px;text-align:center}.jd-dashboard .jd-donut-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;font-size:11px;color:var(--jd-muted);padding:30px}.jd-dashboard [hidden]{display:none!important}.jd-dashboard .jd-status{font-size:11px;color:var(--jd-muted);margin:9px 0;line-height:1.6}.jd-dashboard .jd-status[data-error="true"]{color:#ae5948;background:#fff5ef;padding:9px 12px;border-radius:8px}.jd-dashboard .jd-footer{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:18px;font-size:10px;color:#87959f}.jd-dashboard .jd-live-dot{height:6px;width:6px;display:inline-block;border-radius:50%;background:var(--jd-teal);margin-right:4px}
+@media(min-width:1600px){.jd-dashboard .jd-layout{grid-template-columns:minmax(0,1fr) 335px}.jd-dashboard .jd-chart-box{height:300px}}
+@media(max-width:1199px){.jd-dashboard .jd-layout{grid-template-columns:minmax(0,1fr) 280px}.jd-dashboard .jd-kpi{padding:17px}.jd-dashboard .jd-kpi-value{font-size:23px}.jd-dashboard .jd-breakdown-layout{grid-template-columns:190px minmax(0,1fr);gap:20px}.jd-dashboard .jd-panel{padding:19px}}
+@media(max-width:991px){.jd-dashboard .jd-layout{grid-template-columns:1fr}.jd-dashboard .jd-sidebar{grid-template-columns:1fr 1fr;align-items:start}.jd-dashboard .jd-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.jd-dashboard .jd-header{align-items:flex-start}.jd-dashboard .jd-period-bar{align-items:flex-start;flex-direction:column}.jd-dashboard .jd-kpi-value{font-size:27px}}
+@media(max-width:575px){.jd-dashboard{padding:0 0 20px}.jd-dashboard .jd-header{flex-direction:column;gap:15px}.jd-dashboard .jd-actions{width:100%}.jd-dashboard .jd-actions .jd-button{flex:1}.jd-dashboard .jd-kpis{gap:10px}.jd-dashboard .jd-kpi{padding:15px 13px}.jd-dashboard .jd-kpi-value{font-size:22px;margin:15px 0 11px}.jd-dashboard .jd-kpi-change{font-size:9px}.jd-dashboard .jd-icon{width:29px;height:29px;font-size:14px}.jd-dashboard .jd-period-form{width:100%;gap:7px}.jd-dashboard .jd-period-form select{flex:1;min-width:75px}.jd-dashboard .jd-period-form .jd-button{width:100%}.jd-dashboard .jd-panel{padding:19px 16px}.jd-dashboard .jd-chart-box{height:225px}.jd-dashboard .jd-sidebar{grid-template-columns:1fr}.jd-dashboard .jd-breakdown-layout{grid-template-columns:1fr;gap:25px}.jd-dashboard .jd-donut-box{height:185px}.jd-dashboard .jd-category-list{max-height:320px}.jd-dashboard .jd-balance-line{align-items:start;flex-direction:column;gap:15px}.jd-dashboard .jd-balance{font-size:26px}.jd-dashboard .jd-score-number{margin-top:8px}.jd-dashboard .jd-ratio{gap:8px}.jd-dashboard .jd-header h1{font-size:28px}.jd-dashboard .jd-panel-controls{gap:5px}.jd-dashboard .jd-footer{line-height:1.7}}
+@media(prefers-reduced-motion:reduce){.jd-dashboard .jd-kpi,.jd-dashboard #financeScoreBar{transition:none}.jd-dashboard .jd-kpi:hover{transform:none}}
+@media(max-width:420px){.jd-dashboard .jd-kpis{grid-template-columns:1fr}.jd-dashboard .jd-kpi-value{font-size:27px}}
+</style>
+{% endblock %}
+{% macro kpi(label,icon,card,kind) %}
+<article class="jd-kpi jd-kpi-{{ kind }}" aria-label="{{ label }} for selected month">
+  <div class="jd-kpi-top"><span class="jd-kpi-label">{{ label }}</span><span class="jd-icon" aria-hidden="true"><i class="bi {{ icon }}"></i></span></div>
+  <div class="jd-kpi-value">{% if kind=='savings' %}{{ 0 if card.value <= 0 else card.value_fmt }}{% else %}{{ card.value_fmt }}{% endif %}</div>
+  <div class="jd-kpi-change"><span class="badge {{ card.badge_class }}">{{ card.delta_pct_fmt }}</span><span>{{ 'this month' if kind=='savings' else 'vs last month' }}</span></div>
+  <div class="jd-kpi-note">{{ card.delta_abs_fmt }} compared with last month</div>
+</article>
+{% endmacro %}
 {% block content %}
-<div class="container-fluid mt-0 main-dashboard">
-  <div class="row g-3">
-    <!-- First Column (60%) -->
-    <div class="col-12 col-lg-6 d-flex flex-column">
-      <!-- First Grid (40% height) -->
-      <div class="flex-fill mb-3" style="flex: 0 0 40%;">
-        <div class="row g-3 h-100">
-          <!-- Income Card -->
-          <div class="col-12 col-md-6">
-            <div class="card shadow-sm h-100">
-              <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start">
-                  <div>
-                    <div class="d-flex align-items-start mb-2">
-                      <div class="bg-light rounded-circle p-1 me-1">
-                        <i class="bi bi-wallet2 text-success"></i>
-                      </div>
-                      <span class="fw-semibold fs-5">Income</span>
-                    </div>
-                    <h3 class="fw-bold fs-5 mb-0">{{ cards.income.value_fmt }}</h3>
-                  </div>
-                  <div class="text-end">
-                    <span class="badge rounded-pill {{ cards.income.badge_class }} mb-1">
-                      {{ cards.income.delta_pct_fmt }}
-                    </span>
-                    <div><small class="text-muted">{{ cards.income.delta_abs_fmt }} than last month</small></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Expenses Card -->
-          <div class="col-12 col-md-6">
-            <div class="card shadow-sm h-100">
-              <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start">
-                  <div>
-                    <div class="d-flex align-items-start mb-2">
-                      <div class="bg-light rounded-circle p-1 me-1">
-                        <i class="bi bi-cart4 text-danger"></i>
-                      </div>
-                      <span class="fw-semibold fs-5">Expenses</span>
-                    </div>
-                    <h3 class="fw-bold fs-5 mb-0">{{ cards.expenses.value_fmt }}</h3>
-                  </div>
-                  <div class="text-end">
-                    <span class="badge rounded-pill {{ cards.expenses.badge_class }} mb-1">
-                      {{ cards.expenses.delta_pct_fmt }}
-                    </span>
-                    <div><small class="text-muted">{{ cards.expenses.delta_abs_fmt }} than last month</small></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Pending Expenses Card -->
-          <div class="col-12 col-md-6">
-            <div class="card shadow-sm h-100">
-              <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start">
-                  <div>
-                    <div class="d-flex align-items-start mb-2">
-                      <div class="bg-light rounded-circle p-1 me-1">
-                        <i class="bi bi-credit-card text-warning"></i>
-                      </div>
-                      <span class="fw-semibold fs-5">Pending</span>
-                    </div>
-                    <h3 class="fw-bold fs-5 mb-0">{{ cards.pending.value_fmt }}</h3>
-                  </div>
-                  <div class="text-end">
-                    <span class="badge rounded-pill {{ cards.pending.badge_class }} mb-1">
-                      {{ cards.pending.delta_pct_fmt }}
-                    </span>
-                    <div><small class="text-muted">{{ cards.pending.delta_abs_fmt }} than last month</small></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Savings Card -->
-          <div class="col-12 col-md-6">
-            <div class="card shadow-sm h-100">
-              <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start">
-                  <div>
-                    <div class="d-flex align-items-start mb-2">
-                      <div class="bg-light rounded-circle p-1 me-1">
-                        <i class="bi bi-piggy-bank text-primary"></i>
-                      </div>
-                      <span class="fw-semibold fs-5">Savings</span>
-                    </div>
-                    <h3 class="fw-bold fs-5 mb-0">
-                      {{ 0 if cards.savings.value <= 0 else cards.savings.value_fmt }}
-                    </h3>
-                  </div>
-                  <div class="text-end">
-                    <span class="badge rounded-pill {{ cards.savings.badge_class }} mb-1">
-                      {{ cards.savings.delta_pct_fmt }}
-                    </span>
-                    <div><small class="text-muted">{{ cards.savings.delta_abs_fmt }} than last month</small></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      <!-- Second Grid (60% height) -->
-      <div class="flex-fill" style="flex: 0 0 60%;">
-        <div class="card shadow-sm h-100">
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-              <h5 class="fw-bold mb-0">Cashflow</h5>
-              <select id="yearSelect" class="form-select form-select-sm w-auto">
-                {# recent 10 years: current down to current-9 #}
-                {% for y in range(year, year-5, -1) %}
-                  <option value="{{ y }}" {{ 'selected' if y == year else '' }}>{{ y }}</option>
-                {% endfor %}
-              </select>
-            </div>
-            <div class="d-flex justify-content-between align-items-center mb-3">
-            <div class="mb-3">
-              <span class="text-muted">Total Balance</span>
-              <h3 class="fw-bold text-success" id="totalBalance"></h3>
-            </div>
-            <div id="krwIncomeSpent" class="align-items-center gap-3 py-2 ms-2">
-              <div class="fw-semibold">This Month Spent <strong><span id="krwSpent" class="text-danger">0</span></strong> of your income <strong><span id="krwIncome" class="text-success">0</span></strong> — <strong><span id="krwPct">0</span></strong></div>
-            </div>
-            </div>
-            <canvas id="cashflowChart" height="120"></canvas>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Second Column (20%) -->
-    <div class="col-12 col-lg-3">
-      <div class="card shadow-sm h-100">
-        <div class="card-body d-flex flex-column">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <h6 class="fw-bold mb-0">Expense Breakdown</h6>
-            <div class="d-flex gap-2">
-              <!-- Year select (last 10 years) -->
-              <select id="breakdownYear" class="form-select form-select-sm w-auto">
-                {% for y in range(year, year-10, -1) %}
-                  <option value="{{ y }}" {{ 'selected' if y == year else '' }}>{{ y }}</option>
-                {% endfor %}
-              </select>
-
-              <!-- Month select (01–12) -->
-              <select id="breakdownMonth" class="form-select form-select-sm w-auto">
-                {% for m in range(1, 13) %}
-                  <option value="{{ "%02d"|format(m) }}" {{ 'selected' if m == month else '' }}>
-                    {{ "%02d"|format(m) }}
-                  </option>
-                {% endfor %}
-              </select>
-            </div>
-          </div>
-
-          <div class="mb-3">
-            <canvas id="expenseBreakdownChart" height="220"></canvas>
-          </div>
-
-          <div class="mb-2">
-            <span class="text-muted">Total Expense</span>
-            <div class="d-flex align-items-center gap-2">
-              <h3 class="fw-bold mb-0" id="expTotal"></h3>
-              <span id="expChange" class="badge rounded-pill bg-success-subtle text-success"></span>
-            </div>
-          </div>
-
-          <hr class="my-2">
-          <div id="expList" class="flex-grow-1 overflow-auto" style="max-height: 300px;"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Third Column (20%) -->
-    <div class="col-12 col-lg-3 d-flex flex-column">
-      <div class="flex-fill mb-0" style="flex: 0 0 30%;">
-        <div id="financeScoreSection"
-            class="card shadow-sm finance-score-card"
-            data-api="{{ url_for('main.api_finance_score') }}">
-          <div class="card-body d-flex flex-column">
-            <div class="d-flex justify-content-between align-items-start mb-2">
-              <div>
-                <div class="fw-bold fs-3">Finance Score</div>
-                <div class="text-muted small fs-6">Finance Quality</div>
-              </div>
-            </div>
-              <div class="d-flex gap-1 py-3">
-                <select id="fsYear" class="form-select form-select-sm" style="max-width:100px">
-                  {% for y in range(2023, today.year + 1) %}
-                    <option value="{{ y }}" {{ 'selected' if y == today.year else '' }}>{{ y }}</option>
-                  {% endfor %}
-                </select>
-                <select id="fsMonth" class="form-select form-select-sm" style="max-width:90px">
-                  {% for m in range(1, 13) %}
-                    <option value="{{ m }}" {{ 'selected' if m == today.month else '' }}>{{ "%02d"|format(m) }}</option>
-                  {% endfor %}
-                </select>
-              </div>
-            <div class="d-flex justify-content-between align-items-end mb-3">
-              <div class="display-6 fw-bold mb-0 fs-3" data-role="fs-label">{{ finance_score.label }}</div>
-              <div class="fw-semibold fs-4" data-role="fs-score">{{ finance_score.score }}%</div>
-            </div>
-
-            <div class="d-flex align-items-center gap-1">
-              <div id="financeScoreBar" class="rounded-pill bar-light" style="height:14px; width: {{ finance_score.score * 0.8 }}px;"></div>
-              <div class="flex-grow-1 rounded-pill bg-dark-subtle bar-dark" style="height:14px;"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="flex-fill mt-3" style="flex: 0 0 70%;">
-          <!-- Top: Total of the top 2 BDT accounts -->
-        <div class="bankwidget">
-          <div class="card shadow-sm bdt-widget mb-2 p-2 d-flex">
-            <div class="card-body text-center py-1 flex-column gap-1">
-              <div class="fs-4 fw-bold">Total Balance</div>
-              <div class="h4 fw-bold mb-0">৳{{ "{:,}".format((bdt_total_all or 0)|int) }}</div>
-              <div class="text-muted tiny">
-                Included:
-                {% if bdt_accounts_with_bal %}
-                  {{ bdt_accounts_with_bal | map(attribute='name') | join(', ') }}
-                {% else %}—{% endif %}
-              </div>
-            </div>
-          </div>
-
-          <!-- Bottom: Stacked account cards (one per row) -->
-          <div class="card shadow-sm">
-            <div class="card-body pb-5 px-2 overflow-auto" style="max-height: 310px;">
-              {% if bdt_accounts_with_bal %}
-                {% for a in bdt_accounts_with_bal %}
-                  <div class="card account-tile mb-4">
-                    <div class="card-body d-flex align-items-center gap-2">
-                      <!-- Initial badge (swap to logo img if you have one) -->
-                      <div class="bank-badge">{{ (a.name or '—')[:3] }}</div>
-
-                      <div class="flex-grow-1 min-w-0 h-100">
-                        <div class="bank-name text-truncate" title="{{ a.name }}">{{ a.name }}</div>
-                        <div class="tiny text-muted">BDT Account</div>
-                      </div>
-
-                      <div class="ms-auto text-end">
-                        <div class="balance">৳{{ "{:,}".format((a.balance or 0)|int) }}</div>
-                      </div>
-                    </div>
-                  </div>
-                {% endfor %}
-              {% else %}
-                <div class="p-3 text-muted tiny">No active BDT accounts.</div>
-              {% endif %}
-            </div>
-          </div>
-       </div>
-      </div>
-    </div><!-- /Third Column -->
-  </div>
+<div class="jd-dashboard main-dashboard" id="jdDashboard" data-currency="{{ selected_currency }}" data-month="{{ month }}" data-cashflow-api="{{ url_for('main.api_cashflow') }}" data-breakdown-api="{{ url_for('main.api_expense_breakdown') }}" data-spending-api="{{ url_for('main.api_krw_income_spent') }}">
+  <header class="jd-header"><div><div class="jd-eyebrow">YOUR FINANCIAL OVERVIEW</div><h1>Your money, clearly.</h1><p>A little perspective on what comes in, goes out, and stays with you.</p></div><div class="jd-actions"><a class="jd-button" href="{{ url_for('main.transactions_page') }}"><i class="bi bi-journal-text" aria-hidden="true"></i>View transactions</a><a class="jd-button jd-button-primary" href="{{ url_for('main.payments_page') }}"><i class="bi bi-plus-lg" aria-hidden="true"></i>Add transaction</a></div></header>
+  <section class="jd-period-bar" aria-label="Dashboard period"><div><i class="bi bi-calendar3" aria-hidden="true"></i><span class="jd-period-label">{{ month_names[month-1] }} {{ year }}</span><span class="jd-currency-pill">{{ selected_currency }}</span></div>
+    <form class="jd-period-form" action="{{ url_for('main.index') }}" method="get"><label class="visually-hidden" for="jdCurrency">Currency</label><select name="currency" id="jdCurrency">{% for cur in ['KRW','BDT'] %}<option value="{{ cur }}" {{ 'selected' if cur==selected_currency else '' }}>{{ cur }}</option>{% endfor %}</select><label class="visually-hidden" for="jdMonth">Month</label><select name="month" id="jdMonth">{% for m in range(1,13) %}<option value="{{ m }}" {{ 'selected' if m==month else '' }}>{{ month_names[m-1] }}</option>{% endfor %}</select><label class="visually-hidden" for="jdYear">Year</label><select name="year" id="jdYear">{% for y in range([year,today.year]|max,[year,today.year]|min-10,-1) %}<option value="{{ y }}" {{ 'selected' if y==year else '' }}>{{ y }}</option>{% endfor %}</select><button class="jd-button jd-button-primary" type="submit">Show overview</button></form>
+  </section>
+  <section class="jd-kpis" aria-label="Monthly summary">{{ kpi('Income','bi-arrow-down-left',cards.income,'income') }}{{ kpi('Expenses','bi-arrow-up-right',cards.expenses,'expenses') }}{{ kpi('Pending expenses','bi-hourglass-split',cards.pending,'pending') }}{{ kpi('Savings','bi-piggy-bank',cards.savings,'savings') }}</section>
+  <div class="jd-layout"><div class="jd-primary">
+    <section class="jd-panel" aria-labelledby="jdCashflowTitle"><div class="jd-panel-head"><div><h2 id="jdCashflowTitle">Cashflow</h2><p class="jd-subtitle">Your income, expenses and net movement through the year.</p></div><div class="jd-panel-controls"><span class="jd-currency-pill">{{ selected_currency }}</span><label class="visually-hidden" for="yearSelect">Cashflow year</label><select id="yearSelect">{% for y in range(year,year-10,-1) %}<option value="{{ y }}" {{ 'selected' if y==year else '' }}>{{ y }}</option>{% endfor %}</select></div></div>
+      <div class="jd-balance-line"><div><span class="jd-small-label">Total balance</span><div id="totalBalance" class="jd-balance" aria-live="polite">—</div></div><div class="jd-legend" aria-label="Chart legend"><span><i class="jd-dot" style="background:#168b7d"></i>Income</span><span><i class="jd-dot" style="background:#da806d"></i>Expenses</span><span><i class="jd-dot" style="background:#527ed4"></i>Net</span></div></div>
+      <div class="jd-chart-box"><canvas id="cashflowChart" role="img" aria-label="Monthly income, expenses and net cashflow"></canvas></div><p id="jdCashflowStatus" class="jd-status" role="status" aria-live="polite">Loading cashflow…</p>
+      <div class="jd-ratio" id="krwIncomeSpent"><div><span class="jd-small-label">KRW spending snapshot · <span id="jdSnapshotPeriod">{{ month_names[month-1] }} {{ year }}</span></span><p><strong id="krwSpent">—</strong> spent from <strong id="krwIncome">—</strong> income</p><p id="jdSnapshotStatus" class="jd-status" hidden></p></div><span id="krwPct" aria-label="Share of KRW income spent">—</span></div>
+    </section>
+    <section class="jd-panel" aria-labelledby="jdBreakdownTitle"><div class="jd-panel-head"><div><h2 id="jdBreakdownTitle">Where your money went</h2><p class="jd-subtitle">Expense breakdown by category · {{ selected_currency }}</p></div><div class="jd-panel-controls"><label class="visually-hidden" for="breakdownMonth">Breakdown month</label><select id="breakdownMonth">{% for m in range(1,13) %}<option value="{{ '%02d'|format(m) }}" {{ 'selected' if m==month else '' }}>{{ month_names[m-1][:3] }}</option>{% endfor %}</select><label class="visually-hidden" for="breakdownYear">Breakdown year</label><select id="breakdownYear">{% for y in range(year,year-10,-1) %}<option value="{{ y }}" {{ 'selected' if y==year else '' }}>{{ y }}</option>{% endfor %}</select></div></div>
+      <div class="jd-breakdown-layout"><div><div class="jd-donut-box"><canvas id="expenseBreakdownChart" role="img" aria-label="Expense share by category"></canvas><div id="jdDonutEmpty" class="jd-donut-empty" hidden>No expenses for this period</div></div><div class="jd-breakdown-total"><span class="jd-small-label">Total expense</span><div id="expTotal" aria-live="polite">—</div><span id="expChange" class="badge rounded-pill"></span></div></div><div><div id="expList" class="jd-category-list"><p class="jd-empty">Loading categories…</p></div></div></div><p id="jdBreakdownStatus" class="jd-status" role="status" aria-live="polite"></p>
+    </section>
+  </div><aside class="jd-sidebar" aria-label="Financial health and balances">
+    <section id="financeScoreSection" class="jd-panel jd-score finance-score-card" data-api="{{ url_for('main.api_finance_score') }}" aria-labelledby="jdScoreTitle"><div class="jd-panel-head"><div><h2 id="jdScoreTitle">Finance score</h2><p class="jd-subtitle">Your financial health indicator</p></div><i class="bi bi-shield-check jd-score-icon" aria-hidden="true"></i></div>
+      <div class="jd-score-selects"><label class="visually-hidden" for="fsMonth">Finance score month</label><select id="fsMonth">{% for m in range(1,13) %}<option value="{{ m }}" {{ 'selected' if m==today.month else '' }}>{{ month_names[m-1][:3] }}</option>{% endfor %}</select><label class="visually-hidden" for="fsYear">Finance score year</label><select id="fsYear">{% for y in range(today.year,2022,-1) %}<option value="{{ y }}" {{ 'selected' if y==today.year else '' }}>{{ y }}</option>{% endfor %}</select></div>
+      <div class="jd-score-number"><div data-role="fs-score">{{ finance_score.score }}%</div><div data-role="fs-label">{{ finance_score.label }}</div></div><div class="jd-score-track"><div id="financeScoreBar" role="progressbar" aria-label="Finance score" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ finance_score.score }}" style="width:{{ [100,[0,finance_score.score|float]|max]|min }}%"></div></div><p class="jd-score-footnote">Calculated from your recorded activity for the period selected above.</p><p id="jdScoreStatus" class="jd-status" role="status" aria-live="polite" hidden></p>
+    </section>
+    <section class="jd-panel" aria-labelledby="jdBdtTitle"><div class="jd-panel-head"><h2 id="jdBdtTitle">Bangladesh accounts</h2><span class="jd-currency-pill">BDT</span></div><span class="jd-small-label"><span class="jd-live-dot"></span>Current total balance</span><div class="jd-bank-total">৳{{ '{:,}'.format((bdt_total_all or 0)|int) }}</div><p class="jd-bank-caption">Across {{ bdt_accounts_with_bal|length }} active {{ 'account' if bdt_accounts_with_bal|length==1 else 'accounts' }}. Balances are current, independent of the dashboard period.</p>
+      <div class="jd-bank-list">{% for a in bdt_accounts_with_bal %}<div class="jd-bank-row"><div class="jd-bank-initial" aria-hidden="true">{{ (a.name or '—')[:3] }}</div><div><div class="jd-bank-name">{{ a.name }}</div><div class="jd-bank-type">BDT account</div></div><div class="jd-bank-amount">৳{{ '{:,}'.format((a.balance or 0)|int) }}</div></div>{% else %}<p class="jd-empty">No active BDT accounts yet.</p>{% endfor %}</div>
+    </section>
+  </aside></div>
+  <footer class="jd-footer"><span>Monthly summary · {{ month_names[month-1] }} {{ year }} · {{ selected_currency }}</span><span>Your records. A clearer picture.</span></footer>
 </div>
 {% endblock %}
-
 {% block scripts %}
-  <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
-  <script src="{{ url_for('static', filename='js/dashboard.js') }}" defer></script>
+{{ super() }}
+<script>
+(() => {
+  'use strict';
+  function start() {
+    const root = document.getElementById('jdDashboard');
+    if (!root || root.dataset.ready === 'true') return;
+    root.dataset.ready = 'true';
+    const find = id => root.querySelector('#' + id);
+    const currency = root.dataset.currency === 'BDT' ? 'BDT' : 'KRW';
+    const palette = ['#168b7d','#527ed4','#e3ac65','#aa8dc1','#76b4b1','#da806d','#89a0bc','#b4be80'];
+    const number = value => { const n = Number(value); return Number.isFinite(n) ? n : 0; };
+    const formatMoney = (amount, cur = currency) => (cur === 'BDT' ? '৳' : '₩') + number(amount).toLocaleString(undefined, { maximumFractionDigits: 2 });
+    const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const controllers = new Map();
+    function status(id, message, error = false) {
+      const node = find(id); node.textContent = message; node.hidden = !message; node.dataset.error = String(error);
+    }
+    async function get(channel, endpoint, params) {
+      if (controllers.has(channel)) controllers.get(channel).abort();
+      const controller = new AbortController(); controllers.set(channel, controller);
+      const url = new URL(endpoint, window.location.origin);
+      Object.entries(params).forEach(([key, val]) => url.searchParams.set(key, val));
+      const response = await fetch(url, { credentials: 'same-origin', signal: controller.signal, headers: { Accept: 'application/json' } });
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      const data = await response.json();
+      if (controller.signal.aborted) throw new DOMException('Aborted', 'AbortError');
+      return data;
+    }
+    let cashflowChart, expenseChart;
+    function tooltip(context) {
+      const val = context.parsed.y === undefined ? context.parsed : context.parsed.y;
+      return ' ' + (context.dataset.label || context.label || '') + ': ' + formatMoney(val);
+    }
+    async function loadCashflow() {
+      status('jdCashflowStatus', 'Loading cashflow…');
+      find('totalBalance').textContent = '—';
+      if (cashflowChart) { cashflowChart.destroy(); cashflowChart = null; }
+      try {
+        const data = await get('cashflow', root.dataset.cashflowApi, { year: find('yearSelect').value, currency });
+        find('totalBalance').textContent = data.total_balance_fmt || formatMoney(data.total_balance);
+        const labels = Array.isArray(data.labels) ? data.labels : [];
+        cashflowChart = new Chart(find('cashflowChart'), {
+          type: 'line',
+          data: { labels, datasets: [
+            { label: 'Income', data: data.income || [], borderColor: palette[0], backgroundColor: '#168b7d0c', fill: true, tension: .35 },
+            { label: 'Expenses', data: data.expenses || [], borderColor: palette[5], backgroundColor: 'transparent', tension: .35 },
+            { label: 'Net', data: data.net || [], borderColor: palette[1], backgroundColor: 'transparent', borderDash: [4,4], tension: .35 }
+          ] },
+          options: {
+            responsive: true, maintainAspectRatio: false, animation: false,
+            interaction: { mode: 'index', intersect: false },
+            elements: { line: { borderWidth: 2 }, point: { radius: 0, hoverRadius: 4, hitRadius: 12 } },
+            plugins: { legend: { display: false }, tooltip: { padding: 12, backgroundColor: '#173b43', cornerRadius: 8, callbacks: { label: tooltip } } },
+            scales: {
+              x: { grid: { display: false }, border: { display: false }, ticks: { color: '#86959f', font: { size: 10 }, maxRotation: 0, autoSkip: true } },
+              y: { beginAtZero: true, border: { display: false }, grid: { color: '#edf2f5' }, ticks: { color: '#86959f', font: { size: 10 }, maxTicksLimit: 5, callback: val => Number(val).toLocaleString(undefined, { notation: 'compact', maximumFractionDigits: 1 }) } }
+            }
+          }
+        });
+        status('jdCashflowStatus', labels.length ? '' : 'No cashflow records for this year.');
+      } catch (error) {
+        if (error.name !== 'AbortError') status('jdCashflowStatus', 'Cashflow could not be loaded. Refresh the page or try a different year.', true);
+      }
+    }
+    async function loadBreakdown() {
+      status('jdBreakdownStatus', 'Loading expense breakdown…');
+      find('expTotal').textContent = '—'; find('expChange').textContent = '';
+      find('expList').replaceChildren(); find('jdDonutEmpty').hidden = true;
+      find('expenseBreakdownChart').hidden = false;
+      if (expenseChart) { expenseChart.destroy(); expenseChart = null; }
+      try {
+        const data = await get('breakdown', root.dataset.breakdownApi, { year: find('breakdownYear').value, month: find('breakdownMonth').value, currency });
+        find('expTotal').textContent = data.total_fmt || formatMoney(data.total);
+        const change = find('expChange');
+        if (data.change_pct == null) {
+          change.textContent = 'No previous-month comparison'; change.className = 'badge rounded-pill bg-secondary-subtle text-secondary';
+        } else {
+          const up = Boolean(data.change_up);
+          change.textContent = (up ? '↑ ' : '↓ ') + Math.abs(number(data.change_pct)).toFixed(2) + '% vs last month';
+          change.className = 'badge rounded-pill ' + (up ? 'bg-danger-subtle text-danger' : 'bg-success-subtle text-success');
+        }
+        const labels = Array.isArray(data.labels) ? data.labels : [];
+        const values = Array.isArray(data.values) ? data.values.map(number) : [];
+        const total = values.reduce((a,b) => a+b, 0);
+        const hasData = values.some(value => value > 0);
+        find('expenseBreakdownChart').hidden = !hasData; find('jdDonutEmpty').hidden = hasData;
+        if (hasData) {
+          expenseChart = new Chart(find('expenseBreakdownChart'), {
+            type: 'doughnut', data: { labels, datasets: [{ data: values, backgroundColor: labels.map((_,i) => palette[i % palette.length]), borderWidth: 3, borderColor: '#fff', hoverOffset: 3 }] },
+            options: { responsive: true, maintainAspectRatio: false, cutout: '76%', animation: reducedMotion ? false : { duration: 350 }, plugins: { legend: { display: false }, tooltip: { backgroundColor: '#173b43', padding: 12, callbacks: { label: ctx => ' ' + ctx.label + ': ' + formatMoney(ctx.parsed) + ' (' + (total > 0 ? number(ctx.parsed)/total*100 : 0).toFixed(1) + '%)' } } } }
+          });
+        }
+        const grouped = new Map();
+        const items = Array.isArray(data.items) ? data.items : [];
+        items.forEach(item => {
+          const name = String(item.parent || item.name || 'Uncategorized');
+          grouped.set(name, (grouped.get(name) || 0) + number(item.amount));
+        });
+        // APIs without item detail can still display their category series.
+        if (!grouped.size) labels.forEach((name,i) => grouped.set(String(name), values[i] || 0));
+        const sorted = [...grouped.entries()].sort((a,b) => b[1]-a[1]);
+        const grand = sorted.reduce((sum, item) => sum + item[1], 0);
+        const fragment = document.createDocumentFragment();
+        sorted.forEach(([name, amount], i) => {
+          const idx = labels.findIndex(label => String(label) === name);
+          const color = palette[(idx < 0 ? i : idx) % palette.length];
+          const share = grand > 0 ? Math.max(0, Math.min(100, amount/grand*100)) : 0;
+          const row = document.createElement('div'); row.className = 'jd-category-row';
+          const line = document.createElement('div'); line.className = 'jd-category-label';
+          const label = document.createElement('span');
+          const dot = document.createElement('i'); dot.className = 'jd-dot'; dot.style.backgroundColor = color; dot.setAttribute('aria-hidden','true');
+          const text = document.createElement('span'); text.textContent = name;
+          label.append(dot, text);
+          const value = document.createElement('strong'); value.textContent = formatMoney(amount);
+          line.append(label, value);
+          const track = document.createElement('div'); track.className = 'jd-category-track';
+          const fill = document.createElement('span'); fill.className = 'jd-category-fill'; fill.style.width = share.toFixed(1) + '%'; fill.style.backgroundColor = color;
+          track.append(fill); row.append(line, track); fragment.append(row);
+        });
+        if (!sorted.length) { const empty = document.createElement('p'); empty.className = 'jd-empty'; empty.textContent = 'No expenses recorded for this period.'; fragment.append(empty); }
+        find('expList').replaceChildren(fragment);
+        status('jdBreakdownStatus', '');
+      } catch (error) {
+        if (error.name !== 'AbortError') { find('expenseBreakdownChart').hidden = true; status('jdBreakdownStatus', 'Expense breakdown could not be loaded. Try another month or refresh the page.', true); }
+      }
+    }
+    async function loadScore() {
+      status('jdScoreStatus', 'Updating score…');
+      try {
+        const data = await get('score', find('financeScoreSection').dataset.api, { year: find('fsYear').value, month: find('fsMonth').value });
+        const score = Math.max(0, Math.min(100, number(data.score)));
+        const label = String(data.label || 'Not available');
+        root.querySelector('[data-role="fs-label"]').textContent = label;
+        root.querySelector('[data-role="fs-score"]').textContent = score + '%';
+        const bar = find('financeScoreBar'); bar.style.width = score + '%';
+        bar.className = score >= 85 ? 'excellent' : score >= 70 ? 'good' : score >= 50 ? 'fair' : 'poor';
+        bar.setAttribute('aria-valuenow', score); bar.setAttribute('aria-label', 'Finance score ' + score + ' percent (' + label + ')');
+        status('jdScoreStatus', '');
+      } catch (error) {
+        if (error.name !== 'AbortError') status('jdScoreStatus', 'Could not update the score. The last displayed score is shown.', true);
+      }
+    }
+    async function loadSnapshot() {
+      status('jdSnapshotStatus', '');
+      ['krwSpent','krwIncome','krwPct'].forEach(id => find(id).textContent = '—');
+      find('jdSnapshotPeriod').textContent = new Date(2000, number(root.dataset.month)-1, 1).toLocaleString(undefined, { month: 'long' }) + ' ' + find('yearSelect').value;
+      try {
+        const data = await get('snapshot', root.dataset.spendingApi, { year: find('yearSelect').value, month: root.dataset.month });
+        find('krwSpent').textContent = formatMoney(data.spent, 'KRW'); find('krwIncome').textContent = formatMoney(data.income, 'KRW');
+        const income = number(data.income), spent = number(data.spent);
+        const pct = income > 0 ? Math.round(spent/income*100) : null;
+        find('krwPct').textContent = pct === null ? '—' : pct + '%';
+        find('krwPct').style.color = pct === null || pct < 30 ? '#168b7d' : pct <= 60 ? '#aa842b' : '#bf6a58';
+      } catch (error) { if (error.name !== 'AbortError') status('jdSnapshotStatus', 'KRW snapshot unavailable.', true); }
+    }
+    find('yearSelect').addEventListener('change', () => { loadCashflow(); loadSnapshot(); });
+    ['breakdownYear','breakdownMonth'].forEach(id => find(id).addEventListener('change', loadBreakdown));
+    ['fsYear','fsMonth'].forEach(id => find(id).addEventListener('change', loadScore));
+    loadScore(); loadSnapshot();
+    const loadCharts = () => { loadCashflow(); loadBreakdown(); };
+    if (window.Chart) loadCharts();
+    else {
+      // The normal base template already includes Chart.js. Load it only if absent.
+      const script = document.createElement('script'); script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js';
+      script.onload = loadCharts;
+      script.onerror = () => { status('jdCashflowStatus','Charts could not load. Check your connection and refresh.',true); status('jdBreakdownStatus','Charts could not load. Your summary and balances are still available.',true); };
+      document.head.append(script);
+    }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
+  else start();
+})();
+</script>
 {% endblock %}
-{# End of templates/index.html #}

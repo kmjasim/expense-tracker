@@ -4,369 +4,64 @@
 
 {% block extra_css %}
 <style>
-  .recurring-page {
-    --recurring-bg: #f5f7fb;
-    --recurring-card: rgba(255, 255, 255, .92);
-    --recurring-border: rgba(15, 23, 42, .09);
-    --recurring-muted: #64748b;
-    --recurring-ink: #0f172a;
-    --recurring-primary: #4f46e5;
-    --recurring-primary-soft: rgba(79, 70, 229, .11);
-    --recurring-success-soft: rgba(16, 185, 129, .12);
-    --recurring-danger-soft: rgba(239, 68, 68, .12);
-    --recurring-warning-soft: rgba(245, 158, 11, .14);
-    color: var(--recurring-ink);
-  }
 
-  .recurring-page .glass-card,
-  .recurring-page .stat-card,
-  .recurring-page .rules-card {
-    border: 1px solid var(--recurring-border);
-    background: var(--recurring-card);
-    box-shadow: 0 18px 45px rgba(15, 23, 42, .08);
-    border-radius: 24px;
-  }
+.recurring-page{--recurring-border:#e2e9ee;--recurring-muted:#71828d;--recurring-ink:#173543;--recurring-primary:#168b7d;--recurring-primary-soft:#e9f6ef;--recurring-success-soft:#e9f6ef;--recurring-danger-soft:#fdf0eb;--recurring-warning-soft:#fcf6e5;color:var(--recurring-ink);max-width:1480px;margin:auto;padding:4px 8px 24px;min-width:0}
+.recurring-page *{box-sizing:border-box}
+.recurring-page .recurring-hero{background:transparent;padding:8px 0 23px;border:0;border-radius:0;box-shadow:none;color:var(--recurring-ink)}
+.recurring-page .hero-kicker{display:inline-flex;align-items:center;gap:7px;color:#168b7d;font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;margin-bottom:8px!important}
+.recurring-page .hero-title{font-size:32px;line-height:1.25;font-weight:750;letter-spacing:-.035em;margin:5px 0 9px!important}
+.recurring-page .hero-copy{font-size:13px;color:var(--recurring-muted);line-height:1.7;max-width:660px}
+.recurring-page .hero-action{display:inline-flex;align-items:center;justify-content:center;gap:7px;font-size:12px;min-height:40px;padding:10px 15px;border-radius:8px;font-weight:600;white-space:nowrap}
+.recurring-page .hero-action.btn-light{background:#168b7d;border-color:#168b7d;color:white;box-shadow:none}
+.recurring-page .hero-action.btn-outline-light{background:#fff;border-color:#dce5e9;color:#173543}
+.recurring-page .glass-card,.recurring-page .stat-card,.recurring-page .rules-card{background:white;border:1px solid var(--recurring-border);border-radius:15px;box-shadow:none;min-width:0}
+.recurring-page .stat-card{padding:20px;min-height:110px}
+.recurring-page .stat-label{font-size:11px;font-weight:600;color:var(--recurring-muted)}
+.recurring-page .stat-value{font-size:30px;font-weight:740;letter-spacing:-.03em;margin-top:8px}
+.recurring-page .stat-icon,.recurring-page .panel-icon{display:grid;place-items:center;flex-shrink:0;width:34px;height:34px;border-radius:10px;background:#e9f6ef;color:#168b7d;font-size:16px}
+.recurring-page .builder-grid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:20px;align-items:start;scroll-margin-top:90px}
+.recurring-page .form-panel{padding:23px}
+.recurring-page .panel-title{display:flex;align-items:center;gap:11px;margin-bottom:20px}
+.recurring-page .panel-title h2,.recurring-page .panel-title h3,.recurring-page .rules-header h2{font-size:17px;font-weight:700;letter-spacing:-.02em}
+.recurring-page .panel-title p,.recurring-page .rules-header p{font-size:11px;color:var(--recurring-muted)!important;line-height:1.7}
+.recurring-page .section-chip{display:inline-flex;align-items:center;gap:7px;padding:7px 10px;background:#f0f7f3;border-radius:6px;color:#417b6f;font-size:10px;font-weight:650;margin:3px 0 5px}
+.recurring-page .form-label{font-size:11px;font-weight:650;color:#526977;margin-bottom:7px}
+.recurring-page .form-control,.recurring-page .form-select{min-height:43px;border-radius:8px;border-color:#dce5e9;font-size:13px;background:white;color:#173543}
+.recurring-page .form-control:focus,.recurring-page .form-select:focus{border-color:#168b7d;box-shadow:0 0 0 3px #168b7d18}
+.recurring-page .form-text{font-size:10px;line-height:1.7;color:var(--recurring-muted)}
+.recurring-page .advanced-panel{padding:17px;border:1px solid #e2e9ee;background:#fafcfb;border-radius:10px}
+.recurring-page .advanced-panel .small{font-size:10px}
+.recurring-page .helper-card{padding:22px;background:#173b43;color:#d4e8e5}
+.recurring-page .helper-card .panel-title h3{color:#fff}
+.recurring-page .helper-card .panel-title p{color:#a8cbc8!important}
+.recurring-page .helper-card .panel-icon{background:#2b5357;color:#abdfce}
+.recurring-page .helper-step{display:flex;gap:10px;padding:17px 0;border-bottom:1px solid #ffffff15;font-size:12px}
+.recurring-page .helper-step:last-child{border:0;padding-bottom:0}
+.recurring-page .helper-step strong{font-size:12px;color:white}
+.recurring-page .helper-step p{font-size:11px;line-height:1.8;color:#a8cbc8;margin:5px 0 0}
+.recurring-page .helper-number{display:grid;place-items:center;flex:0 0 25px;height:25px;border-radius:7px;color:#abdfce;background:#2b5357;font-size:10px;font-weight:700}
+.recurring-page .rules-card{overflow:hidden}
+.recurring-page .rules-header{padding:22px;border-bottom:1px solid var(--recurring-border);background:white}
+.recurring-page .rules-table{margin:0;font-size:12px}
+.recurring-page .rules-table thead th{font-size:10px;font-weight:650;text-transform:uppercase;letter-spacing:.05em;background:#f6f9f8;color:#71828d;padding:14px 16px;border-color:#e2e9ee;white-space:nowrap}
+.recurring-page .rules-table tbody td{padding:17px 16px;border-color:#edf1f3;vertical-align:middle}
+.recurring-page .rule-name{font-weight:650;font-size:12px;color:#173543}
+.recurring-page .rule-subtext{font-size:10px;color:var(--recurring-muted);line-height:1.7;overflow-wrap:anywhere}
+.recurring-page .soft-badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:5px 8px;border-radius:5px;white-space:nowrap}
+.recurring-page .badge-expense{background:#fdf0eb;color:#b16e58}.recurring-page .badge-income,.recurring-page .badge-enabled{background:#e9f6ef;color:#168b7d}.recurring-page .badge-fee{background:#fcf6e5;color:#a78a3d}.recurring-page .badge-disabled{background:#eff2f4;color:#71828d}.recurring-page .badge-frequency{background:#edf2fc;color:#5679bf}
+.recurring-page .btn-brand{background:#168b7d;border:1px solid #168b7d;color:#fff;font-size:12px;border-radius:8px;min-height:40px;font-weight:600}
+.recurring-page .btn-brand:hover{background:#10786b;border-color:#10786b}
+.recurring-page .btn-soft{background:#fff;color:#526977;border:1px solid #dce5e9;font-size:12px;border-radius:8px;min-height:40px;font-weight:600}
+.recurring-page .rules-table .btn{font-size:10px;min-height:30px;padding:6px 9px}
+.recurring-page .mobile-rule-card{padding:18px;border:1px solid var(--recurring-border);border-radius:12px;background:white;min-width:0;font-size:13px}
+.recurring-page .mobile-rule-card strong{overflow-wrap:anywhere}
+.recurring-page .empty-state{padding:40px 20px;text-align:center;color:var(--recurring-muted);font-size:12px}
+.recurring-page .empty-icon{display:grid;place-items:center;width:50px;height:50px;margin:auto;border-radius:13px;background:#e9f6ef;color:#168b7d;font-size:23px}
+.recurring-page :focus-visible{outline:3px solid #8ccbc2;outline-offset:3px}
+@media(max-width:1199px){.recurring-page .builder-grid{grid-template-columns:minmax(0,1fr) 260px}.recurring-page .form-panel{padding:19px}}
+@media(max-width:991px){.recurring-page .builder-grid{grid-template-columns:1fr}.recurring-page .hero-title{font-size:28px}.recurring-page .helper-card{display:none}}
+@media(max-width:575px){.recurring-page{padding:0 0 24px}.recurring-page .hero-title{font-size:27px}.recurring-page .stat-card{padding:15px;min-height:100px}.recurring-page .stat-icon{width:28px;height:28px;font-size:13px}.recurring-page .stat-label{font-size:10px}.recurring-page .stat-value{font-size:26px}.recurring-page .form-panel,.recurring-page .rules-header{padding:17px}.recurring-page .hero-action{width:100%}.recurring-page .advanced-panel{padding:14px}}
 
-  .recurring-hero {
-    position: relative;
-    overflow: hidden;
-    border-radius: 28px;
-    padding: clamp(1.25rem, 3vw, 2rem);
-    background:
-      radial-gradient(circle at top right, rgba(99, 102, 241, .35), transparent 34%),
-      radial-gradient(circle at bottom left, rgba(14, 165, 233, .24), transparent 28%),
-      linear-gradient(135deg, #111827 0%, #1e1b4b 48%, #312e81 100%);
-    color: #fff;
-    box-shadow: 0 24px 60px rgba(30, 27, 75, .28);
-  }
-
-  .recurring-hero::after {
-    content: "";
-    position: absolute;
-    inset: auto -6rem -8rem auto;
-    width: 18rem;
-    height: 18rem;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, .1);
-  }
-
-  .recurring-hero > * {
-    position: relative;
-    z-index: 1;
-  }
-
-  .hero-kicker {
-    display: inline-flex;
-    align-items: center;
-    gap: .5rem;
-    padding: .45rem .75rem;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, .13);
-    border: 1px solid rgba(255, 255, 255, .18);
-    color: rgba(255, 255, 255, .88);
-    font-size: .85rem;
-    font-weight: 700;
-  }
-
-  .hero-title {
-    font-size: clamp(1.75rem, 4vw, 3rem);
-    line-height: 1.05;
-    letter-spacing: -.04em;
-    font-weight: 850;
-    max-width: 760px;
-  }
-
-  .hero-copy {
-    color: rgba(255, 255, 255, .74);
-    max-width: 680px;
-    font-size: 1rem;
-  }
-
-  .hero-action {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: .5rem;
-    min-height: 44px;
-    padding-inline: 1rem;
-    border-radius: 14px;
-    font-weight: 750;
-  }
-
-  .hero-action.btn-light {
-    color: #111827;
-    box-shadow: 0 12px 25px rgba(15, 23, 42, .16);
-  }
-
-  .hero-action.btn-outline-light {
-    border-color: rgba(255, 255, 255, .25);
-    color: rgba(255, 255, 255, .92);
-    background: rgba(255, 255, 255, .08);
-  }
-
-  .stat-card {
-    padding: 1.1rem;
-    min-height: 122px;
-  }
-
-  .stat-card .stat-icon {
-    width: 42px;
-    height: 42px;
-    display: grid;
-    place-items: center;
-    border-radius: 16px;
-    color: var(--recurring-primary);
-    background: var(--recurring-primary-soft);
-    font-size: 1.15rem;
-  }
-
-  .stat-card .stat-label {
-    color: var(--recurring-muted);
-    font-size: .82rem;
-    font-weight: 750;
-    text-transform: uppercase;
-    letter-spacing: .08em;
-  }
-
-  .stat-card .stat-value {
-    font-size: 1.85rem;
-    font-weight: 850;
-    letter-spacing: -.03em;
-  }
-
-  .builder-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1.5fr) minmax(280px, .85fr);
-    gap: 1rem;
-  }
-
-  .form-panel {
-    padding: clamp(1rem, 2vw, 1.4rem);
-  }
-
-  .panel-title {
-    display: flex;
-    align-items: center;
-    gap: .7rem;
-    margin-bottom: 1.15rem;
-  }
-
-  .panel-title .panel-icon {
-    width: 42px;
-    height: 42px;
-    display: grid;
-    place-items: center;
-    border-radius: 16px;
-    background: var(--recurring-primary-soft);
-    color: var(--recurring-primary);
-    font-size: 1.2rem;
-  }
-
-  .section-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: .45rem;
-    padding: .45rem .7rem;
-    border-radius: 999px;
-    color: #334155;
-    background: #f1f5f9;
-    font-size: .82rem;
-    font-weight: 800;
-    margin: .4rem 0 .9rem;
-  }
-
-  .recurring-page .form-label {
-    color: #334155;
-    font-size: .84rem;
-    font-weight: 750;
-    margin-bottom: .4rem;
-  }
-
-  .recurring-page .form-control,
-  .recurring-page .form-select {
-    min-height: 46px;
-    border-radius: 14px;
-    border-color: #dbe3ef;
-    background-color: #fff;
-  }
-
-  .recurring-page .form-control:focus,
-  .recurring-page .form-select:focus {
-    border-color: rgba(79, 70, 229, .55);
-    box-shadow: 0 0 0 .22rem rgba(79, 70, 229, .12);
-  }
-
-  .advanced-panel {
-    border: 1px dashed rgba(100, 116, 139, .35);
-    background: #f8fafc;
-    border-radius: 20px;
-    padding: 1rem;
-  }
-
-  .helper-card {
-    padding: 1.15rem;
-    height: 100%;
-  }
-
-  .helper-step {
-    display: flex;
-    gap: .8rem;
-    padding: .8rem 0;
-    border-bottom: 1px solid rgba(15, 23, 42, .08);
-  }
-
-  .helper-step:last-child {
-    border-bottom: 0;
-  }
-
-  .helper-number {
-    flex: 0 0 32px;
-    width: 32px;
-    height: 32px;
-    display: grid;
-    place-items: center;
-    border-radius: 12px;
-    background: #eef2ff;
-    color: #4338ca;
-    font-weight: 850;
-  }
-
-  .helper-step p {
-    color: var(--recurring-muted);
-    margin: .15rem 0 0;
-    font-size: .9rem;
-  }
-
-  .rules-card {
-    overflow: hidden;
-  }
-
-  .rules-header {
-    padding: 1rem 1.15rem;
-    border-bottom: 1px solid var(--recurring-border);
-    background: linear-gradient(180deg, rgba(248, 250, 252, .92), rgba(255, 255, 255, .92));
-  }
-
-  .rules-table {
-    margin: 0;
-  }
-
-  .rules-table thead th {
-    color: #64748b;
-    background: #f8fafc;
-    border-bottom: 1px solid var(--recurring-border);
-    font-size: .75rem;
-    letter-spacing: .08em;
-    text-transform: uppercase;
-    padding: .9rem 1rem;
-  }
-
-  .rules-table tbody td {
-    padding: 1rem;
-    vertical-align: middle;
-    border-color: rgba(15, 23, 42, .07);
-  }
-
-  .rule-name {
-    font-weight: 820;
-    color: #0f172a;
-  }
-
-  .rule-subtext {
-    color: var(--recurring-muted);
-    font-size: .85rem;
-  }
-
-  .soft-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: .35rem;
-    padding: .4rem .65rem;
-    border-radius: 999px;
-    font-size: .78rem;
-    font-weight: 850;
-    white-space: nowrap;
-  }
-
-  .badge-expense { background: var(--recurring-danger-soft); color: #b91c1c; }
-  .badge-income { background: var(--recurring-success-soft); color: #047857; }
-  .badge-fee { background: var(--recurring-warning-soft); color: #b45309; }
-  .badge-enabled { background: var(--recurring-success-soft); color: #047857; }
-  .badge-disabled { background: #eef2f7; color: #64748b; }
-  .badge-frequency { background: #eef2ff; color: #4338ca; }
-
-  .mobile-rule-card {
-    border: 1px solid var(--recurring-border);
-    border-radius: 20px;
-    padding: 1rem;
-    background: #fff;
-    box-shadow: 0 14px 32px rgba(15, 23, 42, .06);
-  }
-
-  .empty-state {
-    padding: 3rem 1rem;
-    text-align: center;
-    color: var(--recurring-muted);
-  }
-
-  .empty-state .empty-icon {
-    width: 64px;
-    height: 64px;
-    margin-inline: auto;
-    display: grid;
-    place-items: center;
-    border-radius: 22px;
-    background: #eef2ff;
-    color: #4f46e5;
-    font-size: 1.65rem;
-  }
-
-  .btn-brand {
-    --bs-btn-bg: #4f46e5;
-    --bs-btn-border-color: #4f46e5;
-    --bs-btn-hover-bg: #4338ca;
-    --bs-btn-hover-border-color: #4338ca;
-    --bs-btn-color: #fff;
-    --bs-btn-hover-color: #fff;
-    border-radius: 14px;
-    font-weight: 800;
-    min-height: 44px;
-  }
-
-  .btn-soft {
-    border: 1px solid var(--recurring-border);
-    background: #fff;
-    color: #334155;
-    border-radius: 14px;
-    font-weight: 750;
-    min-height: 42px;
-  }
-
-  .btn-soft:hover {
-    border-color: rgba(79, 70, 229, .35);
-    color: #4338ca;
-    background: #f8fafc;
-  }
-
-  @media (max-width: 991.98px) {
-    .builder-grid {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  @media (max-width: 767.98px) {
-    .recurring-hero {
-      border-radius: 22px;
-    }
-
-    .hero-action {
-      width: 100%;
-    }
-
-    .stat-card {
-      min-height: auto;
-    }
-  }
 </style>
 {% endblock %}
 
@@ -404,9 +99,9 @@
           <i class="bi bi-arrow-repeat"></i>
           Recurring automation
         </span>
-        <h1 class="hero-title mb-3">Create rules for rent, salary, fees, bills, and repeat expenses.</h1>
+        <h1 class="hero-title mb-3">Make repeat payments effortless.</h1>
         <p class="hero-copy mb-0">
-          Set the account, amount, category, and schedule once. Then your tracker can post due transactions without you rebuilding the same payment every month.
+          Set up rent, salary, subscriptions, and bills once. Keep each schedule organized and manage your recurring transactions below.
         </p>
       </div>
       <div class="col-12 col-xl-auto ms-xl-auto">
@@ -477,7 +172,7 @@
         <span class="panel-icon"><i class="bi bi-magic"></i></span>
         <div>
           <h2 class="h4 mb-1 fw-bold">Create recurring rule</h2>
-          <p class="text-muted mb-0 small">Everything your backend already expects, just arranged in a cleaner flow.</p>
+          <p class="text-muted mb-0 small">Choose the transaction details, then set when it repeats.</p>
         </div>
       </div>
 
@@ -538,7 +233,7 @@
         </div>
 
         <div class="col-12 col-sm-6 col-xl-2">
-          <label class="form-label">Every</label>
+          <label class="form-label">Repeat every</label>
           <input type="number" name="every_n" class="form-control" value="1" min="1">
         </div>
 
@@ -589,7 +284,7 @@
         <span class="panel-icon"><i class="bi bi-lightning-charge"></i></span>
         <div>
           <h3 class="h5 mb-1 fw-bold">Best use</h3>
-          <p class="text-muted mb-0 small">A few rules make the app feel automatic.</p>
+          <p class="text-muted mb-0 small">Simple schedules for everyday finances.</p>
         </div>
       </div>
 
@@ -611,7 +306,7 @@
         <span class="helper-number">3</span>
         <div>
           <strong>Run due now</strong>
-          <p>Use it after creating rules or after a server restart to post anything that is due.</p>
+          <p>Post transactions that are currently due. Review your schedules before running.</p>
         </div>
       </div>
     </aside>
@@ -687,7 +382,7 @@
                   </form>
                   <form action="{{ url_for('main.recurring_delete', rid=r.id) }}" method="post" class="m-0"
                         onsubmit="return confirm('Delete rule {{ r.id }}?');">
-                    <button class="btn btn-sm btn-outline-danger rounded-3">
+                    <button class="btn btn-sm btn-outline-danger rounded-3" aria-label="Delete recurring rule {{ r.id }}">
                       <i class="bi bi-trash"></i>
                     </button>
                   </form>
@@ -747,7 +442,7 @@
               </form>
               <form action="{{ url_for('main.recurring_delete', rid=r.id) }}" method="post" class="m-0"
                     onsubmit="return confirm('Delete rule {{ r.id }}?');">
-                <button class="btn btn-outline-danger btn-sm rounded-3">
+                <button class="btn btn-outline-danger btn-sm rounded-3" aria-label="Delete recurring rule {{ r.id }}">
                   <i class="bi bi-trash"></i>
                 </button>
               </form>
